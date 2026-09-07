@@ -1,0 +1,10 @@
+{
+  "format": "layall-blog-scaffold",
+  "managedFiles": {
+    ".github/workflows/pages.yml": "6adb7639ad399e8434ae7177cf40291f8201c672d7c22005c75daeb4a0525c2d",
+    ".layall/build.mjs": "128595061eb38bdbfdccfd83a0bd70e5e74f31ca0f8f407d5f833730dd9266db"
+  },
+  "retryPath": ".layall/retry.json",
+  "sitePath": ".layall/site.json",
+  "version": 3
+}
