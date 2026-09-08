@@ -23,6 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Verify LayAll publishing source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_API_URL: ${{ github.api_url }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'NODE'
+          const response = await fetch(`${process.env.GH_API_URL}/repos/${process.env.GH_REPOSITORY}/pages`, {
+            headers: {
+              Authorization: `Bearer ${process.env.GH_TOKEN}`,
+              Accept: 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2026-03-10'
+            }
+          });
+          if (!response.ok || (await response.json()).build_type !== 'workflow') {
+            throw new Error('LayAll requires GitHub Actions publishing. Reconnect the blog in LayAll before deploying.');
+          }
+          NODE
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
