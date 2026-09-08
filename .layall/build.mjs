@@ -318,8 +318,10 @@ const renderMarkdown = (source) => {
 	return { html: html.join('\n'), headings };
 };
 
-const themeNames = new Set(['layall', 'blog', 'minimal', 'portfolio', 'docs']);
+const themeOrder = ['layall', 'blog', 'minimal', 'portfolio', 'docs'];
+const themeNames = new Set(themeOrder);
 const theme = themeNames.has(site.theme) ? site.theme : 'layall';
+const layoutStorageKey = `layall-layout-theme:${publicBase || basePath || '/'}`;
 const siteTitle = String(site.title || 'LayAll Blog');
 const siteDescription = String(site.description || '');
 const author = String(site.profileName || site.authorName || '');
@@ -395,7 +397,7 @@ const folderTree = (activePost = null, includePosts = false) => {
 const topLinks = () => {
 	const primary = [
 		`<a href="${href('/')}">Home</a>`,
-		theme === 'docs' ? `<a href="${href('/docs/')}">Docs</a>` : '',
+		`<a data-docs-link href="${href('/docs/')}">Docs</a>`,
 		`<a href="${href('/search/')}">Search</a>`,
 	];
 	return [
@@ -432,14 +434,73 @@ html[data-theme=docs]{--paper:#fbfcfd;--surface:#fff;--surface-2:#f1f4f7;--ink:#
 .search-shell{padding:4rem 0}.search-shell h1{font:700 clamp(2.5rem,6vw,5rem)/1 ui-serif,Georgia,serif}.search-form{display:flex;gap:.6rem;max-width:700px}.search-form input{min-width:0;flex:1;padding:.8rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink)}.search-form button{border:0;border-radius:999px;padding:.8rem 1.1rem;background:var(--ink);color:var(--paper);cursor:pointer}.search-results{margin-top:2rem}
 @media(max-width:900px){.article-shell,.blog-archive,.docs-layout{grid-template-columns:1fr}.article-aside,.blog-sidebar,.docs-toc,.docs-sidebar-wrap{position:static}.docs-sidebar{display:none;max-height:none}.docs-sidebar-wrap>.nav-toggle{display:block}.docs-sidebar[data-open=true]{display:block}.blog-title,.blog-lead,.portfolio-hero{grid-template-columns:1fr}.guide-grid{grid-template-columns:1fr 1fr}.showcase-card,.showcase-card:nth-child(n){grid-column:span 12}.portfolio-hero{min-height:auto;margin-top:1rem}.blog-lead .post-cover{order:-1}}
 @media(max-width:680px){body{font-size:15px}.header-inner{min-height:60px}.nav-toggle{display:block}.site-nav{position:absolute;top:calc(100% + 1px);left:1rem;right:1rem;display:none;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}.site-nav[data-open=true]{display:flex}.color-controls{align-self:flex-start}.blog-home{padding-top:2.2rem}.blog-title{display:block}.blog-grid,.guide-grid,.minimal-profile{grid-template-columns:1fr}.article-shell{padding-top:2.5rem}.site-footer{flex-direction:column}.portfolio-hero{padding:2rem 1.4rem;border-radius:28px}.floating-nav{max-width:calc(100% - 1rem);overflow:auto}.docs-intro{min-height:auto;padding:5rem .5rem}.docs-section-list{grid-template-columns:1fr}}
+select{font:inherit}[data-docs-link]{display:none}html[data-theme=docs] [data-docs-link]{display:inline}.appearance-controls{display:flex;align-items:center;gap:.45rem}.theme-control{display:flex;align-items:center;gap:.35rem;color:var(--muted);font-size:.78rem}.theme-control select{max-width:8.5rem;border:1px solid var(--line);border-radius:999px;padding:.38rem 1.8rem .38rem .7rem;background:var(--surface);color:var(--ink);cursor:pointer}.floating-nav{display:none}html[data-theme=portfolio] .floating-nav{display:flex}.theme-article-minimal{display:block;max-width:760px}.theme-article-blog .article{padding:clamp(1.2rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.theme-article-portfolio{grid-template-columns:220px minmax(0,820px)}.theme-article-portfolio .article{order:2;padding:clamp(1.2rem,4vw,3rem);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.theme-article-portfolio .article-aside{order:1}@media(max-width:900px){.appearance-controls{flex-wrap:wrap}.theme-article-portfolio{grid-template-columns:1fr}.theme-article-portfolio .article,.theme-article-portfolio .article-aside{order:initial}}@media(max-width:680px){.appearance-controls{align-items:flex-start;flex-direction:column}.theme-control select{min-height:36px}.color-controls{align-self:auto}}
 `;
 
-const behavior = `<script>(()=>{const root=document.documentElement;const modes=new Set(['light','dark','system']);let saved='';try{saved=localStorage.getItem('layall-color-mode')||''}catch{}if(modes.has(saved)){root.dataset.colorMode=saved}const sync=()=>document.querySelectorAll('[data-color]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.color===root.dataset.colorMode)));sync();document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{const mode=button.dataset.color;if(!modes.has(mode))return;root.dataset.colorMode=mode;try{localStorage.setItem('layall-color-mode',mode)}catch{}sync()}));const toggle=document.querySelector('[data-nav-toggle]');const nav=document.querySelector('[data-nav]');toggle?.addEventListener('click',()=>{const open=nav.dataset.open!=='true';nav.dataset.open=String(open);toggle.setAttribute('aria-expanded',String(open))});const docsToggle=document.querySelector('[data-docs-toggle]');const docs=document.querySelector('[data-docs-sidebar]');docsToggle?.addEventListener('click',()=>{const open=docs.dataset.open!=='true';docs.dataset.open=String(open);docsToggle.setAttribute('aria-expanded',String(open))});document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(nav)nav.dataset.open='false';if(toggle)toggle.setAttribute('aria-expanded','false');if(docs)docs.dataset.open='false';if(docsToggle)docsToggle.setAttribute('aria-expanded','false')}if(event.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)){const input=document.querySelector('[data-search-input]');if(input){event.preventDefault();input.focus()}}})})()</script>`;
+const behavior = `<script>(()=>{
+const root=document.documentElement;
+const colorModes=new Set(['light','dark','system']);
+const layoutThemes=new Set(${js(themeOrder)});
+const authorTheme=${js(theme)};
+const layoutKey=${js(layoutStorageKey)};
+const mount=document.querySelector('[data-theme-view]');
+const pool=document.querySelector('[data-theme-pool]');
+let pageGeneration=0;
+const boundDocsToggles=new WeakSet();
+const readStored=(key)=>{try{return localStorage.getItem(key)||''}catch{return ''}};
+const writeStored=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
+const syncColor=()=>document.querySelectorAll('[data-color]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.color===root.dataset.colorMode)));
+const syncLayout=()=>document.querySelectorAll('[data-layout-theme]').forEach(select=>select.value=root.dataset.theme);
+const bindDocs=()=>{const toggle=document.querySelector('[data-docs-toggle]');const docs=document.querySelector('[data-docs-sidebar]');if(!toggle||!docs||boundDocsToggles.has(toggle))return;boundDocsToggles.add(toggle);toggle.addEventListener('click',()=>{const open=docs.dataset.open!=='true';docs.dataset.open=String(open);toggle.setAttribute('aria-expanded',String(open))})};
+const bindSearch=(preservedQuery='')=>{
+ const generation=++pageGeneration;
+ const form=document.querySelector('[data-search-form]');const input=document.querySelector('[data-search-input]');const results=document.querySelector('[data-search-results]');const status=document.querySelector('[data-search-status]');
+ if(!form||!input||!results||!status)return;
+ const run=async(syncUrl=false)=>{const query=input.value.trim().toLocaleLowerCase();const entries=await fetch(${js(href('/search.json'))}).then(response=>response.json());if(generation!==pageGeneration||input.isConnected===false)return;const found=query?entries.filter(entry=>[entry.title,entry.body,entry.folder,...entry.tags].join(' ').toLocaleLowerCase().includes(query)):entries;results.replaceChildren(...found.map(entry=>{const li=document.createElement('li');const a=document.createElement('a');const strong=document.createElement('strong');const span=document.createElement('span');const target=${js(`${basePath}/posts/`)}+encodeURIComponent(entry.permalink)+'/';a.href=target;a.setAttribute('href',target);strong.textContent=entry.title;span.textContent=[entry.folder,...entry.tags.map(tag=>'#'+tag)].filter(Boolean).join(' · ');a.append(strong,span);li.append(a);return li}));status.textContent=found.length+'개 결과';if(syncUrl){const url=new URL(location.href);query?url.searchParams.set('q',input.value.trim()):url.searchParams.delete('q');history.replaceState(null,'',url)}};
+ form.addEventListener('submit',event=>{event.preventDefault();run(true).catch(()=>status.textContent='검색 색인을 불러오지 못했습니다.')});
+ input.value=preservedQuery||new URL(location.href).searchParams.get('q')||'';
+ run().catch(()=>status.textContent='검색 색인을 불러오지 못했습니다.');
+};
+const bindPage=(query='')=>{bindDocs();bindSearch(query)};
+const activate=(next)=>{if(!layoutThemes.has(next)||!mount)return;const template=document.querySelector('template[data-theme-layout="'+next+'"]');if(!template)return;const query=document.querySelector('[data-search-input]')?.value||'';pageGeneration+=1;const fragment=template.content.cloneNode(true);fragment.querySelectorAll('[data-layout-id]').forEach(node=>{node.id=node.dataset.layoutId;node.removeAttribute('data-layout-id')});const retained=new Map([...document.querySelectorAll('[data-theme-piece]')].map(node=>[node.dataset.themePiece,node]));const used=new Set();fragment.querySelectorAll('[data-theme-slot]').forEach(target=>{const piece=retained.get(target.dataset.themeSlot);if(piece){used.add(target.dataset.themeSlot);target.replaceWith(piece)}});if(pool)pool.replaceChildren(...[...retained].filter(([name])=>!used.has(name)).map(([,node])=>node));root.dataset.theme=next;root.dataset.layallTheme=next;mount.replaceChildren(fragment);syncLayout();bindPage(query)};
+const savedColor=readStored('layall-color-mode');if(colorModes.has(savedColor))root.dataset.colorMode=savedColor;syncColor();
+document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{const mode=button.dataset.color;if(!colorModes.has(mode))return;root.dataset.colorMode=mode;writeStored('layall-color-mode',mode);syncColor()}));
+document.querySelectorAll('[data-layout-theme]').forEach(select=>select.addEventListener('change',()=>{const next=select.value;if(!layoutThemes.has(next)){syncLayout();return}activate(next);writeStored(layoutKey,next)}));
+const navToggle=document.querySelector('[data-nav-toggle]');const nav=document.querySelector('[data-nav]');navToggle?.addEventListener('click',()=>{const open=nav.dataset.open!=='true';nav.dataset.open=String(open);navToggle.setAttribute('aria-expanded',String(open))});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(nav)nav.dataset.open='false';if(navToggle)navToggle.setAttribute('aria-expanded','false');const docs=document.querySelector('[data-docs-sidebar]');const docsToggle=document.querySelector('[data-docs-toggle]');if(docs)docs.dataset.open='false';if(docsToggle)docsToggle.setAttribute('aria-expanded','false')}if(event.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)){const input=document.querySelector('[data-search-input]');if(input){event.preventDefault();input.focus()}}});
+const remembered=readStored(layoutKey);if(layoutThemes.has(remembered)&&remembered!==authorTheme)activate(remembered);else{root.dataset.theme=authorTheme;root.dataset.layallTheme=authorTheme;syncLayout();bindPage()}
+})()</script>`;
 
 const shell = (title, body, options = {}) => {
 	const description = options.description ?? siteDescription;
 	const nav = topLinks();
-	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}"><title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button><nav class="site-nav" id="site-navigation" data-nav>${nav}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></nav></div></header>${body}<footer class="site-footer"><span>${esc(siteTitle)}</span><span>${esc(site.authorName || author)}</span></footer>${theme === 'portfolio' ? `<nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#work')}">Writing</a><a href="${href('/search/')}">Search</a></nav>` : ''}${behavior}</body></html>`;
+	const variants = options.variants ?? Object.fromEntries(themeOrder.map((name) => [name, body]));
+	const pieces = Object.entries(options.pieces ?? {});
+	const slot = (name) => `<span data-theme-slot="${name}"></span>`;
+	const assemble = (markup) =>
+		pieces.reduce((result, [name, piece]) => result.replace(slot(name), piece), markup);
+	const activeVariant = variants[theme] ?? body;
+	const activeBody = assemble(activeVariant);
+	const pool = pieces
+		.filter(([name]) => !activeVariant.includes(slot(name)))
+		.map(([, piece]) => piece)
+		.join('');
+	const templates = themeOrder
+		.map((name) => {
+			const inertBody = (variants[name] ?? body).replace(
+				/ id="([^"]+)"/g,
+				' data-layout-id="$1"'
+			);
+			return `<template data-theme-layout="${name}">${inertBody}</template>`;
+		})
+		.join('');
+	const layoutOptions = themeOrder
+		.map(
+			(name) =>
+				`<option value="${name}"${name === theme ? ' selected' : ''}>${name === 'layall' ? 'LayAll' : name[0].toUpperCase() + name.slice(1)}</option>`
+		)
+		.join('');
+	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}"><title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button><nav class="site-nav" id="site-navigation" data-nav>${nav}<span class="appearance-controls"><label class="theme-control">Layout<select data-layout-theme aria-label="Layout theme">${layoutOptions}</select></label><span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></span></nav></div></header><div data-theme-view>${activeBody}</div><div data-theme-pool hidden>${pool}</div><footer class="site-footer"><span>${esc(siteTitle)}</span><span>${esc(site.authorName || author)}</span></footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#work')}">Writing</a><a href="${href('/search/')}">Search</a></nav>${templates}${behavior}</body></html>`;
 };
 
 const compactList = (items) => {
@@ -500,14 +561,16 @@ const docsHome = (items) => {
 			.join('')
 	}</div>${items.length ? '' : '<div class="empty">아직 공개된 문서가 없습니다.</div>'}</section></main>`;
 };
-const renderHome = (items) =>
+const renderHome = (items, selectedTheme = theme) =>
 	({
 		layall: layallHome,
 		blog: blogHome,
 		minimal: minimalHome,
 		portfolio: portfolioHome,
 		docs: docsHome,
-	})[theme](items);
+	})[selectedTheme](items);
+const variantsOf = (renderer) =>
+	Object.fromEntries(themeOrder.map((name) => [name, renderer(name)]));
 
 const toc = (headings) => {
 	const visible = headings.filter((heading) => heading.level >= 2 && heading.level <= 4);
@@ -515,25 +578,57 @@ const toc = (headings) => {
 		? `<ol>${visible.map((heading) => `<li class="toc-level-${heading.level}"><a href="#${esc(heading.id)}">${esc(heading.label)}</a></li>`).join('')}</ol>`
 		: '<p class="muted">이 문서에는 세부 목차가 없습니다.</p>';
 };
-const standardArticle = (post, rendered) =>
-	`<main id="content" class="article-shell"><article class="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header>${picture(post)}<div class="article-body">${rendered.html}</div>${site.giscusEnabled ? '<section data-giscus-enabled="true" aria-label="Comments"></section>' : ''}</article><aside class="article-aside" aria-label="글 목차"><h2>On this page</h2>${toc(rendered.headings)}</aside></main>`;
-const docsArticle = (post, rendered) =>
-	`<div class="docs-layout"><div class="docs-sidebar-wrap"><button class="nav-toggle" type="button" data-docs-toggle aria-expanded="false">문서 메뉴</button><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation(post)}</aside></div><main id="content" class="docs-content"><article class="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${site.giscusEnabled ? '<section data-giscus-enabled="true" aria-label="Comments"></section>' : ''}</article></main><aside class="docs-toc" aria-label="현재 문서 목차"><h2>On this page</h2>${toc(rendered.headings)}</aside></div>`;
+const articleContent = (post, rendered) =>
+	`<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header>${picture(post)}<div class="article-body">${rendered.html}</div>${site.giscusEnabled ? '<section data-giscus-enabled="true" aria-label="Comments"></section>' : ''}</article>`;
+const articleToc = (rendered) =>
+	`<aside class="article-aside" data-theme-piece="toc" aria-label="글 목차"><h2>On this page</h2>${toc(rendered.headings)}</aside>`;
+const articleSlot = '<span data-theme-slot="article"></span>';
+const tocSlot = '<span data-theme-slot="toc"></span>';
+const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
+const standardArticle = (selectedTheme) => {
+	if (selectedTheme === 'minimal')
+		return `<main id="content" class="article-shell theme-article-minimal">${articleSlot}${tocSlot}</main>`;
+	if (selectedTheme === 'portfolio')
+		return `<main id="content" class="article-shell theme-article-portfolio">${tocSlot}${articleSlot}</main>`;
+	return `<main id="content" class="article-shell theme-article-${selectedTheme}">${articleSlot}${tocSlot}</main>`;
+};
+const docsArticle = () =>
+	`<div class="docs-layout">${docsNavigationSlot}<main id="content" class="docs-content">${articleSlot}</main><div class="docs-toc">${tocSlot}</div></div>`;
 
 for (const post of posts) {
 	const rendered = renderMarkdown(post.body);
-	const article =
-		theme === 'docs' ? docsArticle(post, rendered) : standardArticle(post, rendered);
+	const variants = variantsOf((name) =>
+		name === 'docs' ? docsArticle() : standardArticle(name)
+	);
+	const pieces = {
+		article: articleContent(post, rendered),
+		toc: articleToc(rendered),
+		'docs-navigation': `<div class="docs-sidebar-wrap" data-theme-piece="docs-navigation"><button class="nav-toggle" type="button" data-docs-toggle aria-expanded="false">문서 메뉴</button><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation(post)}</aside></div>`,
+	};
 	write(
 		`posts/${post.permalink}/index.html`,
-		shell(post.title || 'Untitled', article, {
+		shell(post.title || 'Untitled', variants[theme], {
 			kind: theme === 'docs' ? 'docs-article' : 'article',
 			description: excerpt(post.body, 160),
+			variants,
+			pieces,
 		})
 	);
 }
 
 const PAGE_SIZE = 10;
+const collectionBody = (selectedTheme, title, items, pagination, kind) => {
+	const heading = `<header class="page-heading"><p class="eyebrow">${esc(kind)}</p><h1>${esc(title)}</h1></header>`;
+	if (selectedTheme === 'blog')
+		return `<main id="content" class="blog-home">${heading}<section class="blog-grid">${items.map(blogCard).join('')}</section>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</main>`;
+	if (selectedTheme === 'minimal')
+		return `<main id="content" class="minimal-home">${heading}<ul class="minimal-list">${items.map((post) => `<li><a href="${postUrl(post)}"><span class="post-meta">${esc(metadata(post))}</span><h2>${esc(post.title || 'Untitled')}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 150))}</p>` : ''}</a></li>`).join('')}</ul>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</main>`;
+	if (selectedTheme === 'portfolio')
+		return `<main id="content" class="portfolio-home"><section class="showcase" id="work">${heading}<div class="showcase-grid">${items.map(portfolioCard).join('')}</div>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</section></main>`;
+	if (selectedTheme === 'docs')
+		return `<div class="docs-layout"><div class="docs-sidebar-wrap"><button class="nav-toggle" type="button" data-docs-toggle aria-expanded="false">문서 메뉴</button><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation()}</aside></div><main id="content" class="docs-index">${heading}${compactList(items)}${pagination}</main><aside></aside></div>`;
+	return `<main id="content">${heading}${compactList(items)}${pagination}</main>`;
+};
 const collection = (prefix, title, items, kind = 'collection') => {
 	const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
 	for (let index = 0; index < pages; index += 1) {
@@ -543,11 +638,18 @@ const collection = (prefix, title, items, kind = 'collection') => {
 				? `<nav class="pagination" aria-label="페이지">${Array.from({ length: pages }, (_, pageIndex) => `<a${pageIndex === index ? ' aria-current="page"' : ''} href="${href(`/${prefix}${pageIndex ? `page/${pageIndex + 1}/` : ''}`)}">${pageIndex + 1}</a>`).join('')}</nav>`
 				: '';
 		const pageItems = items.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE);
-		const body =
+		const variants = variantsOf((name) =>
 			prefix === '' && index === 0
-				? renderHome(pageItems).replace(/<\/main>$/, `${pagination}</main>`)
-				: `<main id="content"><header class="page-heading"><p class="eyebrow">${esc(kind)}</p><h1>${esc(title)}</h1></header>${compactList(pageItems)}${pagination}</main>`;
-		write(file, shell(title, body, { kind: prefix === '' ? 'home' : kind }));
+				? renderHome(pageItems, name).replace(/<\/main>$/, `${pagination}</main>`)
+				: collectionBody(name, title, pageItems, pagination, kind)
+		);
+		write(
+			file,
+			shell(title, variants[theme], {
+				kind: prefix === '' ? 'home' : kind,
+				variants,
+			})
+		);
 	}
 };
 
@@ -583,17 +685,24 @@ for (const [tag, items] of groupedTags) {
 	collection(`tags/${tagSegment(tag)}/`, tag, items, 'tag');
 }
 
-if (theme === 'docs') {
-	const sections = [...folders.entries()]
-		.map(([id, folder]) => {
-			const items = posts.filter((post) => String(post.folderId ?? '') === id);
-			if (!items.length) return '';
-			return `<section class="docs-section"><p class="eyebrow">Section</p><h2>${esc(folder.name)}</h2><div class="docs-section-list">${items.map((post) => `<a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a>`).join('')}</div></section>`;
-		})
-		.join('');
-	const body = `<div class="docs-layout"><div class="docs-sidebar-wrap"><button class="nav-toggle" type="button" data-docs-toggle aria-expanded="false">문서 메뉴</button><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation()}</aside></div><main id="content" class="docs-index"><p class="eyebrow">Documentation</p><h1>전체 가이드</h1>${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : ''}${sections || compactList(posts)}</main><aside></aside></div>`;
-	write('docs/index.html', shell('Docs', body, { kind: 'docs-index' }));
-}
+const docsSections = [...folders.entries()]
+	.map(([id, folder]) => {
+		const items = posts.filter((post) => String(post.folderId ?? '') === id);
+		if (!items.length) return '';
+		return `<section class="docs-section"><p class="eyebrow">Section</p><h2>${esc(folder.name)}</h2><div class="docs-section-list">${items.map((post) => `<a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a>`).join('')}</div></section>`;
+	})
+	.join('');
+const docsIndex = `<div class="docs-layout"><div class="docs-sidebar-wrap"><button class="nav-toggle" type="button" data-docs-toggle aria-expanded="false">문서 메뉴</button><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation()}</aside></div><main id="content" class="docs-index"><p class="eyebrow">Documentation</p><h1>전체 가이드</h1>${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : ''}${docsSections || compactList(posts)}</main><aside></aside></div>`;
+const docsIndexVariants = variantsOf((name) =>
+	name === 'docs' ? docsIndex : collectionBody(name, 'Docs', posts, '', 'documentation')
+);
+write(
+	'docs/index.html',
+	shell('Docs', docsIndexVariants[theme], {
+		kind: 'docs-index',
+		variants: docsIndexVariants,
+	})
+);
 
 const search = posts.map((post) => ({
 	postId: post.postId,
@@ -604,14 +713,17 @@ const search = posts.map((post) => ({
 	folder: post.folderId ? folderName(post.folderId) : '',
 }));
 write('search.json', JSON.stringify(search));
-const searchScript = `<script>(()=>{const dataUrl=${js(href('/search.json'))};const base=${js(basePath)};const form=document.querySelector('[data-search-form]');const input=document.querySelector('[data-search-input]');const results=document.querySelector('[data-search-results]');const status=document.querySelector('[data-search-status]');const run=async()=>{const query=input.value.trim().toLocaleLowerCase();const entries=await fetch(dataUrl).then(response=>response.json());const found=query?entries.filter(entry=>[entry.title,entry.body,entry.folder,...entry.tags].join(' ').toLocaleLowerCase().includes(query)):entries;results.replaceChildren(...found.map(entry=>{const li=document.createElement('li');const a=document.createElement('a');const strong=document.createElement('strong');const span=document.createElement('span');a.href=base+'/posts/'+encodeURIComponent(entry.permalink)+'/';strong.textContent=entry.title;span.textContent=[entry.folder,...entry.tags.map(tag=>'#'+tag)].filter(Boolean).join(' · ');a.append(strong,span);li.append(a);return li}));status.textContent=found.length+'개 결과';const url=new URL(location.href);query?url.searchParams.set('q',input.value.trim()):url.searchParams.delete('q');history.replaceState(null,'',url)};form.addEventListener('submit',event=>{event.preventDefault();run().catch(()=>status.textContent='검색 색인을 불러오지 못했습니다.')});const initial=new URL(location.href).searchParams.get('q')||'';input.value=initial;run().catch(()=>status.textContent='검색 색인을 불러오지 못했습니다.')})()</script>`;
+const searchPanel = `<p class="eyebrow">Archive search</p><h1>Search</h1><form class="search-form" data-search-form role="search"><label class="skip-link" for="search-query">검색어</label><input id="search-query" data-search-input type="search" autocomplete="off" placeholder="제목, 내용, 태그 검색"><button type="submit">검색</button></form><p class="muted" data-search-status aria-live="polite"></p><ul class="post-list search-results" data-search-results></ul>`;
+const searchVariants = variantsOf((name) => {
+	if (name === 'docs')
+		return `<div class="docs-layout"><div class="docs-sidebar-wrap"><button class="nav-toggle" type="button" data-docs-toggle aria-expanded="false">문서 메뉴</button><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation()}</aside></div><main id="content" class="search-shell">${searchPanel}</main><aside></aside></div>`;
+	if (name === 'portfolio')
+		return `<main id="content" class="search-shell portfolio-home"><section class="showcase" id="work">${searchPanel}</section></main>`;
+	return `<main id="content" class="search-shell theme-search-${name}">${searchPanel}</main>`;
+});
 write(
 	'search/index.html',
-	shell(
-		'Search',
-		`<main id="content" class="search-shell"><p class="eyebrow">Archive search</p><h1>Search</h1><form class="search-form" data-search-form role="search"><label class="skip-link" for="search-query">검색어</label><input id="search-query" data-search-input type="search" autocomplete="off" placeholder="제목, 내용, 태그 검색"><button type="submit">검색</button></form><p class="muted" data-search-status aria-live="polite"></p><ul class="post-list search-results" data-search-results></ul>${searchScript}</main>`,
-		{ kind: 'search' }
-	)
+	shell('Search', searchVariants[theme], { kind: 'search', variants: searchVariants })
 );
 
 if (site.feedEnabled !== false) {
@@ -647,20 +759,23 @@ if (site.feedEnabled !== false) {
 const sitemapPages = [
 	'/',
 	'/search/',
-	...(theme === 'docs' ? ['/docs/'] : []),
+	'/docs/',
 	...posts.map((post) => `/posts/${post.permalink}/`),
 ];
 write(
 	'sitemap.xml',
 	`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapPages.map((url) => `<url><loc>${esc(absolute(url))}</loc></url>`).join('')}</urlset>`
 );
+const notFoundVariants = variantsOf(
+	(name) =>
+		`<main id="content" class="theme-not-found-${name}"><section class="page-heading"><p class="eyebrow">Error 404</p><h1>페이지를 찾을 수 없습니다.</h1><p><a href="${href('/')}">홈으로 돌아가기</a></p></section></main>`
+);
 write(
 	'404.html',
-	shell(
-		'Not found',
-		`<main id="content"><section class="page-heading"><p class="eyebrow">Error 404</p><h1>페이지를 찾을 수 없습니다.</h1><p><a href="${href('/')}">홈으로 돌아가기</a></p></section></main>`,
-		{ kind: 'not-found' }
-	)
+	shell('Not found', notFoundVariants[theme], {
+		kind: 'not-found',
+		variants: notFoundVariants,
+	})
 );
 write('assets-manifest.json', JSON.stringify({ files: assetClaims }));
 write('__layall-deploy.json', JSON.stringify({ format: 'layall-deploy', sourceSha: sha }));
