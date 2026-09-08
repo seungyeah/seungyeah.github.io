@@ -1,0 +1,43 @@
+{
+  "attachments": [
+    {
+      "id": "att-1787629837093-4370e83ef85806d9",
+      "mimeType": "image/webp",
+      "path": "assets/att-1787629837093-4370e83ef85806d9-254843.webp",
+      "sha256": "2e9558a281d09f2aa23787a1d1f68d4500d0983a7e2831532900eb4b78c7f61e"
+    },
+    {
+      "id": "att-1788117388032-e4d2770375a6b3dd",
+      "mimeType": "image/webp",
+      "path": "assets/att-1788117388032-e4d2770375a6b3dd-255491.webp",
+      "sha256": "846ce3e86cc8a87e3983fb63ce5a22df2d54cc051f4ec2c9fd324584ac148dc4"
+    },
+    {
+      "id": "att-1788273321862-4ba417a0f3ea2f7b",
+      "mimeType": "image/webp",
+      "path": "assets/att-1788273321862-4ba417a0f3ea2f7b-clipboard-image-1.webp",
+      "sha256": "d0d3a597c5b843bde79de426a991288e10c255c73f04229824054ff9a0ebc47f"
+    },
+    {
+      "id": "att-1788273321891-2294f6e0b6f22132",
+      "mimeType": "image/webp",
+      "path": "assets/att-1788273321891-2294f6e0b6f22132-clipboard-image-2.webp",
+      "sha256": "45fe75a2e740edcfc2489b7e66cc47d9b490b347fbfee691082c59415b8d6e08"
+    }
+  ],
+  "body": "This is a controlled LayAll Android blog publishing verification note. Created on 2026-08-25.\n\n![2026년 8월 25일 12:50 PM](layall-attachment:att-1787629837093-4370e83ef85806d9) ![오키부키](layall-attachment:att-1788117388032-e4d2770375a6b3dd)\n\n> 이게 무엇일꼬\n\n> [!CALLOUT] 💡 끌끌\n\n- 만나서 반갑다\n  - 할룽할룽\n\n# 이럴수가아\n## 이히히\n\n| 칼럼헤더 | Column 2 |\n| --- | --- |\n| 칼럼1 |  |\n\n## UpNote에 오신 것을 환영합니다!\n\nUpNote를 선택해 주셔서 감사합니다. UpNote가 여러분께 도움이 되길 바랍니다.\n\nUpNote는 빠르게 메모를 작성하고 깔끔하게 정리할 수 있도록 도와줍니다. UpNote는 Mac, Windows, Linux, iOS, Android에서 사용할 수 있어 모든 기기에서 메모에 쉽게 접근할 수 있습니다.\n\n아래는 UpNote를 시작하는 데 도움이 되는 몇 가지 팁입니다.\n\n### UpNote 시작하기\n\n- 무료 계정을 만들고 모든 기기에서 로그인해 보세요.\n- 첫 번째 메모를 작성해 보세요.\n- [버전 기록](https://help.getupnote.com/more/restore-a-note-version)에서 이전 편집 내용을 확인할 수 있습니다.\n- UpNote 기능을 더 알아보려면 [사용자 가이드](https://help.getupnote.com)를 확인해 보세요.\n\n### 풍부한 서식으로 쓰기\n\n- 다음처럼 다단계 목록을 사용할 수 있습니다.\n- 설정에서 선호하는 글꼴을 선택할 수 있습니다.\n\n### 이미지 추가하기\n\n![](layall-attachment:att-1788273321862-4ba417a0f3ea2f7b)\n\n### 인용문 추가하기\n\n> 자신을 아는 것이 모든 지혜의 시작이다.\n>\n> ―아리스토텔레스\n\n### 코드 블록 추가하기 (프리미엄⭐)\n\n```\nconst message = 'Hello World'\nconsole.log(message)\n```\n\n### 표로 메모 정리하기 (프리미엄 ⭐)\n\n| **과목** | **성적** |  |\n| --- | --- | --- |\n| 물리학 | 실험 | A |\n| 이론 | B+ |  |\n\n### 수식 작성하기\n\n![](layall-attachment:att-1788273321891-2294f6e0b6f22132)\n\n### 노트 연결하기 🔗\n\n- 다른 노트로 링크할 수 있습니다. 예를 들어 [UpNote 기능 살펴보기](upnote://x-callback-url/openNote?noteId=01a05d64-cbed-77ba-aa5b-357ba62048f7)처럼 연결할 수 있습니다.\n- 다른 노트에 링크하려면 `[[`를 입력한 뒤 원하는 노트를 선택해 주세요. 노트 링크에 대한 자세한 내용은 [여기](https://medium.com/upnote/bi-directional-links-in-upnote-63631bd36b2a)에서 확인할 수 있습니다.\n\n### 프리미엄으로 UpNote를 더 강력하게\n\n- 한 번 업그레이드하면 모든 기기에서 사용할 수 있습니다.\n- 자세한 내용은 **설정 > 프리미엄**에서 확인해 보세요 ⭐.\n\n### UpNote를 사용해주셔서 감사합니다!\n\nUpNote가 마음에 드셨다면 앱을 설치한 스토어에서 평점을 남겨 주세요. 여러분의 응원이 UpNote를 더 나은 앱으로 만드는 데 큰 힘이 됩니다.",
+  "folderId": null,
+  "format": "layall-note",
+  "highlights": [],
+  "noteId": "note-c4820297-8212-45d2-9407-1bc05b3af71a",
+  "pageId": "page-cd57b882-5398-4452-9395-6f018ff5bd73",
+  "permalink": "1-e72e6370",
+  "postId": "post-e72e63706d8020372f340fd3de630efc",
+  "revision": 2,
+  "sourceUpdatedAt": 1788273380447,
+  "summaries": [],
+  "tags": [],
+  "tasks": [],
+  "title": "1",
+  "version": 1
+}
