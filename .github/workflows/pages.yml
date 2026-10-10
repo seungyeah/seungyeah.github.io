@@ -6,23 +6,705 @@ on:
     paths: ['content/posts/**', 'content/folders/**', '.layall/**', '.github/workflows/pages.yml']
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency: { group: pages, cancel-in-progress: false }
 jobs:
-  build:
+  deploy:
+    environment: { name: github-pages, url: '${{ steps.deployment.outputs.page_url }}' }
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Restore verified render inputs
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_API_URL: ${{ github.api_url }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          """Embedded Pages workflow transport; never import or execute restored content.
+          
+          This source is indented verbatim into the managed workflow. A cache miss must not
+          fail generation. Only the exact known producer's public post HTML is handed off;
+          the generator still checks each fresh dependency key and content hash.
+          """
+          
+          import base64
+          import hashlib
+          import json
+          import os
+          import re
+          import shutil
+          import signal
+          import stat
+          import struct
+          import tarfile
+          import tempfile
+          import time
+          import unicodedata
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          
+          
+          MIB = 1024 * 1024
+          ZIP_LIMIT = 8 * MIB
+          UNPACKED_LIMIT = 96 * MIB
+          TIME_LIMIT = 3
+          MEMBER_LIMIT = 32 * MIB
+          HTML_LIMIT = 8 * MIB
+          CONTROL_LIMIT = 16 * MIB
+          ENTRY_LIMIT = 50000
+          CLAIM_LIMIT = 250000
+          MANIFEST = "__layall-output-manifest.json"
+          LEDGER = "generated-files.json"
+          MARKER = "__layall-deploy.json"
+          SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+          COMMIT = re.compile(r"[0-9a-f]{40}\Z")
+          POST_HTML = re.compile(r"posts/[a-z0-9][a-z0-9-]{0,127}/index\.html\Z")
+          
+          
+          class CacheMiss(Exception):
+              """Intentionally contains no URL, credentials, source, or archive paths."""
+          
+          
+          def require(condition):
+              if not condition:
+                  raise CacheMiss()
+          
+          
+          def positive_id(value):
+              return type(value) is int and 0 < value < 2**63
+          
+          
+          def digest(value):
+              require(isinstance(value, str) and SHA256.fullmatch(value))
+              return value
+          
+          
+          def unique_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  require(key not in result)
+                  result[key] = value
+              return result
+          
+          
+          def parse_json(data):
+              require(len(data) <= CONTROL_LIMIT)
+              return json.loads(
+                  data.decode("utf-8"),
+                  object_pairs_hook=unique_object,
+                  parse_constant=lambda value: (_ for _ in ()).throw(CacheMiss()),
+              )
+          
+          
+          def path_name(value, directory=False, archive=False):
+              require(isinstance(value, str) and len(value.encode("utf-8")) <= 512)
+              require(value == unicodedata.normalize("NFC", value))
+              require(not any(ord(char) < 32 or ord(char) == 127 for char in value))
+              require(not any(char in value for char in "\\:%?#"))
+              require(value and not value.startswith("/"))
+              if archive and directory and value in (".", "./"):
+                  return ""
+              # upload-pages-artifact archives '.'; accept precisely that one prefix.
+              if archive and value.startswith("./"):
+                  value = value[2:]
+              if directory and value.endswith("/"):
+                  value = value[:-1]
+              require(value and not value.startswith("/") and not value.endswith("/"))
+              require(all(part not in ("", ".", "..") for part in value.split("/")))
+              return value
+          
+          
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, file, code, message, headers, new_url):
+                  return None
+          
+          
+          class Transport:
+              def __init__(self):
+                  self.started = time.monotonic()
+                  self.network_bytes = 0
+                  self.zip_bytes = 0
+                  self.unpacked_bytes = 0
+                  self.requests = 0
+                  self.policy = "miss"
+                  self.opener = urllib.request.build_opener(NoRedirect())
+                  self.token = os.environ["GH_TOKEN"]
+                  require(self.token and "\n" not in self.token and "\r" not in self.token)
+                  require(os.environ.get("GH_API_URL", "https://api.github.com") == "https://api.github.com")
+                  self.repo = os.environ["GH_REPOSITORY"]
+                  require(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", self.repo))
+                  require(all(part not in (".", "..") for part in self.repo.split("/")))
+                  self.repo_id = int(os.environ["GITHUB_REPOSITORY_ID"])
+                  self.current_id = int(os.environ["GITHUB_RUN_ID"])
+                  require(positive_id(self.repo_id) and positive_id(self.current_id))
+                  self.branch = os.environ["GITHUB_REF_NAME"]
+                  require(self.branch and len(self.branch) <= 512)
+                  require(COMMIT.fullmatch(os.environ["GITHUB_SHA"]))
+                  self.prefix = "https://api.github.com/repos/" + self.repo
+                  self.code = {
+                      name: self.local_source(name)
+                      for name in (".layall/build.mjs", ".github/workflows/pages.yml")
+                  }
+                  self.generator_sha = hashlib.sha256(self.code[".layall/build.mjs"]).hexdigest()
+          
+              def remaining(self):
+                  remaining = TIME_LIMIT - (time.monotonic() - self.started)
+                  require(remaining > 0)
+                  return min(1, remaining)
+          
+              def admit_local(self):
+                  # Cheap bounded current-source metadata avoids paying REST/ZIP cost for
+                  # small or attachment-heavy sites. This is a conservative heuristic, not
+                  # a promise of a wall-time win. Never serialize/log these private bytes.
+                  self.policy = "skip-small"
+                  self.post_bodies = {}
+                  with os.scandir("content/posts") as entries:
+                      directories = []
+                      for entry in entries:
+                          self.remaining()
+                          require(len(directories) < 5000 and not entry.is_symlink())
+                          if entry.is_dir(follow_symlinks=False):
+                              directories.append(entry.path)
+                  require(len(directories) >= 128)
+                  self.policy = "skip-source-light"
+                  source_bytes = body_bytes = 0
+                  sources = []
+                  for directory in directories:
+                      self.remaining()
+                      source = os.path.join(directory, "post.layallnote")
+                      if not os.path.exists(source):
+                          continue
+                      mode = os.lstat(source)
+                      require(stat.S_ISREG(mode.st_mode) and 0 < mode.st_size <= 512 * 1024)
+                      source_bytes += mode.st_size
+                      require(source_bytes <= 64 * MIB)
+                      sources.append((directory, source))
+                  require(len(sources) >= 128 and source_bytes >= 8 * MIB)
+                  for directory, source in sources:
+                      self.remaining()
+                      with open(source, "rb") as handle:
+                          value = parse_json(handle.read(512 * 1024 + 1))
+                      require(isinstance(value, dict) and isinstance(value.get("body"), str))
+                      post_id = os.path.basename(directory)
+                      require(value.get("postId") == post_id and value.get("format") == "layall-note")
+                      size = len(value["body"].encode("utf-8"))
+                      self.post_bodies[post_id] = size
+                      body_bytes += size
+                  require(len(self.post_bodies) >= 128 and body_bytes >= 8 * MIB)
+                  require(body_bytes >= len(self.post_bodies) * 16 * 1024)
+                  self.policy = "skip-assets"
+                  assets = count = 0
+                  for directory in directories:
+                      for base, subdirs, names in os.walk(os.path.join(directory, "assets"), followlinks=False):
+                          self.remaining()
+                          require(not os.path.islink(base))
+                          count += len(subdirs) + len(names)
+                          require(count <= 10000)
+                          require(all(not os.path.islink(os.path.join(base, name)) for name in subdirs))
+                          for name in names:
+                              metadata = os.lstat(os.path.join(base, name))
+                              require(stat.S_ISREG(metadata.st_mode))
+                              assets += metadata.st_size
+                              require(assets <= min(8 * MIB, body_bytes // 4))
+                  self.policy = "eligible"
+          
+              def admit_change(self, run):
+                  self.policy = "skip-change"
+                  current = os.environ["GITHUB_SHA"]
+                  comparison = self.api("/compare/" + run["head_sha"] + "..." + current + "?per_page=1&page=1", 2 * MIB)
+                  require(isinstance(comparison, dict) and comparison.get("status") in ("ahead", "identical"))
+                  require(comparison.get("base_commit", {}).get("sha") == run["head_sha"])
+                  files = comparison.get("files")
+                  # Official compare returns at most 300 changed files, only on page one.
+                  # A full page is not complete enough to admit this optional optimization.
+                  require(isinstance(files, list) and len(files) < 300)
+                  changed = set()
+                  for value in files:
+                      require(isinstance(value, dict) and isinstance(value.get("filename"), str))
+                      for name in (value["filename"], value.get("previous_filename")):
+                          if name is None:
+                              continue
+                          require(isinstance(name, str))
+                          require(not name.startswith((".layall/", ".github/workflows/", "content/folders/")))
+                          if name.startswith("content/posts/"):
+                              parts = name.split("/")
+                              require(len(parts) >= 4)
+                              changed.add(parts[2])
+                  total = sum(self.post_bodies.values())
+                  changed_bytes = sum(self.post_bodies.get(post_id, 0) for post_id in changed)
+                  require(len(changed & self.post_bodies.keys()) * 10 <= len(self.post_bodies))
+                  require(changed_bytes * 10 <= total)
+                  self.policy = "eligible"
+          
+              def local_source(self, name):
+                  current = "."
+                  for segment in name.split("/"):
+                      current = os.path.join(current, segment)
+                      require(not stat.S_ISLNK(os.lstat(current).st_mode))
+                  require(stat.S_ISREG(os.lstat(current).st_mode))
+                  with open(current, "rb") as source:
+                      data = source.read(2 * MIB + 1)
+                  require(len(data) <= 2 * MIB)
+                  return data
+          
+              def open(self, url, authenticated=False):
+                  parsed = urllib.parse.urlsplit(url)
+                  require(parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password)
+                  require(parsed.port in (None, 443) and not parsed.fragment)
+                  headers = {"Accept-Encoding": "identity", "User-Agent": "LayAll-render-cache"}
+                  if authenticated:
+                      require(url.startswith(self.prefix + "/") and parsed.netloc == "api.github.com")
+                      headers.update({
+                          "Authorization": "Bearer " + self.token,
+                          "Accept": "application/vnd.github+json",
+                          "X-GitHub-Api-Version": "2022-11-28",
+                      })
+                  self.requests += 1
+                  require(self.requests <= 12)
+                  try:
+                      return self.opener.open(urllib.request.Request(url, headers=headers), timeout=self.remaining())
+                  except urllib.error.HTTPError as error:
+                      if error.code in (301, 302, 303, 307, 308):
+                          return error
+                      error.close()
+                      raise CacheMiss() from None
+          
+              def read_response(self, response, limit, target=None, archive=False):
+                  require(response.status == 200)
+                  require(response.headers.get("Content-Encoding", "identity") == "identity")
+                  length = response.headers.get("Content-Length")
+                  if length is not None:
+                      require(length.isdigit() and int(length) <= limit)
+                  data = bytearray() if target is None else None
+                  count = 0
+                  result = hashlib.sha256()
+                  while True:
+                      self.remaining()
+                      chunk = response.read(min(65536, limit - count + 1))
+                      if not chunk:
+                          break
+                      count += len(chunk)
+                      self.network_bytes += len(chunk)
+                      if archive:
+                          self.zip_bytes += len(chunk)
+                      require(count <= limit and self.network_bytes <= ZIP_LIMIT + 16 * MIB)
+                      require(self.zip_bytes <= ZIP_LIMIT)
+                      result.update(chunk)
+                      if target is None:
+                          data.extend(chunk)
+                      else:
+                          target.write(chunk)
+                  require(length is None or count == int(length))
+                  return bytes(data) if target is None else (count, result.hexdigest())
+          
+              def api(self, suffix, limit=2 * MIB):
+                  with self.open(self.prefix + suffix, authenticated=True) as response:
+                      return parse_json(self.read_response(response, limit))
+          
+              def valid_run(self, run):
+                  require(isinstance(run, dict))
+                  require(positive_id(run.get("id")) and run["id"] < self.current_id)
+                  require(positive_id(run.get("run_attempt")) and positive_id(run.get("workflow_id")))
+                  require(run.get("path") == ".github/workflows/pages.yml")
+                  require(run.get("event") == "push" and run.get("status") == "completed" and run.get("conclusion") == "success")
+                  require(run.get("head_branch") == self.branch and isinstance(run.get("head_sha"), str))
+                  require(COMMIT.fullmatch(run["head_sha"]))
+                  for key in ("repository", "head_repository"):
+                      require(isinstance(run.get(key), dict))
+                      require(run[key].get("id") == self.repo_id)
+                      require(str(run[key].get("full_name", "")).lower() == self.repo.lower())
+                  return run
+          
+              def producer(self, run):
+                  for name, expected in self.code.items():
+                      suffix = "/contents/" + name + "?" + urllib.parse.urlencode({"ref": run["head_sha"]})
+                      value = self.api(suffix, 3 * MIB)
+                      require(isinstance(value, dict) and value.get("type") == "file" and value.get("path") == name)
+                      require(value.get("encoding") == "base64" and value.get("size") == len(expected))
+                      require(isinstance(value.get("content"), str))
+                      actual = base64.b64decode(value["content"].replace("\n", ""), validate=True)
+                      require(actual == expected)
+                      blob_sha = hashlib.sha1(b"blob " + str(len(actual)).encode("ascii") + b"\0" + actual).hexdigest()
+                      require(value.get("sha") == blob_sha)
+          
+              def artifact(self, run):
+                  listing = self.api("/actions/runs/" + str(run["id"]) + "/artifacts?per_page=100")
+                  require(isinstance(listing, dict) and isinstance(listing.get("artifacts"), list))
+                  require(type(listing.get("total_count")) is int and listing["total_count"] == len(listing["artifacts"]) <= 100)
+                  prefix = "github-pages-{}-{}-{}-".format(run["head_sha"], run["id"], run["run_attempt"])
+                  matches = [item for item in listing["artifacts"] if isinstance(item, dict) and str(item.get("name", "")).startswith(prefix)]
+                  require(len(matches) == 1)
+                  item = matches[0]
+                  require(positive_id(item.get("id")))
+                  require(isinstance(item.get("name"), str))
+                  root = digest(item["name"][len(prefix):])
+                  require(item.get("expired") is False)
+                  require(type(item.get("size_in_bytes")) is int and 0 < item["size_in_bytes"] <= ZIP_LIMIT)
+                  require(isinstance(item.get("digest"), str) and item["digest"].startswith("sha256:"))
+                  digest(item["digest"][7:])
+                  proof = item.get("workflow_run")
+                  require(isinstance(proof, dict) and proof.get("id") == run["id"])
+                  require(proof.get("repository_id") == self.repo_id and proof.get("head_repository_id") == self.repo_id)
+                  require(proof.get("head_sha") == run["head_sha"] and proof.get("head_branch") == self.branch)
+                  return item, root
+          
+              def download(self, item, destination):
+                  url = self.prefix + "/actions/artifacts/" + str(item["id"]) + "/zip"
+                  for hop in range(4):
+                      # Never forward Authorization, including to an API-host redirect.
+                      with self.open(url, authenticated=hop == 0) as response:
+                          if response.status in (301, 302, 303, 307, 308):
+                              require(hop < 3)
+                              location = response.headers.get("Location")
+                              require(isinstance(location, str) and len(location) <= 16384)
+                              url = urllib.parse.urljoin(url, location)
+                              continue
+                          with open(destination, "xb") as target:
+                              size, actual = self.read_response(response, ZIP_LIMIT, target, archive=True)
+                          require(size == item["size_in_bytes"] and actual == item["digest"][7:])
+                          return
+                  raise CacheMiss()
+          
+              def unpack_zip(self, source, destination):
+                  # Bound the central directory BEFORE ZipFile allocates one object per
+                  # entry. This format contains exactly one non-ZIP64 artifact.tar member.
+                  with open(source, "rb") as compressed:
+                      compressed.seek(0, os.SEEK_END)
+                      length = compressed.tell()
+                      require(22 <= length <= ZIP_LIMIT)
+                      tail_size = min(length, 65557)
+                      compressed.seek(length - tail_size)
+                      tail = compressed.read(tail_size)
+                      end = tail.rfind(b"PK\x05\x06")
+                      require(end >= 0 and len(tail) - end >= 22)
+                      signature, disk, directory_disk, count, total, directory_size, directory_offset, comment = struct.unpack("<4s4H2LH", tail[end:end + 22])
+                      require(disk == directory_disk == 0 and count == total == 1)
+                      require(46 <= directory_size <= 65536 and directory_offset >= 30)
+                      require(directory_offset + directory_size == length - tail_size + end)
+                      require(end + 22 + comment == len(tail))
+                  with zipfile.ZipFile(source) as archive:
+                      entries = archive.infolist()
+                      require(len(entries) == 1)
+                      entry = entries[0]
+                      require(entry.header_offset == 0)
+                      require(entry.filename == entry.orig_filename == "artifact.tar")
+                      require(not entry.is_dir() and not entry.flag_bits & (1 | 32 | 64))
+                      require(entry.compress_type in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED))
+                      require(entry.create_system in (0, 3))
+                      mode = entry.external_attr >> 16
+                      require(stat.S_IFMT(mode) in (0, stat.S_IFREG) and not mode & 0o7111 and not mode & 0o022)
+                      require(not entry.external_attr & 0x10)
+                      require(0 < entry.file_size <= UNPACKED_LIMIT and entry.compress_size > 0)
+                      require(entry.file_size <= entry.compress_size * 100)
+                      size = 0
+                      with archive.open(entry) as member, open(destination, "xb") as target:
+                          while True:
+                              self.remaining()
+                              chunk = member.read(65536)
+                              if not chunk:
+                                  break
+                              size += len(chunk)
+                              self.unpacked_bytes += len(chunk)
+                              require(size <= entry.file_size and self.unpacked_bytes <= UNPACKED_LIMIT)
+                              target.write(chunk)
+                      require(size == entry.file_size)
+          
+              def inspect_tar(self, source):
+                  files, controls, seen, directories = {}, {}, set(), set()
+                  count, total = 0, 0
+                  with open(source, "rb") as archive:
+                      while True:
+                          self.remaining()
+                          header = archive.read(512)
+                          require(len(header) == 512)
+                          if header == bytes(512):
+                              require(archive.read(512) == bytes(512))
+                              while True:
+                                  self.remaining()
+                                  padding = archive.read(65536)
+                                  if not padding:
+                                      break
+                                  require(not any(padding))
+                              break
+                          count += 1
+                          require(count <= ENTRY_LIMIT)
+                          # Read raw headers: TarFile iteration silently consumes extension
+                          # headers. Reject PAX/GNU longname/sparse entirely (cold rebuild).
+                          entry = tarfile.TarInfo.frombuf(header, encoding="utf-8", errors="strict")
+                          require(entry.type in (tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE))
+                          require(not entry.linkname and entry.sparse is None)
+                          directory = entry.type == tarfile.DIRTYPE
+                          name = path_name(entry.name, directory=directory, archive=True)
+                          require(name not in seen)
+                          seen.add(name)
+                          require(0 <= entry.mode <= 0o777 and not entry.mode & 0o022)
+                          if directory:
+                              require(entry.size == 0 and entry.mode & 0o500 == 0o500)
+                              directories.add(name)
+                              continue
+                          require(entry.mode & 0o400 and not entry.mode & 0o111)
+                          limit = HTML_LIMIT if name.endswith(".html") else MEMBER_LIMIT
+                          if name in (MANIFEST, LEDGER, MARKER):
+                              limit = CONTROL_LIMIT
+                          require(0 <= entry.size <= limit)
+                          total += entry.size
+                          require(total <= UNPACKED_LIMIT)
+                          offset = archive.tell()
+                          actual, chunks = hashlib.sha256(), []
+                          remaining = entry.size
+                          while remaining:
+                              self.remaining()
+                              chunk = archive.read(min(65536, remaining))
+                              require(chunk)
+                              remaining -= len(chunk)
+                              actual.update(chunk)
+                              if name in (MANIFEST, LEDGER, MARKER):
+                                  chunks.append(chunk)
+                          files[name] = (actual.hexdigest(), entry.size, offset)
+                          if name in (MANIFEST, LEDGER, MARKER):
+                              controls[name] = b"".join(chunks)
+                          padding = archive.read((-entry.size) % 512)
+                          require(len(padding) == (-entry.size) % 512 and not any(padding))
+                  # File/directory collisions (including an implicit parent) are invalid.
+                  allowed_directories = {""}
+                  for name in files:
+                      parts = name.split("/")
+                      require(all("/".join(parts[:index]) not in files for index in range(1, len(parts))))
+                      allowed_directories.update("/".join(parts[:index]) for index in range(1, len(parts)))
+                  require(directories <= allowed_directories)
+                  return files, controls
+          
+              def validate_manifest(self, files, controls, root, source_sha):
+                  require(MANIFEST in controls and LEDGER in controls and MARKER in controls)
+                  require(hashlib.sha256(controls[MANIFEST]).hexdigest() == root)
+                  manifest = parse_json(controls[MANIFEST])
+                  require(isinstance(manifest, dict))
+                  require(set(manifest) == {"format", "version", "sourceSha", "generator", "coverage", "deletionProof", "files", "claimGroups", "postClaims", "renderInputs"})
+                  require(manifest["format"] == "layall-output-manifest" and type(manifest["version"]) is int and manifest["version"] == 2)
+                  require(manifest["sourceSha"] == source_sha)
+                  require(manifest["generator"] == {"format": "layall-node-static-generator", "version": 2, "sha256": self.generator_sha})
+                  coverage = {"allOutputFilesHashed", "manifestSelfExcluded", "postClaimsComplete", "sharedClaimsConservative", "rendererReverseDependenciesComplete", "rawByteReferencesComplete"}
+                  require(isinstance(manifest["coverage"], dict) and set(manifest["coverage"]) == coverage)
+                  require(all(value is True for value in manifest["coverage"].values()))
+                  require(manifest["deletionProof"] == {"version": 1, "referenceMatch": "utf8-substring-post-id-or-route-v1", "requiresOldAndNewManifests": True, "requiresChangedAndRemovedPaths": True})
+                  require(type(manifest["deletionProof"]["version"]) is int)
+                  declared = {}
+                  require(isinstance(manifest["files"], list) and len(manifest["files"]) <= ENTRY_LIMIT)
+                  for item in manifest["files"]:
+                      self.remaining()
+                      require(isinstance(item, dict) and set(item) == {"path", "sha256"})
+                      name = path_name(item["path"])
+                      require(name not in declared and name != MANIFEST)
+                      declared[name] = digest(item["sha256"])
+                  declared_paths = set(declared)
+                  require(set(files) == declared_paths | {MANIFEST})
+                  require(all(files[name][0] == expected for name, expected in declared.items()))
+                  ledger = parse_json(controls[LEDGER])
+                  require(isinstance(ledger, dict) and set(ledger) == {"files"} and isinstance(ledger["files"], list))
+                  ledger_paths = [path_name(name) for name in ledger["files"]]
+                  require(len(ledger_paths) == len(set(ledger_paths)) <= ENTRY_LIMIT)
+                  require(set(ledger_paths) == set(files))
+                  marker = parse_json(controls[MARKER])
+                  require(marker == {"format": "layall-deploy", "sourceSha": source_sha})
+                  groups, claims = manifest["claimGroups"], manifest["postClaims"]
+                  require(isinstance(groups, dict) and isinstance(claims, dict) and len(groups) + len(claims) <= ENTRY_LIMIT)
+                  reference_count = 0
+                  group_names = set(groups)
+          
+                  def paths(values):
+                      nonlocal reference_count
+                      require(isinstance(values, list))
+                      reference_count += len(values)
+                      require(reference_count <= CLAIM_LIMIT)
+                      result = [path_name(value) for value in values]
+                      require(len(result) == len(set(result)) and set(result) <= declared_paths)
+                      return set(result)
+          
+                  covered = set()
+                  unique_claims = {}
+                  for name, values in groups.items():
+                      require(name and len(name.encode("utf-8")) <= 256)
+                      covered.update(paths(values))
+                  for post_id, claim in claims.items():
+                      self.remaining()
+                      require(post_id and len(post_id.encode("utf-8")) <= 256)
+                      require(isinstance(claim, dict) and set(claim) == {"uniquePaths", "referencedPaths", "sharedGroups"})
+                      unique_claims[post_id] = paths(claim["uniquePaths"])
+                      covered.update(unique_claims[post_id])
+                      paths(claim["referencedPaths"])
+                      shared = claim["sharedGroups"]
+                      require(isinstance(shared, list) and all(isinstance(value, str) for value in shared))
+                      require(len(shared) == len(set(shared)) and set(shared) <= group_names)
+                      reference_count += len(shared)
+                      require(reference_count <= CLAIM_LIMIT)
+                  require(covered == declared_paths)
+                  inputs = manifest["renderInputs"]
+                  require(isinstance(inputs, dict) and set(inputs) == {"version", "siteSha256", "context", "posts"})
+                  require(type(inputs["version"]) is int and inputs["version"] == 1)
+                  digest(inputs["siteSha256"])
+                  require(isinstance(inputs["context"], dict))
+                  require(isinstance(inputs["context"].get("basePath"), str) and isinstance(inputs["context"].get("publicBase"), str))
+                  require(isinstance(inputs["posts"], dict) and set(inputs["posts"]) == set(claims))
+                  eligible = set()
+                  for post_id, value in inputs["posts"].items():
+                      self.remaining()
+                      require(isinstance(value, dict) and set(value) == {"sourceSha256", "folderSha256", "assets", "cacheableOutputs"})
+                      digest(value["sourceSha256"])
+                      digest(value["folderSha256"])
+                      require(isinstance(value["assets"], list))
+                      reference_count += len(value["assets"])
+                      require(reference_count <= CLAIM_LIMIT)
+                      asset_paths = []
+                      for item in value["assets"]:
+                          require(isinstance(item, dict) and set(item) == {"path", "sha256"})
+                          name = path_name(item["path"])
+                          require(name.startswith("assets/posts/") and declared.get(name) == digest(item["sha256"]))
+                          require(name in unique_claims[post_id])
+                          asset_paths.append(name)
+                      require(len(asset_paths) == len(set(asset_paths)))
+                      outputs = value["cacheableOutputs"]
+                      require(isinstance(outputs, list) and len(outputs) == 1)
+                      for item in outputs:
+                          require(isinstance(item, dict) and set(item) == {"path", "key"})
+                          name = path_name(item["path"])
+                          digest(item["key"])
+                          require(POST_HTML.fullmatch(name) and name in declared and name in unique_claims[post_id])
+                          require(name not in eligible and files[name][1] <= HTML_LIMIT)
+                          eligible.add(name)
+                      reference_count += len(outputs)
+                      require(reference_count <= CLAIM_LIMIT)
+                  require(eligible)
+                  return eligible
+          
+              def copy_cache(self, source, files, eligible, destination):
+                  with open(source, "rb") as archive:
+                      for name in sorted(eligible | {MANIFEST}):
+                          self.remaining()
+                          target = os.path.join(destination, *name.split("/"))
+                          os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+                          expected, size, offset = files[name]
+                          archive.seek(offset)
+                          actual = hashlib.sha256()
+                          with open(target, "xb") as output:
+                              os.chmod(target, 0o600)
+                              remaining = size
+                              while remaining:
+                                  self.remaining()
+                                  chunk = archive.read(min(65536, remaining))
+                                  require(chunk)
+                                  output.write(chunk)
+                                  actual.update(chunk)
+                                  remaining -= len(chunk)
+                          require(actual.hexdigest() == expected)
+          
+              def restore(self, temporary):
+                  self.admit_local()
+                  query = urllib.parse.urlencode({"branch": self.branch, "event": "push", "status": "success", "per_page": 20})
+                  listing = self.api("/actions/workflows/pages.yml/runs?" + query)
+                  require(isinstance(listing, dict) and isinstance(listing.get("workflow_runs"), list))
+                  require(len(listing["workflow_runs"]) <= 20)
+                  candidates = 0
+                  for candidate in listing["workflow_runs"]:
+                      try:
+                          run = self.valid_run(candidate)
+                      except Exception:
+                          continue
+                      candidates += 1
+                      if candidates > 1:
+                          break
+                      work = tempfile.mkdtemp(prefix="layall-cache-work-", dir=temporary)
+                      result = None
+                      try:
+                          item, root = self.artifact(run)
+                          self.admit_change(run)
+                          self.producer(run)
+                          zip_path, tar_path = os.path.join(work, "previous.zip"), os.path.join(work, "previous.tar")
+                          self.download(item, zip_path)
+                          self.unpack_zip(zip_path, tar_path)
+                          files, controls = self.inspect_tar(tar_path)
+                          eligible = self.validate_manifest(files, controls, root, run["head_sha"])
+                          # A rerun started during download invalidates this producer proof.
+                          latest = self.valid_run(self.api("/actions/runs/" + str(run["id"])))
+                          require(latest["run_attempt"] == run["run_attempt"] and latest["head_sha"] == run["head_sha"] and latest["workflow_id"] == run["workflow_id"])
+                          result = tempfile.mkdtemp(prefix="layall-render-cache-", dir=temporary)
+                          self.copy_cache(tar_path, files, eligible, result)
+                          return result
+                      except Exception:
+                          if result is not None:
+                              shutil.rmtree(result, ignore_errors=True)
+                      finally:
+                          shutil.rmtree(work, ignore_errors=True)
+                  raise CacheMiss()
+          
+          
+          def main():
+              transport, restored = None, None
+              started = time.monotonic()
+              previous_handler = None
+              status = "miss"
+              try:
+                  # Hosted ubuntu's real-time alarm also bounds blocking reads/decompression.
+                  previous_handler = signal.signal(signal.SIGALRM, lambda signum, frame: (_ for _ in ()).throw(CacheMiss()))
+                  signal.setitimer(signal.ITIMER_REAL, TIME_LIMIT)
+                  os.umask(0o077)
+                  temporary = os.environ["RUNNER_TEMP"]
+                  require(os.path.isabs(temporary) and "\n" not in temporary and "\r" not in temporary)
+                  require(stat.S_ISDIR(os.lstat(temporary).st_mode) and not stat.S_ISLNK(os.lstat(temporary).st_mode))
+                  transport = Transport()
+                  restored = transport.restore(temporary)
+                  require("\n" not in restored and "\r" not in restored)
+                  with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+                      environment.write("LAYALL_RENDER_CACHE_ROOT=" + restored + "\nLAYALL_RENDER_CACHE_STATUS=hit\n")
+                  status = "hit"
+              except Exception:
+                  if restored is not None:
+                      shutil.rmtree(restored, ignore_errors=True)
+                  try:
+                      with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+                          environment.write("LAYALL_RENDER_CACHE_STATUS=miss\n")
+                  except Exception:
+                      pass
+              finally:
+                  if previous_handler is not None:
+                      signal.setitimer(signal.ITIMER_REAL, 0)
+                      signal.signal(signal.SIGALRM, previous_handler)
+                  elapsed = int((time.monotonic() - started) * 1000)
+                  downloaded = transport.network_bytes if transport else 0
+                  policy = transport.policy if transport else "miss"
+                  print("layall-render-cache transport={} policy={} download_bytes={} elapsed_ms={}".format(status, policy, downloaded, elapsed))
+          
+          
+          if __name__ == "__main__":
+              main()
+          PY
       - run: node .layall/build.mjs "$RUNNER_TEMP/layall-site" "${{ github.sha }}"
+      - name: Bind output manifest to this run
+        id: manifest
+        run: |
+          node --input-type=module <<'MANIFEST'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { createHash } from 'node:crypto';
+          const { GITHUB_SHA: sha, GITHUB_RUN_ID: run, GITHUB_RUN_ATTEMPT: attempt } = process.env;
+          if (!/^[a-f0-9]{40}$/.test(sha) || !/^[1-9][0-9]*$/.test(run) || !/^[1-9][0-9]*$/.test(attempt)) throw new Error('Invalid deployment identity');
+          const raw = fs.readFileSync(path.join(process.env.RUNNER_TEMP, 'layall-site', '__layall-output-manifest.json'));
+          const value = JSON.parse(raw);
+          if (value.format !== 'layall-output-manifest' || value.version !== 2 || value.sourceSha !== sha) throw new Error('Invalid output manifest');
+          const root = createHash('sha256').update(raw).digest('hex');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `name=github-pages-${sha}-${run}-${attempt}-${root}\n`);
+          MANIFEST
       - uses: actions/upload-pages-artifact@v3
-        with: { path: '${{ runner.temp }}/layall-site' }
-  deploy:
-    environment: { name: github-pages, url: '${{ steps.deployment.outputs.page_url }}' }
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
+        with:
+          path: '${{ runner.temp }}/layall-site'
+          name: ${{ steps.manifest.outputs.name }}
+          retention-days: 7
       - name: Verify LayAll publishing source
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,3 +726,5 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ steps.manifest.outputs.name }}
