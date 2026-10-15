@@ -199,6 +199,20 @@ posts.sort((a, b) => {
 	return byDate || compareText(String(a.title ?? ''), String(b.title ?? ''));
 });
 
+// Author order is explicit and stable within books/folders; activity keeps its date order.
+const authorPostOrder = new Map(
+	(Array.isArray(site.postLayout?.postOrder) ? site.postLayout.postOrder : [])
+		.filter((id) => typeof id === 'string')
+		.map((id, index) => [id, index])
+);
+const orderBookPosts = (items) =>
+	[...items].sort(
+		(a, b) =>
+			(authorPostOrder.get(a.postId) ?? Infinity) -
+				(authorPostOrder.get(b.postId) ?? Infinity) ||
+			String(a.postId).localeCompare(String(b.postId))
+	);
+
 // Keep the global post order in each bucket; navigation and counts share this index.
 const postsByFolder = new Map();
 const unfiledPosts = [];
@@ -279,6 +293,33 @@ const write = (name, data, ownerId = null) => {
 		recordReferences(name, bytes, ownerId);
 	}
 };
+
+// Profile images are shared managed outputs, never attributed to a post's deletion ledger.
+let profileAsset = null;
+if (site.profileImage != null) {
+	const id = site.profileImage.assetId;
+	if (typeof id !== 'string' || !/^[a-f0-9]{64}$/.test(id))
+		throw new Error('invalid profile asset');
+	const directory = '.layall/profile';
+	const file = `${directory}/${id}.webp`;
+	if (
+		fs.lstatSync(directory).isSymbolicLink() ||
+		fs.lstatSync(file).isSymbolicLink() ||
+		!fs.statSync(file).isFile() ||
+		fs.statSync(file).size > 3 * 1024 * 1024
+	)
+		throw new Error('unsafe profile asset');
+	const bytes = fs.readFileSync(file);
+	if (
+		createHash('sha256').update(bytes).digest('hex') !== id ||
+		bytes.subarray(0, 4).toString() !== 'RIFF' ||
+		bytes.subarray(8, 12).toString() !== 'WEBP'
+	)
+		throw new Error('profile asset changed');
+	inputHashes.set(file, id);
+	profileAsset = `assets/profile/${id}.webp`;
+	write(profileAsset, bytes);
+}
 
 const assetClaims = [];
 const imageByPost = new Map();
@@ -1072,12 +1113,20 @@ const topLinks = () => {
 		.filter(Boolean)
 		.join('');
 };
+const profileImageMarkup = () => {
+	if (!profileAsset) return '';
+	const focus = (value) =>
+		typeof value === 'number' && Number.isFinite(value)
+			? Math.min(100, Math.max(0, value))
+			: 50;
+	return `<img class="profile-photo" src="${esc(href('/' + profileAsset))}" alt="${esc(author || siteTitle)}" width="208" height="208" style="object-position:${focus(site.profileImage.focalX)}% ${focus(site.profileImage.focalY)}%">`;
+};
 const profileMarkup = () => {
-	if (!author && !authorBio) return '';
+	if (!author && !authorBio && !profileAsset) return '';
 	const name = profileUrl
 		? `<a href="${esc(profileUrl)}" rel="me noopener">${esc(author)}</a>`
 		: esc(author);
-	return `<div class="profile"><p class="eyebrow">Author</p><h2>${name}</h2>${authorBio ? `<p>${esc(authorBio)}</p>` : ''}</div>`;
+	return `<div class="profile">${profileImageMarkup()}<p class="eyebrow">Author</p><h2>${name}</h2>${authorBio ? `<p>${esc(authorBio)}</p>` : ''}</div>`;
 };
 const docsNavigation = (activePost) => {
 	const folderId = String(activePost?.folderId ?? '');
@@ -1088,6 +1137,7 @@ const docsNavigation = (activePost) => {
 };
 
 const styles = `
+.profile-photo{display:block;width:208px;max-width:100%;aspect-ratio:1;height:auto;object-fit:cover;border-radius:12px;margin-bottom:1rem}
 [hidden]{display:none!important}
 .article-body{min-width:0;overflow-wrap:anywhere}.article-body img{max-width:100%;height:auto}.article-body .article-image{min-width:0;margin:1.25rem 0;padding:.5rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);text-align:center}.article-image img{margin:auto;border-radius:7px}.article-image figcaption{margin-top:.4rem;color:var(--muted);font-size:.85em;overflow-wrap:anywhere}.image-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:1.25rem 0;align-items:start}.article-body .image-gallery .article-image{margin:0}.attachment-missing{color:var(--muted)}.article-table{max-width:100%;overflow-x:auto;margin:1.5rem 0;border:1px solid var(--line);border-radius:12px;overscroll-behavior-x:contain}.article-table:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.article-table table{width:100%;border-collapse:collapse}.article-table th,.article-table td{min-width:8rem;padding:.65rem .8rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}.article-table th{background:var(--surface-2);font-weight:700}.article-table tr>:last-child{border-right:0}.article-table tbody tr:last-child td{border-bottom:0}.article-table .align-left{text-align:left}.article-table .align-center{text-align:center}.article-table .align-right{text-align:right}
 :root{--paper:#f7f3ea;--surface:#fffdf8;--surface-2:#eee7da;--ink:#292723;--muted:#716d65;--line:#ded6c7;--accent:#716690;--accent-soft:#e8e1f3;--shadow:0 18px 60px rgba(65,55,43,.09);--radius:22px;--content:1180px;color-scheme:light}
@@ -1313,7 +1363,7 @@ const portfolioCard = (post) =>
 	`<a class="showcase-card" href="${postUrl(post)}">${picture(post)}<div class="showcase-card-content"><span class="post-meta">${esc(metadata(post))}</span><h3>${esc(post.title || 'Untitled')}</h3>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 120))}</p>` : ''}</div></a>`;
 
 const layallHome = (items) =>
-	`<main id="content" class="layall-home"><section class="layall-intro"><div class="layall-intro-copy"><p class="eyebrow">LayAll archive</p><h1>${esc(siteTitle).replace(/\./g, '.<wbr>')}</h1>${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : ''}</div>${author || authorBio ? `<div class="layall-author">${profileMarkup()}</div>` : ''}</section><section class="layall-archive" aria-labelledby="layall-archive-title"><header class="layall-archive-head"><div><p class="eyebrow">Published records</p><h2 id="layall-archive-title">기록 모음</h2></div>${items.length ? `<span class="muted">${items.length}개의 글</span>` : ''}</header>${compactList(items)}</section></main>`;
+	`<main id="content" class="layall-home"><section class="layall-intro"><div class="layall-intro-copy"><p class="eyebrow">LayAll archive</p><h1>${esc(siteTitle).replace(/\./g, '.<wbr>')}</h1>${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : ''}</div>${author || authorBio || profileAsset ? `<div class="layall-author">${profileMarkup()}</div>` : ''}</section><section class="layall-archive" aria-labelledby="layall-archive-title"><header class="layall-archive-head"><div><p class="eyebrow">Published records</p><h2 id="layall-archive-title">기록 모음</h2></div>${items.length ? `<span class="muted">${items.length}개의 글</span>` : ''}</header>${compactList(items)}</section></main>`;
 // Blog uses all published records, independently of the archive's paginated routes.
 const postTags = (post) => [...new Set((Array.isArray(post.tags) ? post.tags : []).map(String))];
 const postDay = (post) => {
@@ -1340,7 +1390,7 @@ const blogBooks = () => {
 		id: `book-folder-${id}`,
 		name: String(folder.name ?? id),
 		trail: folderTrail(id),
-		items: postsByFolder.get(id) ?? [],
+		items: orderBookPosts(postsByFolder.get(id) ?? []),
 		children: (folderChildren.get(id) ?? []).filter((child) => child.id !== id),
 	}));
 	if (unfiledPosts.length)
@@ -1348,7 +1398,7 @@ const blogBooks = () => {
 			id: 'book-unfiled',
 			name: '분류 없는 글',
 			trail: '',
-			items: unfiledPosts,
+			items: orderBookPosts(unfiledPosts),
 			children: [],
 		});
 	const covers = books
@@ -1394,7 +1444,10 @@ const blogHeatmap = (items) => {
 	return `<p class="muted">${year} · ${total}개 글 · 마지막 수정일 기준 (UTC)</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글. 날짜별 목록은 아래에 있습니다."><div class="heatmap-grid">${cells.join('')}</div></div><div class="heatmap-legend" aria-hidden="true">적음 ${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')} 많음</div><details class="heatmap-dates"><summary>날짜별 글 수</summary><ul>${[...counts].map(([day, count]) => `<li><time datetime="${day}">${day}</time> · ${count}개 글</li>`).join('')}</ul></details>`;
 };
 const blogHome = () => {
-	const starred = posts.filter((post) => postTags(post).includes('star'));
+	const starIds = new Set(
+		Array.isArray(site.postLayout?.starredPostIds) ? site.postLayout.starredPostIds : []
+	);
+	const starred = orderBookPosts(posts.filter((post) => starIds.has(post.postId)));
 	const tags = [...new Set(posts.flatMap(postTags))].sort(compareText);
 	const dated = posts
 		.filter(postDay)
@@ -1409,7 +1462,7 @@ const blogHome = () => {
 		['books', 'Books'],
 		['posts', 'Posts'],
 	];
-	return `<main id="content" class="blog-home blog-profile-layout" data-blog-home><aside class="blog-profile"><h1>${esc(author || siteTitle)}</h1>${author && author !== siteTitle ? `<p class="muted">${esc(siteTitle)}</p>` : ''}${authorBio ? `<p class="blog-bio">${esc(authorBio)}</p>` : ''}${links.length ? `<nav class="profile-links" aria-label="프로필 링크">${links.map((link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`).join('')}</nav>` : ''}<p class="muted">${posts.length}개 공개 글 · ${folders.size}개 분류</p></aside><div class="blog-main"><nav class="blog-tabs" data-blog-tabs aria-label="블로그 탐색">${tabs.map(([id, label]) => `<a href="#${id}" id="blog-tab-${id}" data-blog-tab="${id}">${label}${id === 'posts' ? ` <span class="blog-count">${posts.length}</span>` : ''}</a>`).join('')}</nav><section id="overview" data-blog-panel="overview" class="blog-panel"><section class="blog-about"><h2>${esc(siteTitle)}</h2>${siteDescription ? `<p>${esc(siteDescription)}</p>` : ''}${authorBio ? `<p>${esc(authorBio)}</p>` : ''}</section><section class="blog-section"><h2>Star posts</h2><p class="muted">작성자가 공개 태그 star로 선택한 글</p>${starred.length ? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>` : '<p class="muted">아직 별표로 선택한 글이 없습니다.</p>'}</section><section class="blog-section"><h2>포스팅 히트맵</h2>${blogHeatmap(posts)}</section><section class="blog-section"><h2>Post activity</h2><p class="muted">공개 글의 마지막 수정 · 최근 ${dated.length}개</p>${dated.length ? `<ol class="post-activity">${dated.map((post) => `<li><time datetime="${postDay(post)}">${postDay(post)}</time><a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a></li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section></section><section id="books" data-blog-panel="books" class="blog-panel"><h2>Books</h2><p class="muted">분류별로 모은 글. 책을 선택하면 해당 분류의 글과 하위 분류를 볼 수 있습니다.</p>${blogBooks()}</section><section id="posts" data-blog-panel="posts" class="blog-panel"><h2>Posts</h2><div class="tag-filter-controls" data-blog-controls hidden><label><input type="checkbox" data-tag-enabled checked> 태그 필터 사용</label><button type="button" data-tag-clear>선택 지우기</button><p class="muted">선택한 태그 중 하나라도 포함한 글을 표시합니다. 필터를 끄면 모든 글을 표시합니다.</p></div><nav class="blog-tags" aria-label="태그 선택">${tags.map((tag) => `<a class="tag" data-blog-tag="${esc(tag)}" href="${href(`/tags/${tagSegment(tag)}/`)}">#${esc(tag)}</a>`).join('') || '<p class="muted">공개된 태그가 없습니다.</p>'}</nav><p class="muted" data-tag-status role="status">전체 ${posts.length}개 글</p><ul class="post-list blog-posts">${posts.map((post) => `<li data-blog-post data-post-tags="${esc(JSON.stringify(postTags(post)))}"><a href="${postUrl(post)}"><strong>${esc(post.title || 'Untitled')}</strong><span>${esc(metadata(post))}</span></a>${tagsFor(post)}</li>`).join('')}</ul><p class="muted" data-tag-empty hidden>선택한 태그에 해당하는 글이 없습니다.</p>${posts.length ? '' : '<p class="muted">아직 공개된 글이 없습니다.</p>'}</section></div></main>`;
+	return `<main id="content" class="blog-home blog-profile-layout" data-blog-home><aside class="blog-profile">${profileImageMarkup()}<h1>${esc(author || siteTitle)}</h1>${author && author !== siteTitle ? `<p class="muted">${esc(siteTitle)}</p>` : ''}${authorBio ? `<p class="blog-bio">${esc(authorBio)}</p>` : ''}${links.length ? `<nav class="profile-links" aria-label="프로필 링크">${links.map((link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`).join('')}</nav>` : ''}<p class="muted">${posts.length}개 공개 글 · ${folders.size}개 분류</p></aside><div class="blog-main"><nav class="blog-tabs" data-blog-tabs aria-label="블로그 탐색">${tabs.map(([id, label]) => `<a href="#${id}" id="blog-tab-${id}" data-blog-tab="${id}">${label}${id === 'posts' ? ` <span class="blog-count">${posts.length}</span>` : ''}</a>`).join('')}</nav><section id="overview" data-blog-panel="overview" class="blog-panel"><section class="blog-about"><h2>${esc(siteTitle)}</h2>${siteDescription ? `<p>${esc(siteDescription)}</p>` : ''}${authorBio ? `<p>${esc(authorBio)}</p>` : ''}</section><section class="blog-section"><h2>Star posts</h2><p class="muted">작성자가 고정한 글</p>${starred.length ? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>` : '<p class="muted">아직 별표로 선택한 글이 없습니다.</p>'}</section><section class="blog-section"><h2>포스팅 히트맵</h2>${blogHeatmap(posts)}</section><section class="blog-section"><h2>Post activity</h2><p class="muted">공개 글의 마지막 수정 · 최근 ${dated.length}개</p>${dated.length ? `<ol class="post-activity">${dated.map((post) => `<li><time datetime="${postDay(post)}">${postDay(post)}</time><a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a></li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section></section><section id="books" data-blog-panel="books" class="blog-panel"><h2>Books</h2><p class="muted">분류별로 모은 글. 책을 선택하면 해당 분류의 글과 하위 분류를 볼 수 있습니다.</p>${blogBooks()}</section><section id="posts" data-blog-panel="posts" class="blog-panel"><h2>Posts</h2><div class="tag-filter-controls" data-blog-controls hidden><label><input type="checkbox" data-tag-enabled checked> 태그 필터 사용</label><button type="button" data-tag-clear>선택 지우기</button><p class="muted">선택한 태그 중 하나라도 포함한 글을 표시합니다. 필터를 끄면 모든 글을 표시합니다.</p></div><nav class="blog-tags" aria-label="태그 선택">${tags.map((tag) => `<a class="tag" data-blog-tag="${esc(tag)}" href="${href(`/tags/${tagSegment(tag)}/`)}">#${esc(tag)}</a>`).join('') || '<p class="muted">공개된 태그가 없습니다.</p>'}</nav><p class="muted" data-tag-status role="status">전체 ${posts.length}개 글</p><ul class="post-list blog-posts">${posts.map((post) => `<li data-blog-post data-post-tags="${esc(JSON.stringify(postTags(post)))}"><a href="${postUrl(post)}"><strong>${esc(post.title || 'Untitled')}</strong><span>${esc(metadata(post))}</span></a>${tagsFor(post)}</li>`).join('')}</ul><p class="muted" data-tag-empty hidden>선택한 태그에 해당하는 글이 없습니다.</p>${posts.length ? '' : '<p class="muted">아직 공개된 글이 없습니다.</p>'}</section></div></main>`;
 };
 const minimalHome = (items) =>
 	`<main id="content" class="minimal-home"><section class="minimal-masthead"><p class="eyebrow">Notes & essays</p><h1>${esc(siteTitle)}</h1><div class="minimal-profile">${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : '<span></span>'}${profileMarkup()}</div></section><ul class="minimal-list">${items.map((post) => `<li><a href="${postUrl(post)}"><span class="post-meta">${esc(metadata(post))}</span><h2>${esc(post.title || 'Untitled')}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 150))}</p>` : ''}</a></li>`).join('')}</ul>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}</main>`;
@@ -1665,7 +1718,7 @@ write(
 		variants: notFoundVariants,
 	})
 );
-write('assets-manifest.json', JSON.stringify({ files: assetClaims }));
+write('assets-manifest.json', JSON.stringify({ files: assetClaims, profile: profileAsset }));
 write('__layall-deploy.json', JSON.stringify({ format: 'layall-deploy', sourceSha: sha }));
 write(
 	'generated-files.json',
