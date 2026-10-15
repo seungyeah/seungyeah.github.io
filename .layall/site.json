@@ -3,7 +3,12 @@
   "baseUrl": "https://seungyeah.github.io/",
   "colorMode": "system",
   "description": "핵짱짱 layall앱으로 만든 블로그 어떠냣",
-  "externalLinks": [],
+  "externalLinks": [
+    {
+      "label": "instagram",
+      "url": "https://www.instagram.com/yeahapp_y?srtk=MTdtYnA1ZHY1dW1zaw=="
+    }
+  ],
   "feedEnabled": true,
   "giscusEnabled": false,
   "locale": "ko-KR",
@@ -15,7 +20,7 @@
     "focalY": 50.0
   },
   "profileName": "yeahappy",
-  "profileUrl": "https://www.instagram.com/yeahapp_y?srtk=MTdtYnA1ZHY1dW1zaw==",
+  "profileUrl": "",
   "theme": "docs",
   "title": "YEAHA"
 }
