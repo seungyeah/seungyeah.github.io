@@ -1,5 +1,5 @@
 {
-  "authorName": "yeahappy",
+  "authorName": "YeahAppy",
   "baseUrl": "https://seungyeah.github.io/",
   "colorMode": "system",
   "description": "핵짱짱 layall앱으로 만든 블로그 어떠냣",
@@ -14,12 +14,12 @@
   "locale": "ko-KR",
   "profileBio": "ai에게 뇌대리중인 인간의 인생 로그.",
   "profileImage": {
-    "assetId": "7997cb63f96a0ea85337e239f22c5e5a1f88a2c77675534f8f30268ca8f717fc",
-    "blobSha": "04c148bd556cdc44d4525fdd4fa85a2f2916c323",
+    "assetId": "5189c51fffdd8baa2fbc347f8cf8aaa437bb62891f2f441fe95c2fe18eb485be",
+    "blobSha": "45b3d902e050bd36450207184862ba267e40611d",
     "focalX": 50.0,
     "focalY": 50.0
   },
-  "profileName": "yeahappy",
+  "profileName": "YeahAppy",
   "profileUrl": "",
   "theme": "docs",
   "title": "YEAHA"
