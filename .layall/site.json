@@ -1,15 +1,15 @@
 {
-  "authorName": "",
-  "baseUrl": "",
+  "authorName": "yeahappy",
+  "baseUrl": "https://seungyeah.github.io/",
   "colorMode": "system",
-  "description": "",
+  "description": "핵짱짱 layall앱으로 만든 블로그 어떠냣",
   "externalLinks": [],
   "feedEnabled": true,
   "giscusEnabled": false,
   "locale": "ko-KR",
-  "profileBio": "",
-  "profileName": "",
-  "profileUrl": "",
+  "profileBio": "ai에게 뇌대리중인 인간의 인생 로그.",
+  "profileName": "yeahappy",
+  "profileUrl": "https://www.instagram.com/yeahapp_y?srtk=MTdtYnA1ZHY1dW1zaw==",
   "theme": "docs",
   "title": "YEAHA"
 }
