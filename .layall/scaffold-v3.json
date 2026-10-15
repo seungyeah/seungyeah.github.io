@@ -2,7 +2,7 @@
   "format": "layall-blog-scaffold",
   "managedFiles": {
     ".github/workflows/pages.yml": "901f47e51aa8cff2fd85d4dd83a76160b93baa61807b4c7f82634c63748360d9",
-    ".layall/build.mjs": "f4c38198c5461b216a4360180ff3f522d20524b2d53375408ff78a36eea76a02"
+    ".layall/build.mjs": "371c018c46c0910a10c1410dc985511f6bb09e020fb6dfa75e9032045565442d"
   },
   "retryPath": ".layall/retry.json",
   "sitePath": ".layall/site.json",
