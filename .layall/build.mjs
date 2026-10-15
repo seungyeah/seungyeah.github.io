@@ -324,9 +324,12 @@ if (site.profileImage != null) {
 const assetClaims = [];
 const imageByPost = new Map();
 const assetsByPost = new Map();
+const coverAssetsByPost = new Map();
 for (const post of posts) {
 	const assets = new Map();
 	assetsByPost.set(post.postId, assets);
+	const coverAssets = [];
+	coverAssetsByPost.set(post.postId, coverAssets);
 	for (const asset of Array.isArray(post.attachments) ? post.attachments : []) {
 		const relative = String(asset.path ?? '').replace(/\\/g, '/');
 		const segments = relative.split('/');
@@ -350,7 +353,22 @@ for (const post of posts) {
 		const realSource = fs.realpathSync(source);
 		if (!realSource.startsWith(`${realSourceRoot}${path.sep}`)) throw new Error('unsafe asset');
 		const destination = `assets/posts/${post.postId}/${segments.map(encodeURIComponent).join('/')}`;
-		write(destination, fs.readFileSync(source), post.postId);
+		const bytes = fs.readFileSync(source);
+		write(destination, bytes, post.postId);
+		// Covers use only copied raster attachments, never SVG, remote URLs or private paths.
+		const raster =
+			(/\.png$/i.test(relative) &&
+				bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+			(/\.jpe?g$/i.test(relative) &&
+				bytes.subarray(0, 3).equals(Buffer.from([255, 216, 255]))) ||
+			(/\.gif$/i.test(relative) && /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString())) ||
+			(/\.webp$/i.test(relative) &&
+				bytes.subarray(0, 4).toString() === 'RIFF' &&
+				bytes.subarray(8, 12).toString() === 'WEBP') ||
+			(/\.avif$/i.test(relative) &&
+				bytes.subarray(4, 8).toString() === 'ftyp' &&
+				/^avi[fs]$/.test(bytes.subarray(8, 12).toString()));
+		if (raster) coverAssets.push({ id: String(asset.id ?? ''), url: href(`/${destination}`) });
 		assetClaims.push({ postId: post.postId, path: destination, sha256: asset.sha256 });
 		const looksLikeImage =
 			String(asset.mimeType ?? asset.contentType ?? '').startsWith('image/') ||
@@ -1098,21 +1116,8 @@ write(
 	})
 );
 
-const topLinks = () => {
-	const primary = [
-		`<a href="${href('/')}">Home</a>`,
-		`<a data-docs-link href="${href('/docs/')}">Docs</a>`,
-		`<a href="${href('/search/')}">Search</a>`,
-	];
-	return [
-		...primary,
-		...externalLinks.map(
-			(link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`
-		),
-	]
-		.filter(Boolean)
-		.join('');
-};
+const topLinks = () =>
+	`<a href="${href('/')}">Home</a><a href="${href('/#posts')}">Posts</a><a href="${href('/search/')}">Search</a>`;
 const profileImageMarkup = () => {
 	if (!profileAsset) return '';
 	const focus = (value) =>
@@ -1121,19 +1126,12 @@ const profileImageMarkup = () => {
 			: 50;
 	return `<img class="profile-photo" src="${esc(href('/' + profileAsset))}" alt="${esc(author || siteTitle)}" width="208" height="208" style="object-position:${focus(site.profileImage.focalX)}% ${focus(site.profileImage.focalY)}%">`;
 };
-const profileMarkup = () => {
-	if (!author && !authorBio && !profileAsset) return '';
-	const name = profileUrl
-		? `<a href="${esc(profileUrl)}" rel="me noopener">${esc(author)}</a>`
-		: esc(author);
-	return `<div class="profile">${profileImageMarkup()}<p class="eyebrow">Author</p><h2>${name}</h2>${authorBio ? `<p>${esc(authorBio)}</p>` : ''}</div>`;
-};
 const docsNavigation = (activePost) => {
 	const folderId = String(activePost?.folderId ?? '');
 	const section = folders.has(folderId)
 		? `<a href="${href(`/folders/${encodeURIComponent(folderId)}/`)}">${esc(folderName(folderId))}</a>`
 		: '';
-	return `<nav class="docs-nav" aria-label="문서 목차" data-docs-resource="${esc(href(`/${docsResourcePath}`))}"><div data-docs-fallback><a class="docs-overview" href="${href('/docs/')}">전체 문서</a>${section}</div><div data-docs-tree></div><p data-docs-status role="status"></p></nav>`;
+	return `<nav class="docs-nav" aria-label="문서 목차" data-docs-resource="${esc(href(`/${docsResourcePath}`))}"><div data-docs-fallback><a class="docs-overview" href="${href('/#posts')}">전체 문서</a>${section}</div><div data-docs-tree></div><p data-docs-status role="status"></p></nav>`;
 };
 
 const styles = `
@@ -1143,24 +1141,26 @@ const styles = `
 :root{--paper:#f7f3ea;--surface:#fffdf8;--surface-2:#eee7da;--ink:#292723;--muted:#716d65;--line:#ded6c7;--accent:#716690;--accent-soft:#e8e1f3;--shadow:0 18px 60px rgba(65,55,43,.09);--radius:22px;--content:1180px;color-scheme:light}
 html[data-theme][data-color-mode=dark]{--paper:#1d1c1a;--surface:#272521;--surface-2:#33302a;--ink:#f2eee6;--muted:#bbb3a7;--line:#454139;--accent:#c8b9ec;--accent-soft:#3b344b;--shadow:0 18px 60px rgba(0,0,0,.28);color-scheme:dark}
 @media(prefers-color-scheme:dark){html[data-theme][data-color-mode=system]{--paper:#1d1c1a;--surface:#272521;--surface-2:#33302a;--ink:#f2eee6;--muted:#bbb3a7;--line:#454139;--accent:#c8b9ec;--accent-soft:#3b344b;--shadow:0 18px 60px rgba(0,0,0,.28);color-scheme:dark}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:inherit;text-decoration-color:color-mix(in srgb,var(--accent) 52%,transparent);text-underline-offset:.2em}a:hover{color:var(--accent)}img{display:block;max-width:100%}button,input{font:inherit}.skip-link{position:fixed;z-index:100;top:.75rem;left:.75rem;transform:translateY(-180%);padding:.65rem 1rem;border-radius:999px;background:var(--ink);color:var(--paper)}.skip-link:focus{transform:none}.site-header{position:sticky;z-index:30;top:0;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(18px)}.header-inner{position:relative;width:min(calc(100% - 2rem),var(--content));min-height:68px;margin:auto;display:flex;align-items:center;gap:1rem}.brand{min-width:0;overflow-wrap:anywhere;font-weight:800;letter-spacing:-.03em;text-decoration:none}.nav-toggle,.post-toc-toggle{display:none;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:.42rem .8rem;color:var(--ink);cursor:pointer}.nav-toggle{margin-left:auto}.header-actions{margin-left:auto;display:flex;align-items:center;gap:.45rem}.header-actions .nav-toggle{margin-left:0}.post-toc-toggle{position:relative;display:block;animation:toc-arrive .32s cubic-bezier(.2,.8,.2,1) both}.post-toc-toggle:hover,.post-toc-toggle[aria-expanded=true],.nav-toggle:hover,.nav-toggle[aria-expanded=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.post-toc-panel{position:absolute;z-index:50;top:calc(100% + .65rem);right:4.75rem;width:min(22rem,calc(100vw - 2rem));max-height:min(70vh,34rem);overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-.55rem) scale(.98);transform-origin:top right;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}.post-toc-panel[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}.post-toc-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.55rem}.post-toc-head strong{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}.post-toc-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink);cursor:pointer}.post-toc-panel ol{list-style:none;margin:0;padding:0}.post-toc-panel a{display:block;padding:.4rem .55rem;border-radius:8px;text-decoration:none;font-size:.88rem;color:var(--muted)}.post-toc-panel a:hover,.post-toc-panel a:focus-visible,.post-toc-panel a[aria-current=location]{background:var(--accent-soft);color:var(--accent)}.post-toc-panel .toc-level-3 a{padding-left:1.25rem}.post-toc-panel .toc-level-4 a{padding-left:2rem}@keyframes toc-arrive{from{opacity:0;transform:translateX(.55rem) scale(.94)}to{opacity:1;transform:none}}body[data-post-page=true] .site-header .nav-toggle{display:block}body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + .65rem);right:0;display:none;width:min(28rem,calc(100vw - 2rem));max-height:calc(100vh - 6rem);overflow:auto;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}body[data-post-page=true] .site-nav[data-open=true]{display:flex}body[data-post-page=true] .appearance-controls{flex-wrap:wrap}.site-nav{margin-left:auto;display:flex;align-items:center;gap:1.1rem}.site-nav a{text-decoration:none;font-size:.9rem;font-weight:650}.color-controls{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px}.color-controls button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}.color-controls button:hover,.color-controls button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}main{width:min(calc(100% - 2rem),var(--content));margin:auto}.site-footer{width:min(calc(100% - 2rem),var(--content));margin:5rem auto 0;padding:2rem 0 3rem;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:1rem;color:var(--muted);font-size:.9rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;font-weight:800;color:var(--accent)}.lead{font-size:clamp(1.05rem,2vw,1.28rem);color:var(--muted)}.muted,.post-meta{color:var(--muted);font-size:.88rem}.tag{display:inline-block;margin:.25rem .25rem 0 0;font-size:.8rem;text-decoration:none;color:var(--muted)}.empty{margin:4rem 0;padding:3rem;border:1px dashed var(--line);border-radius:var(--radius);text-align:center;color:var(--muted)}.post-cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:calc(var(--radius) - 5px);background:var(--surface-2)}.page-heading{margin:4.5rem 0 2.5rem}.page-heading h1{margin:.2rem 0;font:700 clamp(2.2rem,6vw,4.8rem)/1.02 ui-serif,Georgia,serif;letter-spacing:-.055em}.page-heading p{max-width:48rem}.post-list{list-style:none;margin:0;padding:0}.post-list li{border-top:1px solid var(--line)}.post-list a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;padding:1.2rem 0;text-decoration:none}.post-list strong{font-size:1.08rem}.post-list span{color:var(--muted);font-size:.85rem}.pagination{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:2.5rem 0}.pagination a{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;text-decoration:none}.pagination a[aria-current=page]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:inherit;text-decoration-color:color-mix(in srgb,var(--accent) 52%,transparent);text-underline-offset:.2em}a:hover{color:var(--accent)}img{display:block;max-width:100%}button,input{font:inherit}.skip-link{position:fixed;z-index:100;top:.75rem;left:.75rem;transform:translateY(-180%);padding:.65rem 1rem;border-radius:999px;background:var(--ink);color:var(--paper)}.skip-link:focus{transform:none}.site-header{position:sticky;z-index:30;top:0;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(18px)}.header-inner{position:relative;width:min(calc(100% - 2rem),var(--content));min-height:68px;margin:auto;display:flex;align-items:center;gap:1rem}.brand{min-width:0;overflow-wrap:anywhere;font-weight:800;letter-spacing:-.03em;text-decoration:none}.nav-toggle,.post-toc-toggle{display:none;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:.42rem .8rem;color:var(--ink);cursor:pointer}.nav-toggle{margin-left:auto}.header-actions{margin-left:auto;display:flex;align-items:center;gap:.45rem}.header-actions .nav-toggle{margin-left:0}.post-toc-toggle{position:relative;display:block;animation:toc-arrive .32s cubic-bezier(.2,.8,.2,1) both}.post-toc-toggle:hover,.post-toc-toggle[aria-expanded=true],.nav-toggle:hover,.nav-toggle[aria-expanded=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.post-toc-panel{position:absolute;z-index:50;top:calc(100% + .65rem);right:4.75rem;width:min(22rem,calc(100vw - 2rem));max-height:min(70vh,34rem);overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-.55rem) scale(.98);transform-origin:top right;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}.post-toc-panel[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}.post-toc-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.55rem}.post-toc-head strong{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}.post-toc-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink);cursor:pointer}.post-toc-panel ol{list-style:none;margin:0;padding:0}.post-toc-panel a{display:block;padding:.4rem .55rem;border-radius:8px;text-decoration:none;font-size:.88rem;color:var(--muted)}.post-toc-panel a:hover,.post-toc-panel a:focus-visible,.post-toc-panel a[aria-current=location]{background:var(--accent-soft);color:var(--accent)}.post-toc-panel .toc-level-3 a{padding-left:1.25rem}.post-toc-panel .toc-level-4 a{padding-left:2rem}@keyframes toc-arrive{from{opacity:0;transform:translateX(.55rem) scale(.94)}to{opacity:1;transform:none}}body[data-post-page=true] .site-header .nav-toggle{display:block}body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + .65rem);right:0;display:none;width:min(28rem,calc(100vw - 2rem));max-height:calc(100vh - 6rem);overflow:auto;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}body[data-post-page=true] .site-nav[data-open=true]{display:flex}.site-nav{margin-left:auto;display:flex;align-items:center;gap:1.1rem}.site-nav a{text-decoration:none;font-size:.9rem;font-weight:650}.color-controls{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px}.color-controls button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}.color-controls button:hover,.color-controls button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}main{width:min(calc(100% - 2rem),var(--content));margin:auto}.site-footer{width:min(calc(100% - 2rem),var(--content));margin:5rem auto 0;padding:2rem 0 3rem;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:1rem;color:var(--muted);font-size:.9rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;font-weight:800;color:var(--accent)}.lead{font-size:clamp(1.05rem,2vw,1.28rem);color:var(--muted)}.muted,.post-meta{color:var(--muted);font-size:.88rem}.tag{display:inline-block;margin:.25rem .25rem 0 0;font-size:.8rem;text-decoration:none;color:var(--muted)}.empty{margin:4rem 0;padding:3rem;border:1px dashed var(--line);border-radius:var(--radius);text-align:center;color:var(--muted)}.post-cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:calc(var(--radius) - 5px);background:var(--surface-2)}.page-heading{margin:4.5rem 0 2.5rem}.page-heading h1{margin:.2rem 0;font:700 clamp(2.2rem,6vw,4.8rem)/1.02 ui-serif,Georgia,serif;letter-spacing:-.055em}.page-heading p{max-width:48rem}.post-list{list-style:none;margin:0;padding:0}.post-list li{border-top:1px solid var(--line)}.post-list a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;padding:1.2rem 0;text-decoration:none}.post-list strong{font-size:1.08rem}.post-list span{color:var(--muted);font-size:.85rem}.pagination{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:2.5rem 0}.pagination a{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;text-decoration:none}.pagination a[aria-current=page]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .article-shell{display:grid;grid-template-columns:minmax(0,760px) minmax(180px,1fr);gap:4rem;align-items:start;padding-top:4rem}.article{min-width:0}.article-header{margin-bottom:2.5rem}.article-header h1{margin:.4rem 0 1rem;font:700 clamp(2.3rem,6vw,4.8rem)/1.03 ui-serif,Georgia,serif;letter-spacing:-.05em}.article-body{font-size:1.05rem}.article-body p{margin:0 0 .5rem}.article-body h2,.article-body h3,.article-body h4{scroll-margin-top:6rem;margin:2.5rem 0 .75rem;line-height:1.25;letter-spacing:-.025em}.article-body h2{font-size:1.8rem}.article-body h3{font-size:1.35rem}.heading-anchor{margin-left:.45rem;text-decoration:none;opacity:0}.article-body :is(h2,h3,h4):hover .heading-anchor,.heading-anchor:focus{opacity:1}.article-body pre{overflow:auto;margin:1.5rem 0;padding:1.2rem;border:1px solid var(--line);border-radius:15px;background:#171816;color:#f4f1ea;font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.article-body code{padding:.13em .36em;border-radius:6px;background:var(--surface-2);font:85% ui-monospace,SFMono-Regular,Menlo,monospace}.article-body pre code{padding:0;background:transparent;font:inherit}.article-body blockquote{margin:1.5rem 0;padding:.2rem 1.25rem;border-left:3px solid var(--accent);color:var(--muted)}.article-body hr{border:0;border-top:1px solid var(--line);margin:2.4rem 0}.article-body a{overflow-wrap:anywhere}.article-aside{position:sticky;top:100px}.article-aside h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.article-aside ol{padding-left:1.1rem}.article-aside a{display:block;padding:.25rem 0;font-size:.86rem;text-decoration:none;color:var(--muted)}
-html[data-theme=layall]{--paper:#f6f4f0;--surface:#fffdf8;--surface-2:#e8f7fb;--ink:#354146;--muted:#566b72;--line:#d9e4e2;--accent:#386c78;--accent-soft:#dff2f6;--shadow:0 22px 58px rgba(69,88,93,.13);--radius:20px;--content:1180px;}html[data-theme=layall] body{background:var(--paper)}html[data-theme=layall] .site-header{background:color-mix(in srgb,var(--surface) 86%,transparent)}.layall-home{padding:clamp(1.5rem,5vw,4rem) 0 4rem}.layall-intro{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(230px,.65fr);align-items:start;gap:2rem;padding:1.5rem 0 2.5rem;border-bottom:1px solid var(--line)}.layall-intro-copy{min-width:0}.layall-intro h1{max-width:800px;margin:.35rem 0 1rem;font:730 clamp(2.1rem,5vw,4.8rem)/1.04 ui-serif,Georgia,serif;letter-spacing:-.055em;text-wrap:balance;overflow-wrap:anywhere}.layall-intro .lead{max-width:42rem;margin:0}.layall-author{align-self:start;padding:0}.layall-author:empty{display:none}.layall-author .profile h2{margin:.25rem 0;font:680 1.4rem/1.2 ui-serif,Georgia,serif}.layall-author .profile p:last-child{margin-bottom:0;color:var(--muted)}.layall-archive{position:relative;margin-top:1.25rem;padding:clamp(1.5rem,4vw,3.2rem);border:1px solid var(--line);border-radius:calc(var(--radius) + 4px);background:var(--surface);box-shadow:0 16px 42px rgba(69,88,93,.08)}.layall-archive-head{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:1rem}.layall-archive-head h2{margin:.15rem 0;font:680 clamp(1.8rem,4vw,3rem)/1 ui-serif,Georgia,serif;letter-spacing:-.04em}.layall-archive .post-list li{border-color:var(--line)}.layall-archive .post-list a{border-radius:12px;padding:1.3rem .6rem}.layall-archive .post-list a:hover{background:var(--paper)}.theme-article-layall .article{padding:clamp(1.25rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:0 18px 50px rgba(69,88,93,.08)}html[data-theme=layall] .article-table{background:var(--surface)}html[data-theme=layall] .article-table th{background:#eef8f8}html[data-theme=layall][data-color-mode=dark]{--paper:#17262d;--surface:#21343b;--surface-2:#29434c;--ink:#edf6f5;--muted:#aec4c8;--line:#38535c;--accent:#8dd2de;--accent-soft:#294b55;--shadow:0 22px 58px rgba(0,0,0,.28);}html[data-theme=layall][data-color-mode=dark] body{background:var(--paper)}html[data-theme=layall][data-color-mode=dark] .article-table th{background:var(--surface-2)}.theme-article-layall .article-header h1{word-break:keep-all;overflow-wrap:anywhere}
+html[data-theme=layall]{--paper:#f6f4f0;--surface:#fffdf8;--surface-2:#e8f7fb;--ink:#354146;--muted:#566b72;--line:#d9e4e2;--accent:#386c78;--accent-soft:#dff2f6;--shadow:0 22px 58px rgba(69,88,93,.13);--radius:20px;--content:1180px;}html[data-theme=layall] body{background:var(--paper)}html[data-theme=layall] .site-header{background:color-mix(in srgb,var(--surface) 86%,transparent)}.theme-article-layall .article{padding:clamp(1.25rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:0 18px 50px rgba(69,88,93,.08)}html[data-theme=layall] .article-table{background:var(--surface)}html[data-theme=layall] .article-table th{background:#eef8f8}html[data-theme=layall][data-color-mode=dark]{--paper:#17262d;--surface:#21343b;--surface-2:#29434c;--ink:#edf6f5;--muted:#aec4c8;--line:#38535c;--accent:#8dd2de;--accent-soft:#294b55;--shadow:0 22px 58px rgba(0,0,0,.28);}html[data-theme=layall][data-color-mode=dark] body{background:var(--paper)}html[data-theme=layall][data-color-mode=dark] .article-table th{background:var(--surface-2)}.theme-article-layall .article-header h1{word-break:keep-all;overflow-wrap:anywhere}
 @media(prefers-color-scheme:dark){html[data-theme=layall][data-color-mode=system]{--paper:#17262d;--surface:#21343b;--surface-2:#29434c;--ink:#edf6f5;--muted:#aec4c8;--line:#38535c;--accent:#8dd2de;--accent-soft:#294b55;--shadow:0 22px 58px rgba(0,0,0,.28);}html[data-theme=layall][data-color-mode=system] body{background:var(--paper)}html[data-theme=layall][data-color-mode=system] .article-table th{background:var(--surface-2)}}
 html[data-theme=blog]{--paper:#fff;--surface:#fff;--surface-2:#f6f8fa;--ink:#24292f;--muted:#57606a;--line:#d0d7de;--accent:#286a47;--accent-soft:#ddf4e5;--radius:12px}.blog-home{padding-top:3.6rem}.blog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem;margin:1.2rem 0 4rem}.blog-card{padding:1rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.blog-card h2{font:700 1.65rem/1.15 ui-serif,Georgia,serif}.blog-card a{text-decoration:none}
-html[data-theme=minimal]{--paper:#fff;--surface:#fff;--surface-2:#f5f5f3;--ink:#20201e;--muted:#74746e;--line:#e5e5e0;--accent:#20201e;--accent-soft:#efefeb;--content:760px}.minimal-home{padding-top:6rem}.minimal-masthead{padding-bottom:3.5rem;border-bottom:1px solid var(--line)}.minimal-masthead h1{margin:.3rem 0;font:650 clamp(2.5rem,8vw,5.6rem)/1 ui-serif,Georgia,serif;letter-spacing:-.055em}.minimal-profile{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem}.minimal-list{list-style:none;padding:0}.minimal-list li{border-bottom:1px solid var(--line)}.minimal-list a{display:block;padding:1.45rem 0;text-decoration:none}.minimal-list h2{margin:0 0 .35rem;font:600 clamp(1.25rem,3vw,1.65rem)/1.3 ui-serif,Georgia,serif}.minimal-list p{margin:.45rem 0;color:var(--muted)}
-html[data-theme=portfolio]{--paper:#f0efe9;--surface:#fbfaf6;--surface-2:#e4e1d8;--ink:#242522;--muted:#6d7068;--line:#d7d4ca;--accent:#556846;--accent-soft:#dce6d3;--radius:32px}.portfolio-home{padding-top:2rem}.portfolio-hero{display:grid;align-items:start;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:2rem;padding:1.5rem 0 2.5rem;border-bottom:1px solid var(--line)}.portfolio-hero h1{margin:.2rem 0;font:700 clamp(2.2rem,5vw,4.8rem)/1.1 ui-serif,Georgia,serif;letter-spacing:-.04em;overflow-wrap:anywhere}.portfolio-hero .profile{align-self:start}.showcase{padding:5rem 0}.showcase-header{display:flex;justify-content:space-between;align-items:end;margin-bottom:1.5rem}.showcase-header h2{margin:0;font:700 clamp(2rem,5vw,4rem)/1 ui-serif,Georgia,serif}.showcase-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1.2rem}.showcase-card{grid-column:span 6;min-height:300px;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);text-decoration:none}.showcase-card:nth-child(3n+1){grid-column:span 7}.showcase-card:nth-child(3n+2){grid-column:span 5}.showcase-card .post-cover{aspect-ratio:16/8}.showcase-card-content{margin-top:auto;padding:1.2rem}.showcase-card h3{margin:.3rem 0;font:650 clamp(1.45rem,3vw,2.2rem)/1.12 ui-serif,Georgia,serif}.floating-nav{position:fixed;z-index:25;bottom:1.25rem;left:50%;transform:translateX(-50%);display:flex;gap:.25rem;padding:.4rem;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:var(--shadow);backdrop-filter:blur(16px)}.floating-nav a{padding:.55rem .95rem;border-radius:999px;text-decoration:none;font-size:.86rem}.floating-nav a:hover{background:var(--accent-soft)}html[data-theme=portfolio] .site-footer{padding-bottom:6rem}
+html[data-theme=minimal]{--paper:#fff;--surface:#fff;--surface-2:#f5f5f3;--ink:#20201e;--muted:#74746e;--line:#e5e5e0;--accent:#20201e;--accent-soft:#efefeb;--content:760px}.minimal-home{padding-top:6rem}.minimal-list{list-style:none;padding:0}.minimal-list li{border-bottom:1px solid var(--line)}.minimal-list a{display:block;padding:1.45rem 0;text-decoration:none}.minimal-list h2{margin:0 0 .35rem;font:600 clamp(1.25rem,3vw,1.65rem)/1.3 ui-serif,Georgia,serif}.minimal-list p{margin:.45rem 0;color:var(--muted)}
+html[data-theme=portfolio]{--paper:#f0efe9;--surface:#fbfaf6;--surface-2:#e4e1d8;--ink:#242522;--muted:#6d7068;--line:#d7d4ca;--accent:#556846;--accent-soft:#dce6d3;--radius:32px}.portfolio-home{padding-top:2rem}.showcase{padding:5rem 0}.showcase-header{display:flex;justify-content:space-between;align-items:end;margin-bottom:1.5rem}.showcase-header h2{margin:0;font:700 clamp(2rem,5vw,4rem)/1 ui-serif,Georgia,serif}.showcase-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1.2rem}.showcase-card{grid-column:span 6;min-height:300px;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);text-decoration:none}.showcase-card:nth-child(3n+1){grid-column:span 7}.showcase-card:nth-child(3n+2){grid-column:span 5}.showcase-card .post-cover{aspect-ratio:16/8}.showcase-card-content{margin-top:auto;padding:1.2rem}.showcase-card h3{margin:.3rem 0;font:650 clamp(1.45rem,3vw,2.2rem)/1.12 ui-serif,Georgia,serif}.floating-nav{position:fixed;z-index:25;bottom:1.25rem;left:50%;transform:translateX(-50%);display:flex;gap:.25rem;padding:.4rem;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:var(--shadow);backdrop-filter:blur(16px)}.floating-nav a{padding:.55rem .95rem;border-radius:999px;text-decoration:none;font-size:.86rem}.floating-nav a:hover{background:var(--accent-soft)}html[data-theme=portfolio] .site-footer{padding-bottom:6rem}
 html[data-theme=docs]{--paper:#fbfcfd;--surface:#fff;--surface-2:#f1f4f7;--ink:#1f2933;--muted:#68727e;--line:#e1e7ec;--accent:#3973a8;--accent-soft:#e5f1fb;--content:1380px}.docs-home{padding:2.5rem 0}.docs-layout{width:min(calc(100% - 2rem),var(--content));margin:auto;display:grid;grid-template-columns:240px minmax(0,760px) minmax(180px,1fr);gap:3rem;align-items:start}.docs-sidebar-wrap{position:sticky;top:92px}.docs-sidebar{max-height:calc(100vh - 110px);overflow:auto;padding:1rem 0}.docs-nav ul{list-style:none;padding:0;margin:.25rem 0 1rem}.docs-nav h3,.docs-nav span{display:block;margin:1.2rem 0 .3rem;font-size:.9rem;font-weight:750;color:var(--muted)}.docs-nav a{display:block;padding:.32rem .6rem;border-radius:7px;text-decoration:none;font-size:.88rem;color:var(--muted)}.docs-nav a:hover,.docs-nav a[aria-current=page]{background:var(--accent-soft);color:var(--accent)}.docs-overview{font-weight:750;color:var(--ink)!important}.docs-content{min-width:0;padding-top:3.7rem}.docs-content .article-header h1{font-family:ui-sans-serif,system-ui,sans-serif;font-size:clamp(2.3rem,5vw,4.2rem)}.docs-toc{position:sticky;top:100px;padding-top:3.7rem}.docs-toc h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.docs-toc ol{list-style:none;padding:0}.docs-toc a{display:block;padding:.3rem 0;text-decoration:none;font-size:.82rem;color:var(--muted)}.docs-index{padding:4rem 0}.docs-index h1{font-size:clamp(2.5rem,6vw,5rem);letter-spacing:-.055em}
 .search-shell{padding:4rem 0}.search-shell h1{font:700 clamp(2.5rem,6vw,5rem)/1 ui-serif,Georgia,serif}.search-form{display:flex;gap:.6rem;max-width:700px}.search-form input{min-width:0;flex:1;padding:.8rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink)}.search-form button{border:0;border-radius:999px;padding:.8rem 1.1rem;background:var(--ink);color:var(--paper);cursor:pointer}.search-results{margin-top:2rem}
-@media(max-width:900px){.article-shell,.docs-layout{grid-template-columns:1fr}.article-aside,.docs-toc,.docs-sidebar-wrap{position:static}.docs-sidebar{max-height:none}.docs-sidebar-wrap{display:none}.layall-intro,.portfolio-hero{grid-template-columns:1fr}.showcase-card,.showcase-card:nth-child(n){grid-column:span 12}.portfolio-hero{grid-template-columns:1fr}}
-@media(max-width:680px){body{font-size:15px}.header-inner{min-height:60px;gap:.55rem}.nav-toggle{display:block}.site-nav,body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + 1px);left:0;right:0;width:auto;display:none;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}.site-nav[data-open=true],body[data-post-page=true] .site-nav[data-open=true]{display:flex}.post-toc-panel{left:0;right:0;width:auto;transform-origin:top center}.color-controls{align-self:flex-start}.blog-home{padding-top:2.2rem}.blog-grid,.minimal-profile{grid-template-columns:1fr}.article-shell{padding-top:2.5rem}.site-footer{flex-direction:column}.portfolio-hero{grid-template-columns:1fr}.floating-nav{max-width:calc(100% - 1rem);overflow:auto}}
+@media(max-width:900px){.article-shell,.docs-layout{grid-template-columns:1fr}.article-aside,.docs-toc,.docs-sidebar-wrap{position:static}.docs-sidebar{max-height:none}.docs-sidebar-wrap{display:none}.showcase-card,.showcase-card:nth-child(n){grid-column:span 12}}
+@media(max-width:680px){body{font-size:15px}.header-inner{min-height:60px;gap:.55rem}.nav-toggle{display:block}.site-nav,body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + 1px);left:0;right:0;width:auto;display:none;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}.site-nav[data-open=true],body[data-post-page=true] .site-nav[data-open=true]{display:flex}.post-toc-panel{left:0;right:0;width:auto;transform-origin:top center}.color-controls{align-self:flex-start}.blog-home{padding-top:2.2rem}.blog-grid{grid-template-columns:1fr}.article-shell{padding-top:2.5rem}.site-footer{flex-direction:column}.floating-nav{max-width:calc(100% - 1rem);overflow:auto}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.post-toc-toggle{animation:none}.post-toc-panel{transition:none}}
-select{font:inherit}[data-docs-link]{display:none}html[data-theme=docs] [data-docs-link]{display:inline}.appearance-controls{display:flex;align-items:center;gap:.45rem}.theme-control{display:flex;align-items:center;gap:.35rem;color:var(--muted);font-size:.78rem}.theme-control select{max-width:8.5rem;border:1px solid var(--line);border-radius:999px;padding:.38rem 1.8rem .38rem .7rem;background:var(--surface);color:var(--ink);cursor:pointer}.floating-nav{display:none}html[data-theme=portfolio] .floating-nav{display:flex}.theme-article-minimal{display:block;max-width:760px}.theme-article-blog .article{padding:clamp(1.2rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.theme-article-portfolio{grid-template-columns:220px minmax(0,820px)}.theme-article-portfolio .article{order:2;padding:clamp(1.2rem,4vw,3rem);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.theme-article-portfolio .article-aside{order:1}@media(max-width:900px){.appearance-controls{flex-wrap:wrap}.theme-article-portfolio{grid-template-columns:1fr}.theme-article-portfolio .article,.theme-article-portfolio .article-aside{order:initial}}@media(max-width:680px){.appearance-controls{align-items:flex-start;flex-direction:column}.theme-control select{min-height:36px}.color-controls{align-self:auto}}
+select{font:inherit}.appearance-controls{display:flex;align-items:center;gap:.45rem}.theme-control{display:flex;align-items:center;gap:.35rem;color:var(--muted);font-size:.78rem}.theme-control select{max-width:8.5rem;border:1px solid var(--line);border-radius:999px;padding:.38rem 1.8rem .38rem .7rem;background:var(--surface);color:var(--ink);cursor:pointer}.floating-nav{display:none}html[data-theme=portfolio] .floating-nav{display:flex}.theme-article-minimal{display:block;max-width:760px}.theme-article-blog .article{padding:clamp(1.2rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.theme-article-portfolio{grid-template-columns:220px minmax(0,820px)}.theme-article-portfolio .article{order:2;padding:clamp(1.2rem,4vw,3rem);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.theme-article-portfolio .article-aside{order:1}@media(max-width:900px){.theme-article-portfolio{grid-template-columns:1fr}.theme-article-portfolio .article,.theme-article-portfolio .article-aside{order:initial}}@media(max-width:680px){.theme-control select{min-height:36px}.color-controls{align-self:auto}}
 a.map-place-card,a.map-place-card:hover{color:var(--ink);text-decoration:none}.map-place-card{display:flex;min-height:7.5rem;margin:1.25rem 0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:none}.map-place-card:hover{border-color:var(--accent);box-shadow:none}.map-place-map{position:relative;width:7.5rem;flex:none;overflow:hidden;background:var(--surface-2)}.map-place-map img{width:100%;height:100%;max-width:none;margin:0;object-fit:cover;border-radius:0}.map-place-pin{position:absolute;width:.9rem;height:.9rem;border:2px solid #fff;border-radius:999px;background:#dc2626;box-shadow:none;transform:translate(-50%,-100%)}.map-place-credit{position:absolute;left:.25rem;bottom:.12rem;color:#fff;font-size:.62rem;line-height:1;text-shadow:0 1px 1px rgba(0,0,0,.75)}.map-place-body{min-width:0;display:flex;flex:1;flex-direction:column;justify-content:center;gap:.12rem;padding:.9rem 1rem}.map-place-name{font-weight:750;letter-spacing:-.02em;line-height:1.35}.map-place-meta{color:var(--muted);font-size:.82rem;font-weight:650}.map-place-coords{color:var(--muted);font-size:.78rem;font-variant-numeric:tabular-nums}
 
-.blog-profile-layout{display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:2.5rem;align-items:start}.blog-profile,.blog-main{min-width:0;overflow-wrap:anywhere}.blog-profile h1{font-size:1.7rem;line-height:1.2;margin:.4rem 0}.blog-bio,.blog-about p{white-space:pre-line}.profile-links{display:grid;gap:.4rem;font-size:.9rem}.blog-tabs{display:flex;gap:.4rem;border-bottom:1px solid var(--line);overflow-x:auto}.blog-tabs>a{flex:none;min-height:48px;padding:.6rem 1rem;text-decoration:none;border-bottom:2px solid transparent}.blog-tabs>a[aria-selected=true]{border-bottom-color:var(--accent);font-weight:700}.blog-count{padding:.1rem .45rem;border-radius:999px;background:var(--surface-2);font-size:.8rem}.blog-panel{padding-top:1.5rem;scroll-margin-top:6rem}.blog-panel h2{font-size:1.2rem;line-height:1.4;margin:0 0 .6rem}.blog-about{padding:1.5rem;border:1px solid var(--line);border-radius:var(--radius)}.blog-about p:last-child{margin-bottom:0}.blog-section{margin:2rem 0}.blog-section .blog-grid{margin:.8rem 0}.blog-card{min-width:0;overflow-wrap:anywhere}.blog-card h2{font:650 1.1rem/1.4 ui-sans-serif,system-ui,sans-serif}.blog-card p{color:var(--muted);font-size:.9rem}.blog-card .post-cover{aspect-ratio:2/1}.heatmap-scroll{max-width:100%;overflow-x:auto;padding:.4rem 0}.heatmap-grid{display:grid;grid-template-rows:repeat(7,11px);grid-auto-columns:11px;grid-auto-flow:column;gap:3px;width:max-content}.heatmap-day{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--surface-2);border:1px solid var(--line)}.heatmap-day[data-level="1"]{background:color-mix(in srgb,var(--accent) 25%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="2"]{background:color-mix(in srgb,var(--accent) 50%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="3"]{background:color-mix(in srgb,var(--accent) 75%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="4"]{background:var(--accent);border-color:var(--accent)}.heatmap-legend{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:.8rem;color:var(--muted);margin-top:.5rem}.heatmap-dates{font-size:.85rem;color:var(--muted)}.heatmap-dates summary{cursor:pointer}.post-activity{list-style:none;padding:0}.post-activity li{position:relative;display:grid;grid-template-columns:7rem minmax(0,1fr);gap:1rem;padding:.7rem 0 .7rem 1rem;border-left:2px solid var(--line)}.post-activity li::before{content:"";position:absolute;left:-5px;top:1.3rem;width:8px;height:8px;border-radius:50%;background:var(--accent)}.post-activity time{font-size:.85rem;color:var(--muted)}.post-activity a{text-decoration:none}.book-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:1.2rem;margin:1.5rem 0}.book-cover{display:flex;flex-direction:column;justify-content:space-between;gap:1.2rem;min-height:220px;padding:1.25rem 1rem 1.25rem 1.5rem;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:4px 12px 12px 4px;background:var(--surface-2);text-decoration:none;overflow-wrap:anywhere}.book-cover strong{font:650 1.35rem/1.3 ui-serif,Georgia,serif}.book-cover span{font-size:.8rem;color:var(--muted)}.book-cover[aria-current=true]{outline:2px solid var(--accent);outline-offset:3px}.book-contents{padding:1.25rem 0;scroll-margin-top:6rem;border-top:1px solid var(--line)}.book-contents h3{font-size:1.5rem;margin:.3rem 0 1rem}.book-children,.blog-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}.book-children a,.blog-tags a{padding:.3rem .7rem;border:1px solid var(--line);border-radius:999px;text-decoration:none;margin:0}.blog-tags a[aria-pressed=true]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}.tag-filter-controls{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1.2rem}.tag-filter-controls label{display:flex;align-items:center;gap:.5rem}.tag-filter-controls input{width:1.1rem;height:1.1rem;accent-color:var(--accent)}.tag-filter-controls button{padding:.35rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}.tag-filter-controls button:disabled{opacity:.5;cursor:default}.tag-filter-controls p{flex-basis:100%;margin:0}.blog-posts li{padding-bottom:.7rem}.blog-posts a.tag{display:inline-block;padding:0;margin-right:.5rem}.blog-posts .post-meta{white-space:normal}.blog-home a:focus-visible,.blog-home button:focus-visible,.blog-home input:focus-visible,.heatmap-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.docs-directory>ul{max-width:900px}.docs-directory ul ul{margin:.25rem 0 .75rem 1rem;padding-left:1rem;border-left:1px solid var(--line)}.docs-directory>ul>li{padding:.5rem 0}.docs-directory a{font-size:1rem;padding:.4rem .6rem}.docs-home .page-heading{margin:1rem 0 2rem}.docs-home .page-heading h1{font:700 clamp(2rem,4vw,3rem)/1.15 ui-sans-serif,system-ui,sans-serif;letter-spacing:-.03em}.docs-nav{overflow-wrap:anywhere}.docs-nav ul ul{padding-left:.75rem}.docs-content{width:100%}
-@media(max-width:900px){.blog-profile-layout{grid-template-columns:minmax(160px,210px) minmax(0,1fr);gap:1.5rem}}
-@media(max-width:680px){.blog-profile-layout{display:block}.blog-profile{margin-bottom:1.5rem}.blog-tabs>a{padding:.6rem .7rem}.book-shelf{grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}.book-cover{min-height:190px;padding:1rem .7rem}.blog-home .post-list a:not(.tag){grid-template-columns:1fr;gap:.3rem}.post-activity li{grid-template-columns:1fr;gap:.1rem}.layall-intro,.portfolio-hero{grid-template-columns:1fr}.layall-archive-head{align-items:start;flex-direction:column}}
+.home{padding:3rem 0;min-width:0}.home-main,.home section,.home-profile,.profile-copy,.knowledge-layout,.knowledge-index,.archive-ledger,.work-ledger{min-width:0;max-width:100%}.home-profile{overflow-wrap:anywhere}.profile-portrait{min-width:0}.profile-photo{margin:0 auto 1rem}.profile-copy h1{font:650 1.7rem/1.2 ui-serif,Georgia,serif;margin:.3rem 0 .8rem}.profile-bio{white-space:pre-line;color:var(--muted);margin:.5rem 0 1rem}.profile-links{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;min-width:0;max-width:100%;font-size:.88rem}.profile-links a{min-width:0;max-width:100%;overflow-wrap:anywhere}.blog-tabs{display:flex;gap:.4rem;border-bottom:1px solid var(--line);min-width:0;max-width:100%}.blog-tabs>a{min-width:0;min-height:48px;padding:.6rem 1rem;text-decoration:none;border-bottom:2px solid transparent}.blog-tabs>a[aria-selected=true]{border-bottom-color:var(--accent);font-weight:700}.blog-panel{padding-top:1.75rem;scroll-margin-top:6rem}.blog-panel h2{font-size:1.1rem;line-height:1.4;margin:0 0 1rem}.home-introduction{margin-bottom:2.5rem;white-space:pre-line;overflow-wrap:anywhere}.home-introduction p{margin:0}.home-stars,.home-heatmap,.home-activity{margin-bottom:2.5rem}.home-stars .blog-grid{margin:0}.blog-card{min-width:0;overflow-wrap:anywhere}.blog-card h2{font:650 1.1rem/1.4 ui-sans-serif,system-ui,sans-serif}.blog-card p{color:var(--muted);font-size:.9rem}.blog-card .post-cover{aspect-ratio:2/1}.heatmap-scroll{min-width:0;max-width:100%;overflow-x:auto;padding:.4rem 0;overscroll-behavior-x:contain}.heatmap-chart{display:grid;grid-template-columns:1.5rem max-content;grid-template-rows:1.2rem auto;column-gap:5px;width:max-content}.heatmap-months{grid-column:2;display:grid;grid-auto-columns:11px;column-gap:3px;font-size:.65rem;line-height:1;white-space:nowrap;color:var(--muted)}.heatmap-weekdays{grid-column:1;grid-row:2;display:grid;grid-template-rows:repeat(7,11px);gap:3px;font-size:.65rem;line-height:11px;color:var(--muted)}.heatmap-grid{grid-column:2;grid-row:2;display:grid;grid-template-rows:repeat(7,11px);grid-auto-columns:11px;grid-auto-flow:column;gap:3px;width:max-content}.heatmap-day{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--surface-2);border:1px solid var(--line)}.heatmap-day[data-level="1"]{background:color-mix(in srgb,var(--accent) 25%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="2"]{background:color-mix(in srgb,var(--accent) 50%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="3"]{background:color-mix(in srgb,var(--accent) 75%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="4"]{background:var(--accent);border-color:var(--accent)}.heatmap-legend{display:flex;justify-content:flex-end;gap:4px;margin-top:.5rem}.post-activity{list-style:none;padding:0;margin:0 0 1rem}.post-activity li{display:grid;grid-template-columns:6.5rem minmax(0,1fr);gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--line)}.post-activity time{font-size:.82rem;color:var(--muted)}.post-activity a{min-width:0;text-decoration:none;overflow-wrap:anywhere}.book-shelf{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.5rem;min-width:0;max-width:100%;margin:1.5rem 0;padding:.5rem .25rem;border-bottom:5px solid var(--line)}.book-spine{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;flex:0 0 3.5rem;width:3.5rem;max-width:100%;height:15rem;padding:.8rem .6rem;overflow:hidden;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:3px;background:var(--surface-2);text-decoration:none}.book-spine img{position:absolute;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover;opacity:.2}.book-spine>span{writing-mode:vertical-rl;text-orientation:mixed;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 1rem/1.6 ui-serif,Georgia,serif}.book-spine:hover{border-color:var(--accent)}.book-contents{padding:1rem 0;scroll-margin-top:6rem}.book-heading{display:flex;gap:1.25rem;align-items:center;margin:1.5rem 0}.book-heading>div{min-width:0;overflow-wrap:anywhere}.book-heading h3{font:650 1.6rem/1.3 ui-serif,Georgia,serif;margin:.3rem 0}.book-heading p{margin:.3rem 0}.book-jacket{flex:none;width:5rem;aspect-ratio:2/3;object-fit:cover;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:3px}.book-solid{display:block;background:var(--surface-2)}.blog-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}.blog-tags a{min-width:0;max-width:100%;overflow-wrap:anywhere;padding:.3rem .7rem;border:1px solid var(--line);border-radius:999px;text-decoration:none;margin:0}.blog-tags a[aria-pressed=true]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}.tag-filter-controls{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1.2rem}.tag-filter-controls label{display:flex;align-items:center;gap:.5rem}.tag-filter-controls input{width:1.1rem;height:1.1rem;accent-color:var(--accent)}.tag-filter-controls button{padding:.35rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}.tag-filter-controls button:disabled{opacity:.5;cursor:default}.home .post-list strong,.home .post-list span{min-width:0;overflow-wrap:anywhere}.home a:focus-visible,.home button:focus-visible,.home input:focus-visible,.heatmap-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.docs-directory ul ul{margin:.25rem 0 .75rem .5rem;padding-left:.75rem;border-left:1px solid var(--line)}.docs-directory>ul>li{padding:.5rem 0}.docs-directory a{font-size:.95rem;padding:.4rem .6rem}.docs-nav{min-width:0;overflow-wrap:anywhere}.docs-nav ul ul{padding-left:.75rem}.docs-content{width:100%}
+.home-blog{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:2.5rem}.home-blog .home-profile{text-align:center}.home-blog .profile-links{justify-content:center}.home-blog .home-introduction{padding:1.2rem;border:1px solid var(--line);border-radius:8px}.home-minimal{padding-top:4rem}.home-minimal .home-profile{max-width:32rem;margin:0 auto 2.5rem;text-align:center}.home-minimal .profile-photo{width:112px;border-radius:50%}.home-minimal .profile-links{justify-content:center}.home-minimal .blog-tabs{justify-content:center}.home-minimal .home-introduction{font:1.2rem/1.8 ui-serif,Georgia,serif;margin:1rem 0 3rem}.home-minimal .home-stars .post-list a{padding:1rem 0}.home-minimal .blog-panel>section{margin-bottom:3rem}.home-minimal .book-spine{background:var(--surface);height:13rem}.home-layall .home-profile{display:grid;grid-template-columns:140px minmax(0,1fr);gap:2rem;align-items:center;margin:0 0 2rem}.home-layall .profile-photo{width:128px;margin-bottom:0}.home-layall .profile-copy h1{font-size:2rem}.home-layall .home-stars{padding:1.5rem;border-radius:12px;background:var(--surface)}.home-layall .archive-ledger{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:2rem}.home-portfolio .home-profile{display:grid;grid-template-columns:minmax(140px,.65fr) minmax(0,1.35fr);gap:2.5rem;align-items:center;padding:1rem 0 3rem}.home-portfolio .profile-copy h1{font:650 clamp(2.4rem,5vw,4rem)/1.1 ui-serif,Georgia,serif}.home-portfolio .profile-photo{border-radius:3px}.home-portfolio .home-introduction{font-size:1.2rem;max-width:46rem}.home-projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem}.home-projects .showcase-card:nth-child(n){grid-column:auto;min-height:0;border:0;border-radius:4px;padding:0;background:transparent;box-shadow:none}.home-projects .showcase-card-content{padding:1rem 0}.home-projects .post-cover{border-radius:4px;aspect-ratio:3/2}.home-portfolio .work-ledger{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:3rem}.home-docs{max-width:1180px}.knowledge-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:2.5rem;margin-top:1.5rem}.home-docs .home-profile{text-align:center;padding-top:1rem}.home-docs .profile-photo{width:112px;border-radius:8px}.home-docs .profile-copy h1{font:650 1.2rem/1.4 ui-sans-serif,system-ui,sans-serif}.home-docs .profile-links{justify-content:center}.home-docs .blog-tabs>a{border-radius:0}.home-docs .home-introduction{border-left:2px solid var(--line);padding-left:1rem}.knowledge-index{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2rem}.home-docs .knowledge-index .post-list a{display:block;padding:.7rem 0}.home-docs .knowledge-index .post-list span{display:block;font-size:.75rem}.home-docs .post-activity li{grid-template-columns:1fr;gap:.1rem}.home-docs .book-spine>span{font-family:ui-sans-serif,system-ui,sans-serif}
+.appearance-controls,body[data-post-page=true] .appearance-controls{display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.5rem;min-width:0;max-width:100%}.theme-control{min-width:0;flex-wrap:wrap}.theme-control select{min-width:0;max-width:100%}.color-controls{flex:none;align-self:center}.site-nav{min-width:0}.site-nav>a{overflow-wrap:anywhere}.site-footer>span{min-width:0;overflow-wrap:anywhere}
+@media(max-width:900px){.home-blog{grid-template-columns:180px minmax(0,1fr);gap:1.5rem}.home-layall .archive-ledger,.home-portfolio .work-ledger,.knowledge-index{display:block}.knowledge-layout{grid-template-columns:160px minmax(0,1fr);gap:1.5rem}}
+@media(max-width:680px){.home{padding-top:1.5rem}.home-blog,.knowledge-layout{display:block}.home-profile{margin-bottom:1.5rem}.home-layall .home-profile,.home-portfolio .home-profile{display:block;text-align:center;padding:0;margin-bottom:1.5rem}.home-layall .profile-photo{margin-bottom:1rem}.home-layall .profile-links,.home-portfolio .profile-links{justify-content:center}.home-portfolio .profile-photo{width:144px}.home-projects{grid-template-columns:1fr}.blog-tabs>a{padding:.6rem .7rem}.book-spine{flex-basis:3rem;width:3rem;height:13rem}.home .post-list a{grid-template-columns:1fr;gap:.3rem}.post-activity li{grid-template-columns:1fr;gap:.1rem}.home-layall .home-stars{padding:1rem}.appearance-controls{width:100%}.theme-control select{max-width:8rem}}
 html:not([data-js=true]) .site-nav{display:flex;position:static;flex-wrap:wrap;width:auto;box-shadow:none}html:not([data-js=true]) .header-inner{flex-wrap:wrap}html:not([data-js=true]) :is(.nav-toggle,.post-toc-toggle,.appearance-controls){display:none}
 `;
 
@@ -1270,6 +1270,7 @@ const bindBlog=()=>{
   tabs.forEach(node=>{const selected=node.dataset.blogTab===tab;node.setAttribute('role','tab');node.setAttribute('aria-controls',node.dataset.blogTab);node.setAttribute('aria-selected',String(selected));node.tabIndex=selected?0:-1});
   panels.forEach(node=>{node.hidden=node.dataset.blogPanel!==tab;node.setAttribute('role','tabpanel');node.setAttribute('aria-labelledby','blog-tab-'+node.dataset.blogPanel);node.tabIndex=0});
   books.forEach(node=>node.hidden=node.id!==book);
+  home.querySelector('[data-book-shelf]').hidden=Boolean(book);
   home.querySelectorAll('[data-blog-book]').forEach(node=>{if(node.dataset.blogBook===book)node.setAttribute('aria-current','true');else node.removeAttribute('aria-current')});
   if(sync)setHash(book||tab);
  };
@@ -1285,6 +1286,7 @@ const bindBlog=()=>{
   enabled.checked=blogState.enabled;clear.disabled=blogState.tags.size===0;
   tagLinks.forEach(node=>{node.setAttribute('role','button');node.setAttribute('aria-pressed',String(blogState.tags.has(node.dataset.blogTag)))});
   let count=0;rows.forEach(({node,tags})=>{node.hidden=blogState.enabled&&blogState.tags.size>0&&!tags.some(tag=>blogState.tags.has(tag));if(!node.hidden)count++});
+  home.querySelectorAll('[data-docs-group]').forEach(node=>node.hidden=![...node.querySelectorAll('[data-blog-post]')].some(row=>!row.hidden));
   empty.hidden=count!==0||rows.length===0;
   status.textContent=(blogState.enabled?(blogState.tags.size?'필터 적용':'전체'):'필터 꺼짐 · 전체')+' '+count+'개 글 / '+rows.length+'개';
  };
@@ -1350,7 +1352,7 @@ const shell = (title, body, options = {}) => {
 	const postToc = options.postToc
 		? `<div class="header-actions"><button class="post-toc-toggle" type="button" data-post-toc-toggle aria-expanded="false" aria-controls="post-table-of-contents">TOC</button><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button></div><aside class="post-toc-panel" id="post-table-of-contents" data-post-toc-panel data-open="false" aria-hidden="true" tabindex="-1"><div class="post-toc-head"><strong>On this page</strong><button class="post-toc-close" type="button" data-post-toc-close aria-label="목차 닫기">×</button></div><nav aria-label="현재 글 목차">${options.postToc}</nav></aside>`
 		: '<button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button>';
-	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<span class="appearance-controls"><label class="theme-control">Layout<select data-layout-theme aria-label="Layout theme">${layoutOptions}</select></label><span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></span></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/docs/')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer"><span>${esc(siteTitle)}</span><span>${esc(site.authorName || author)}</span></footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#work')}">Writing</a><a href="${href('/search/')}">Search</a></nav>${templates}${pwaRegistration}${behavior}</body></html>`;
+	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<span class="appearance-controls"><label class="theme-control">Layout<select data-layout-theme aria-label="Layout theme">${layoutOptions}</select></label><span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></span></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer"><span>${esc(siteTitle)}</span><span>${esc(site.authorName || author)}</span></footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Writing</a><a href="${href('/search/')}">Search</a></nav>${templates}${pwaRegistration}${behavior}</body></html>`;
 };
 
 const compactList = (items) => {
@@ -1362,9 +1364,7 @@ const blogCard = (post) =>
 const portfolioCard = (post) =>
 	`<a class="showcase-card" href="${postUrl(post)}">${picture(post)}<div class="showcase-card-content"><span class="post-meta">${esc(metadata(post))}</span><h3>${esc(post.title || 'Untitled')}</h3>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 120))}</p>` : ''}</div></a>`;
 
-const layallHome = (items) =>
-	`<main id="content" class="layall-home"><section class="layall-intro"><div class="layall-intro-copy"><p class="eyebrow">LayAll archive</p><h1>${esc(siteTitle).replace(/\./g, '.<wbr>')}</h1>${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : ''}</div>${author || authorBio || profileAsset ? `<div class="layall-author">${profileMarkup()}</div>` : ''}</section><section class="layall-archive" aria-labelledby="layall-archive-title"><header class="layall-archive-head"><div><p class="eyebrow">Published records</p><h2 id="layall-archive-title">기록 모음</h2></div>${items.length ? `<span class="muted">${items.length}개의 글</span>` : ''}</header>${compactList(items)}</section></main>`;
-// Blog uses all published records, independently of the archive's paginated routes.
+// All home themes share published data and interaction state.
 const postTags = (post) => [...new Set((Array.isArray(post.tags) ? post.tags : []).map(String))];
 const postDay = (post) => {
 	const raw = post.sourceUpdatedAt;
@@ -1385,115 +1385,177 @@ const folderTrail = (id) => {
 	}
 	return names.join(' / ');
 };
+// Reuse the inline parser's code/link handling without rendering cached articles again.
+const bookImageByPost = new Map();
+for (const post of posts) {
+	const candidates = coverAssetsByPost.get(post.postId);
+	if (!candidates.length) continue;
+	const eligible = new Map(
+		candidates
+			.filter((asset) => asset.id)
+			.map((asset) => [asset.id, { ...asset, image: true, publicUrl: asset.url }])
+	);
+	let first = null;
+	let fenced = false;
+	for (const line of String(post.body ?? '')
+		.replace(/\r\n?/g, '\n')
+		.split('\n')) {
+		if (/^\s*```/.test(line)) {
+			fenced = !fenced;
+			continue;
+		}
+		if (!fenced)
+			inlineMarkdown(line, eligible, false, (image) => {
+				if (!first && candidates.some((asset) => asset.url === image.url))
+					first = image.url;
+			});
+		if (first) break;
+	}
+	bookImageByPost.set(post.postId, first || candidates[0].url);
+}
 const blogBooks = () => {
 	const books = [...folders].map(([id, folder]) => ({
 		id: `book-folder-${id}`,
 		name: String(folder.name ?? id),
 		trail: folderTrail(id),
-		items: orderBookPosts(postsByFolder.get(id) ?? []),
-		children: (folderChildren.get(id) ?? []).filter((child) => child.id !== id),
+		items: postsByFolder.get(id) ?? [],
 	}));
 	if (unfiledPosts.length)
-		books.push({
-			id: 'book-unfiled',
-			name: '분류 없는 글',
-			trail: '',
-			items: orderBookPosts(unfiledPosts),
-			children: [],
-		});
+		books.push({ id: 'book-unfiled', name: '분류 없는 글', trail: '', items: unfiledPosts });
+	const cover = (book) =>
+		[...book.items]
+			.sort(
+				(a, b) =>
+					(new Date(b.sourceUpdatedAt).getTime() || 0) -
+						(new Date(a.sourceUpdatedAt).getTime() || 0) ||
+					String(a.postId).localeCompare(String(b.postId))
+			)
+			.map((post) => bookImageByPost.get(post.postId))
+			.find(Boolean);
 	const covers = books
-		.map(
-			(book) =>
-				`<a class="book-cover" href="#${esc(book.id)}" data-blog-book="${esc(book.id)}"><span class="book-path">${esc(book.trail || 'Unfiled')}</span><strong>${esc(book.name)}</strong><span>${book.items.length}개 글${book.children.length ? ` · 하위 분류 ${book.children.length}개` : ''}</span></a>`
-		)
+		.map((book) => {
+			const image = cover(book);
+			return `<a class="book-spine" href="#${esc(book.id)}" data-blog-book="${esc(book.id)}" aria-label="${esc(book.trail || book.name)} · ${book.items.length}개 글" title="${esc(book.trail || book.name)}"><span>${esc(book.name)}</span>${image ? `<img src="${esc(image)}" alt="" loading="lazy" decoding="async">` : ''}</a>`;
+		})
 		.join('');
 	const contents = books
-		.map(
-			(book) =>
-				`<section class="book-contents" id="${esc(book.id)}" data-book-panel tabindex="-1"><a href="#books" data-books-back>← 모든 책</a><p class="muted">${esc(book.trail)}</p><h3>${esc(book.name)}</h3>${book.children.length ? `<nav class="book-children" aria-label="하위 분류">${book.children.map(({ id, folder }) => `<a href="#book-folder-${esc(id)}" data-blog-book="book-folder-${esc(id)}">${esc(folder.name)}</a>`).join('')}</nav>` : ''}${!book.items.length && book.children.length ? '<p class="muted">이 분류에 직접 속한 글이 없습니다. 하위 분류를 선택하세요.</p>' : compactList(book.items)}</section>`
-		)
+		.map((book) => {
+			const image = cover(book);
+			return `<section class="book-contents" id="${esc(book.id)}" data-book-panel tabindex="-1"><a href="#books" data-books-back>← Books</a><header class="book-heading">${image ? `<img class="book-jacket" src="${esc(image)}" alt="" loading="lazy" decoding="async">` : '<span class="book-jacket book-solid" aria-hidden="true"></span>'}<div><p class="muted">${esc(book.trail)}</p><h3>${esc(book.name)}</h3><p class="muted">${book.items.length}개 글</p></div></header>${compactList(orderBookPosts(book.items))}</section>`;
+		})
 		.join('');
-	return `<div class="book-shelf">${covers || '<p class="muted">아직 공개된 분류가 없습니다.</p>'}</div>${contents}`;
+	return `<div class="book-shelf" data-book-shelf>${covers || '<p class="muted">아직 공개된 분류가 없습니다.</p>'}</div>${contents}`;
 };
 const blogHeatmap = (items) => {
 	const dates = items.map(postDay).filter(Boolean).sort();
 	if (!dates.length) return '<p class="muted">날짜가 있는 공개 글이 아직 없습니다.</p>';
-	// Anchor to source data, never build time: identical inputs produce identical output.
 	const year = Number(dates.at(-1).slice(0, 4));
 	const counts = new Map();
 	for (const day of dates)
 		if (Number(day.slice(0, 4)) === year) counts.set(day, (counts.get(day) ?? 0) + 1);
 	const first = new Date(`${String(year).padStart(4, '0')}-01-01T00:00:00.000Z`);
-	const cells = Array.from(
-		{ length: first.getUTCDay() },
-		() => '<span aria-hidden="true"></span>'
-	);
+	const offset = first.getUTCDay(); // Sunday-first UTC columns, including the partial first week.
+	const cells = Array.from({ length: offset }, () => '<span aria-hidden="true"></span>');
+	const months = [];
+	let index = offset;
 	for (
 		const date = new Date(first);
 		date.getUTCFullYear() === year;
-		date.setUTCDate(date.getUTCDate() + 1)
+		date.setUTCDate(date.getUTCDate() + 1), index++
 	) {
 		const day = date.toISOString().slice(0, 10);
 		const count = counts.get(day) ?? 0;
 		const label = `${day}: ${count}개 글`;
+		if (date.getUTCDate() === 1)
+			months.push(
+				`<span style="grid-column:${Math.floor(index / 7) + 1}" data-month="${date.getUTCMonth() + 1}">${date.getUTCMonth() + 1}월</span>`
+			);
 		cells.push(
-			`<span class="heatmap-day" data-level="${Math.min(count, 4)}" title="${label}" role="img" aria-label="${label}"></span>`
+			`<span class="heatmap-day" data-date="${day}" data-level="${Math.min(count, 4)}" title="${label}" role="img" aria-label="${label}"></span>`
 		);
 	}
 	const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
-	return `<p class="muted">${year} · ${total}개 글 · 마지막 수정일 기준 (UTC)</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글. 날짜별 목록은 아래에 있습니다."><div class="heatmap-grid">${cells.join('')}</div></div><div class="heatmap-legend" aria-hidden="true">적음 ${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')} 많음</div><details class="heatmap-dates"><summary>날짜별 글 수</summary><ul>${[...counts].map(([day, count]) => `<li><time datetime="${day}">${day}</time> · ${count}개 글</li>`).join('')}</ul></details>`;
+	return `<p class="muted">${year} · ${total}개 글 · 마지막 수정일 기준 (UTC)</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
 };
-const blogHome = () => {
+const postByUrl = new Map(posts.map((post) => [postUrl(post), post]));
+const staticDocsTree = (entries, filterable = false) =>
+	`<ul>${entries
+		.map((node) => {
+			const post = postByUrl.get(node.href);
+			return `<li${filterable ? (post ? ` data-blog-post data-post-tags="${esc(JSON.stringify(postTags(post)))}"` : ' data-docs-group') : ''}>${node.href ? `<a href="${esc(node.href)}">${esc(node.label)}</a>` : `<span>${esc(node.label)}</span>${staticDocsTree(node.children, filterable)}`}</li>`;
+		})
+		.join('')}</ul>`;
+const docsHome = () =>
+	`<main id="content" class="docs-home"><nav class="docs-nav docs-directory" aria-label="전체 문서">${staticDocsTree(docsTreeEntries)}</nav></main>`;
+const homeProfile = () => {
+	const links = [
+		...(profileUrl ? [{ label: 'contact', url: profileUrl }] : []),
+		...externalLinks,
+	];
+	return `<aside class="home-profile"><div class="profile-portrait">${profileImageMarkup()}</div><div class="profile-copy">${author ? `<h1>${esc(author)}</h1>` : ''}${authorBio ? `<p class="profile-bio">${esc(authorBio)}</p>` : ''}${links.length ? `<nav class="profile-links" aria-label="contact 및 외부 링크">${links.map((link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`).join('')}</nav>` : ''}</div></aside>`;
+};
+const homeTabs = () =>
+	`<nav class="blog-tabs" data-blog-tabs aria-label="블로그 탐색">${[
+		['overview', 'Overview'],
+		['books', 'Books'],
+		['posts', 'Posts'],
+	]
+		.map(
+			([id, label]) =>
+				`<a href="#${id}" id="blog-tab-${id}" data-blog-tab="${id}">${label}</a>`
+		)
+		.join('')}</nav>`;
+const homePosts = (selectedTheme) => {
+	const tags = [...new Set(posts.flatMap(postTags))].sort(compareText);
+	const listing =
+		selectedTheme === 'docs'
+			? `<nav class="docs-nav docs-directory" aria-label="전체 문서">${staticDocsTree(docsTreeEntries, true)}</nav>`
+			: `<ul class="post-list blog-posts">${posts.map((post) => `<li data-blog-post data-post-tags="${esc(JSON.stringify(postTags(post)))}"><a href="${postUrl(post)}"><strong>${esc(post.title || 'Untitled')}</strong><span>${esc(metadata(post))}</span></a></li>`).join('')}</ul>`;
+	return `<section id="posts" data-blog-panel="posts" class="blog-panel"><h2>Posts</h2><div class="tag-filter-controls" data-blog-controls hidden><label><input type="checkbox" data-tag-enabled checked> 태그 필터 사용</label><button type="button" data-tag-clear>선택 지우기</button></div><nav class="blog-tags" aria-label="태그 선택">${tags.map((tag) => `<a class="tag" data-blog-tag="${esc(tag)}" href="${href(`/tags/${tagSegment(tag)}/`)}">#${esc(tag)}</a>`).join('')}</nav><p class="muted" data-tag-status role="status">전체 ${posts.length}개 글</p>${listing}<p class="muted" data-tag-empty hidden>선택한 태그에 해당하는 글이 없습니다.</p>${posts.length ? '' : '<p class="muted">아직 공개된 글이 없습니다.</p>'}</section>`;
+};
+const homeOverview = (selectedTheme) => {
 	const starIds = new Set(
 		Array.isArray(site.postLayout?.starredPostIds) ? site.postLayout.starredPostIds : []
 	);
 	const starred = orderBookPosts(posts.filter((post) => starIds.has(post.postId)));
-	const tags = [...new Set(posts.flatMap(postTags))].sort(compareText);
 	const dated = posts
 		.filter(postDay)
 		.sort((a, b) => postDay(b).localeCompare(postDay(a)))
 		.slice(0, 12);
-	const links = [
-		...(profileUrl ? [{ label: 'Profile', url: profileUrl }] : []),
-		...externalLinks,
-	];
-	const tabs = [
-		['overview', 'Overview'],
-		['books', 'Books'],
-		['posts', 'Posts'],
-	];
-	return `<main id="content" class="blog-home blog-profile-layout" data-blog-home><aside class="blog-profile">${profileImageMarkup()}<h1>${esc(author || siteTitle)}</h1>${author && author !== siteTitle ? `<p class="muted">${esc(siteTitle)}</p>` : ''}${authorBio ? `<p class="blog-bio">${esc(authorBio)}</p>` : ''}${links.length ? `<nav class="profile-links" aria-label="프로필 링크">${links.map((link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`).join('')}</nav>` : ''}<p class="muted">${posts.length}개 공개 글 · ${folders.size}개 분류</p></aside><div class="blog-main"><nav class="blog-tabs" data-blog-tabs aria-label="블로그 탐색">${tabs.map(([id, label]) => `<a href="#${id}" id="blog-tab-${id}" data-blog-tab="${id}">${label}${id === 'posts' ? ` <span class="blog-count">${posts.length}</span>` : ''}</a>`).join('')}</nav><section id="overview" data-blog-panel="overview" class="blog-panel"><section class="blog-about"><h2>${esc(siteTitle)}</h2>${siteDescription ? `<p>${esc(siteDescription)}</p>` : ''}${authorBio ? `<p>${esc(authorBio)}</p>` : ''}</section><section class="blog-section"><h2>Star posts</h2><p class="muted">작성자가 고정한 글</p>${starred.length ? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>` : '<p class="muted">아직 별표로 선택한 글이 없습니다.</p>'}</section><section class="blog-section"><h2>포스팅 히트맵</h2>${blogHeatmap(posts)}</section><section class="blog-section"><h2>Post activity</h2><p class="muted">공개 글의 마지막 수정 · 최근 ${dated.length}개</p>${dated.length ? `<ol class="post-activity">${dated.map((post) => `<li><time datetime="${postDay(post)}">${postDay(post)}</time><a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a></li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section></section><section id="books" data-blog-panel="books" class="blog-panel"><h2>Books</h2><p class="muted">분류별로 모은 글. 책을 선택하면 해당 분류의 글과 하위 분류를 볼 수 있습니다.</p>${blogBooks()}</section><section id="posts" data-blog-panel="posts" class="blog-panel"><h2>Posts</h2><div class="tag-filter-controls" data-blog-controls hidden><label><input type="checkbox" data-tag-enabled checked> 태그 필터 사용</label><button type="button" data-tag-clear>선택 지우기</button><p class="muted">선택한 태그 중 하나라도 포함한 글을 표시합니다. 필터를 끄면 모든 글을 표시합니다.</p></div><nav class="blog-tags" aria-label="태그 선택">${tags.map((tag) => `<a class="tag" data-blog-tag="${esc(tag)}" href="${href(`/tags/${tagSegment(tag)}/`)}">#${esc(tag)}</a>`).join('') || '<p class="muted">공개된 태그가 없습니다.</p>'}</nav><p class="muted" data-tag-status role="status">전체 ${posts.length}개 글</p><ul class="post-list blog-posts">${posts.map((post) => `<li data-blog-post data-post-tags="${esc(JSON.stringify(postTags(post)))}"><a href="${postUrl(post)}"><strong>${esc(post.title || 'Untitled')}</strong><span>${esc(metadata(post))}</span></a>${tagsFor(post)}</li>`).join('')}</ul><p class="muted" data-tag-empty hidden>선택한 태그에 해당하는 글이 없습니다.</p>${posts.length ? '' : '<p class="muted">아직 공개된 글이 없습니다.</p>'}</section></div></main>`;
+	const intro = siteDescription
+		? `<div class="home-introduction"><p>${esc(siteDescription)}</p></div>`
+		: '';
+	const starList =
+		selectedTheme === 'portfolio'
+			? `<div class="home-projects">${starred.map(portfolioCard).join('')}</div>`
+			: selectedTheme === 'blog'
+				? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>`
+				: compactList(starred);
+	const stars = `<section class="home-stars"><h2>Star posts</h2>${starred.length ? starList : '<p class="muted">아직 별표로 선택한 글이 없습니다.</p>'}</section>`;
+	const heatmap = `<section class="home-heatmap"><h2>포스팅 히트맵</h2>${blogHeatmap(posts)}</section>`;
+	const activity = `<section class="home-activity"><h2>Post activity</h2>${dated.length ? `<ol class="post-activity">${dated.map((post) => `<li><time datetime="${postDay(post)}">${postDay(post)}</time><a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a></li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
+	const composition =
+		selectedTheme === 'layall'
+			? `${intro}${stars}<div class="archive-ledger">${heatmap}${activity}</div>`
+			: selectedTheme === 'portfolio'
+				? `${intro}${stars}<div class="work-ledger">${activity}${heatmap}</div>`
+				: selectedTheme === 'docs'
+					? `${intro}<div class="knowledge-index">${stars}${activity}</div>${heatmap}`
+					: `${intro}${stars}${heatmap}${activity}`;
+	return `<section id="overview" data-blog-panel="overview" class="blog-panel">${composition}</section>`;
 };
-const minimalHome = (items) =>
-	`<main id="content" class="minimal-home"><section class="minimal-masthead"><p class="eyebrow">Notes & essays</p><h1>${esc(siteTitle)}</h1><div class="minimal-profile">${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : '<span></span>'}${profileMarkup()}</div></section><ul class="minimal-list">${items.map((post) => `<li><a href="${postUrl(post)}"><span class="post-meta">${esc(metadata(post))}</span><h2>${esc(post.title || 'Untitled')}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 150))}</p>` : ''}</a></li>`).join('')}</ul>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}</main>`;
-const portfolioHome = (items) => {
-	const groups = new Map();
-	for (const post of items) {
-		const id = String(post.folderId ?? 'home');
-		const group = groups.get(id) ?? [];
-		group.push(post);
-		groups.set(id, group);
-	}
-	const sections = [...groups.entries()]
-		.map(
-			([id, group], index) =>
-				`<section class="showcase"${index === 0 ? ' id="work"' : ''}><div class="showcase-header"><div><p class="eyebrow">${id === 'home' ? 'Archive' : 'Collection'}</p><h2>${esc(id === 'home' ? siteTitle : folderName(id))}</h2></div><span class="muted">${group.length} article${group.length === 1 ? '' : 's'}</span></div><div class="showcase-grid">${group.map(portfolioCard).join('')}</div></section>`
-		)
-		.join('');
-	return `<main id="content" class="portfolio-home"><section class="portfolio-hero"><div><p class="eyebrow">Selected writing</p><h1>${esc(author || siteTitle)}</h1>${siteDescription ? `<p class="lead">${esc(siteDescription)}</p>` : ''}</div>${profileMarkup()}</section>${sections || '<section class="showcase" id="work"><div class="empty">아직 공개된 글이 없습니다.</div></section>'}</main>`;
+const renderHome = (_items, selectedTheme = theme) => {
+	const tabs = homeTabs();
+	const panels = `${homeOverview(selectedTheme)}<section id="books" data-blog-panel="books" class="blog-panel"><h2>Books</h2>${blogBooks()}</section>${homePosts(selectedTheme)}`;
+	const profile = homeProfile();
+	const composition =
+		selectedTheme === 'blog'
+			? `${profile}<div class="home-main">${tabs}${panels}</div>`
+			: selectedTheme === 'docs'
+				? `${tabs}<div class="knowledge-layout">${profile}<div class="home-main">${panels}</div></div>`
+				: `${profile}${tabs}<div class="home-main">${panels}</div>`;
+	return `<main id="content" class="home home-${selectedTheme}" data-blog-home>${composition}</main>`;
 };
-const staticDocsTree = (entries) =>
-	`<ul>${entries.map((node) => `<li>${node.href ? `<a href="${esc(node.href)}">${esc(node.label)}</a>` : `<span>${esc(node.label)}</span>${staticDocsTree(node.children)}`}</li>`).join('')}</ul>`;
-const docsHome = () =>
-	`<main id="content" class="docs-home"><header class="page-heading"><h1>${esc(siteTitle)}</h1>${siteDescription ? `<p class="muted">${esc(siteDescription)}</p>` : ''}</header><nav class="docs-nav docs-directory" aria-label="전체 문서">${docsTreeEntries.length ? staticDocsTree(docsTreeEntries) : '<p class="muted">아직 공개된 문서가 없습니다.</p>'}</nav></main>`;
-const renderHome = (items, selectedTheme = theme) =>
-	({
-		layall: layallHome,
-		blog: blogHome,
-		minimal: minimalHome,
-		portfolio: portfolioHome,
-		docs: docsHome,
-	})[selectedTheme](items);
 const variantsOf = (renderer) =>
 	Object.fromEntries(themeOrder.map((name) => [name, renderer(name)]));
 
@@ -1591,10 +1653,7 @@ const collection = (prefix, title, items, kind = 'collection') => {
 		const pageItems = items.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE);
 		const variants = variantsOf((name) =>
 			prefix === '' && index === 0
-				? renderHome(pageItems, name).replace(
-						/<\/main>$/,
-						`${name === 'blog' || name === 'docs' ? '' : pagination}</main>`
-					)
+				? renderHome(pageItems, name)
 				: collectionBody(name, title, pageItems, pagination, kind)
 		);
 		write(
