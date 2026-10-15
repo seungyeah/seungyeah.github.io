@@ -8,6 +8,12 @@
   "giscusEnabled": false,
   "locale": "ko-KR",
   "profileBio": "ai에게 뇌대리중인 인간의 인생 로그.",
+  "profileImage": {
+    "assetId": "7997cb63f96a0ea85337e239f22c5e5a1f88a2c77675534f8f30268ca8f717fc",
+    "blobSha": "04c148bd556cdc44d4525fdd4fa85a2f2916c323",
+    "focalX": 50.0,
+    "focalY": 50.0
+  },
   "profileName": "yeahappy",
   "profileUrl": "https://www.instagram.com/yeahapp_y?srtk=MTdtYnA1ZHY1dW1zaw==",
   "theme": "docs",
