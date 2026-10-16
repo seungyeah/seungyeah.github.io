@@ -1,7 +1,1 @@
-{
-  "folderId": "folder-8d568d63b41c9c8f",
-  "format": "layall-folder",
-  "name": "리뷰",
-  "parentFolderId": null,
-  "version": 1
-}
+{"folderId":"folder-8d568d63b41c9c8f","format":"layall-folder","name":"리뷰","parentFolderId":null,"protection":{"folderId":"folder-8d568d63b41c9c8f","iterations":600000,"keyVersion":"6426fc7fffee2f3d9fcb3f47a4584ed9","salt":"jOhecYwPM7ZJh0vaPzMU9A==","siteId":"github:1360245703","version":1},"version":1}
