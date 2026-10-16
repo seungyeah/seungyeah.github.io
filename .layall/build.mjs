@@ -22,36 +22,39 @@ if (fs.existsSync('.layall') && fs.lstatSync('.layall').isSymbolicLink())
 if (fs.existsSync('.layall/site.json') && fs.lstatSync('.layall/site.json').isSymbolicLink())
 	throw new Error('unsafe managed source');
 const site = readJson('.layall/site.json', {});
-// Owner-produced projection, separate from the exact authenticated v1 envelope.
-// Only a UTC day bound to these exact source bytes can enter overview activity.
-const protectedActivityPath = '.layall/protected-activity.json';
-if (fs.existsSync(protectedActivityPath) && fs.lstatSync(protectedActivityPath).isSymbolicLink())
+// Upload dates come from owner-verified publication history, never note edits.
+const postDatesPath = '.layall/post-dates.json';
+if (fs.existsSync(postDatesPath) && fs.lstatSync(postDatesPath).isSymbolicLink())
 	throw new Error('unsafe managed source');
-const protectedActivity = readJson(protectedActivityPath, null);
-if (fs.existsSync(protectedActivityPath)) {
+const postDates = readJson(postDatesPath, null);
+const validPublicationTime = (value) =>
+	typeof value === 'string' &&
+	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(value) &&
+	Number.isFinite(Date.parse(value)) &&
+	new Date(value).toISOString().slice(0, 19) === value.slice(0, 19);
+if (postDates !== null) {
 	if (
-		!protectedActivity ||
-		Object.keys(protectedActivity).sort().join(',') !== 'format,posts,version' ||
-		protectedActivity.format !== 'layall-protected-activity' ||
-		protectedActivity.version !== 1 ||
-		!protectedActivity.posts ||
-		typeof protectedActivity.posts !== 'object' ||
-		Array.isArray(protectedActivity.posts)
+		!postDates ||
+		Object.keys(postDates).sort().join(',') !== 'format,posts,version' ||
+		postDates.format !== 'layall-post-dates' ||
+		postDates.version !== 1 ||
+		!postDates.posts ||
+		typeof postDates.posts !== 'object' ||
+		Array.isArray(postDates.posts)
 	)
-		throw new Error('invalid protected activity');
-	for (const [id, entry] of Object.entries(protectedActivity.posts)) {
+		throw new Error('invalid publication dates');
+	for (const [id, entry] of Object.entries(postDates.posts)) {
 		if (
 			!/^[a-zA-Z0-9_-]{1,128}$/.test(id) ||
 			!entry ||
-			Object.keys(entry).sort().join(',') !== 'day,sourceSha256' ||
+			Object.keys(entry).sort().join(',') !== 'publishedAt,sourceSha256,updatedAt' ||
 			typeof entry.sourceSha256 !== 'string' ||
 			!/^[a-f0-9]{64}$/.test(entry.sourceSha256) ||
-			typeof entry.day !== 'string' ||
-			!/^\d{4}-\d{2}-\d{2}$/.test(entry.day) ||
-			!Number.isFinite(Date.parse(`${entry.day}T00:00:00.000Z`)) ||
-			new Date(`${entry.day}T00:00:00.000Z`).toISOString().slice(0, 10) !== entry.day
+			!validPublicationTime(entry.publishedAt) ||
+			!validPublicationTime(entry.updatedAt) ||
+			Date.parse(entry.updatedAt) < Date.parse(entry.publishedAt)
 		)
-			throw new Error('invalid protected activity');
+			throw new Error('invalid publication dates');
 	}
 }
 const compareText = (() => {
@@ -177,6 +180,7 @@ const formatDate = (value) => {
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric',
+			timeZone: 'UTC',
 		}).format(date);
 	} catch {
 		return date.toISOString().slice(0, 10);
@@ -798,12 +802,6 @@ if (fs.existsSync(postRoot)) {
 				attachments: [],
 			};
 			Object.defineProperty(post, 'protectedEnvelope', { value: envelope });
-			const activity = protectedActivity?.posts?.[envelope.postId];
-			if (!activity || activity.sourceSha256 !== inputHashes.get(file))
-				throw new Error(
-					'protected activity date missing or stale; refresh publication metadata'
-				);
-			Object.defineProperty(post, 'protectedActivityDay', { value: activity.day });
 			// No old asset/temp/update file can accompany a protected current source.
 			if (fs.readdirSync(sourceDir).some((name) => name !== 'post.layallnote'))
 				throw new Error('unexpected protected source file');
@@ -813,13 +811,18 @@ if (fs.existsSync(postRoot)) {
 		if (!/^[a-z0-9][a-z0-9-]{0,127}$/.test(String(post.permalink ?? ''))) {
 			throw new Error('invalid permalink');
 		}
+		const publicationDates = postDates?.posts?.[post.postId];
+		if (!publicationDates || publicationDates.sourceSha256 !== inputHashes.get(file))
+			throw new Error('publication dates missing or stale; refresh publication metadata');
+		Object.defineProperty(post, 'publicationDates', { value: publicationDates ?? null });
 		Object.defineProperty(post, 'sourceDir', { value: sourceDir });
 		posts.push(post);
 	}
 }
 posts.sort((a, b) => {
 	const byDate =
-		new Date(b.sourceUpdatedAt ?? 0).getTime() - new Date(a.sourceUpdatedAt ?? 0).getTime();
+		Date.parse(b.publicationDates?.publishedAt ?? 0) -
+		Date.parse(a.publicationDates?.publishedAt ?? 0);
 	return byDate || compareText(String(a.title ?? ''), String(b.title ?? ''));
 });
 
@@ -1072,6 +1075,7 @@ const postInputs = Object.fromEntries(
 					context,
 					sourceSha256,
 					folderSha256,
+					post.publicationDates,
 					assets,
 					route,
 				])
@@ -1718,14 +1722,25 @@ const linkedPostTitle = (post) => {
 	return `<a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(name)}</a> / <a class="post-title-link" href="${esc(postUrl(post))}">${esc(post.title || 'Untitled')}</a>`;
 };
 const folderName = (id) => String(folders.get(String(id))?.name ?? id ?? 'Unfiled');
-const metadataByPost = new Map();
-const metadata = (post) => {
-	if (metadataByPost.has(post)) return metadataByPost.get(post);
-	const parts = [formatDate(post.sourceUpdatedAt)];
-	if (post.folderId) parts.push(folderName(post.folderId));
-	const value = parts.filter(Boolean).join(' · ');
-	metadataByPost.set(post, value);
-	return value;
+const publicationDay = (post) => post.publicationDates?.publishedAt.slice(0, 10) ?? null;
+const koreanDate = (value) => {
+	if (!value) return '';
+	const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+	return `${year}년 ${month}월 ${day}일`;
+};
+const articleMetadata = (post) => {
+	const dates = post.publicationDates;
+	const date = dates
+		? koreanDate(dates.publishedAt) +
+			(Date.parse(dates.updatedAt) > Date.parse(dates.publishedAt)
+				? ` (${koreanDate(dates.updatedAt)} 수정)`
+				: '')
+		: '';
+	const folderId = String(post.folderId ?? '');
+	const folder = folders.get(folderId);
+	const bookId = folder ? `book-folder-${folderId}` : 'book-unfiled';
+	const folderLabel = folder ? String(folder.name ?? folderId) : '분류 없는 글';
+	return `<div class="post-meta article-meta"><span>${esc(date)}</span><a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(folderLabel)}</a></div>`;
 };
 const tagsFor = (post) =>
 	(Array.isArray(post.tags) ? post.tags : [])
@@ -1812,7 +1827,7 @@ const styles = `
 html[data-theme][data-color-mode=dark]{--paper:#1d1c1a;--surface:#272521;--surface-2:#33302a;--ink:#f2eee6;--muted:#bbb3a7;--line:#454139;--accent:#c8b9ec;--accent-soft:#3b344b;--shadow:0 18px 60px rgba(0,0,0,.28);color-scheme:dark}
 @media(prefers-color-scheme:dark){html[data-theme][data-color-mode=system]{--paper:#1d1c1a;--surface:#272521;--surface-2:#33302a;--ink:#f2eee6;--muted:#bbb3a7;--line:#454139;--accent:#c8b9ec;--accent-soft:#3b344b;--shadow:0 18px 60px rgba(0,0,0,.28);color-scheme:dark}}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:calc(16px * var(--font-scale))/1.7 var(--font-ui)}a{color:inherit;text-decoration-color:color-mix(in srgb,var(--accent) 52%,transparent);text-underline-offset:.2em}a:hover{color:var(--accent)}img{display:block;max-width:100%}button,input{font:inherit}.skip-link{position:fixed;z-index:100;top:.75rem;left:.75rem;transform:translateY(-180%);padding:.65rem 1rem;border-radius:999px;background:var(--ink);color:var(--paper)}.skip-link:focus{transform:none}.site-header{position:sticky;z-index:30;top:0;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(18px)}.header-inner{position:relative;width:min(calc(100% - 2rem),var(--content));min-height:68px;margin:auto;display:flex;align-items:center;gap:1rem}.brand{min-width:0;overflow-wrap:anywhere;font-weight:800;letter-spacing:-.03em;text-decoration:none}.nav-toggle,.post-toc-toggle{display:none;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:.42rem .8rem;color:var(--ink);cursor:pointer}.nav-toggle{margin-left:auto}.header-actions{margin-left:auto;display:flex;align-items:center;gap:.45rem}.header-actions .nav-toggle{margin-left:0}.post-toc-toggle{position:relative;display:block;animation:toc-arrive .32s cubic-bezier(.2,.8,.2,1) both}.post-toc-toggle:hover,.post-toc-toggle[aria-expanded=true],.nav-toggle:hover,.nav-toggle[aria-expanded=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.post-toc-panel{position:absolute;z-index:50;top:calc(100% + .65rem);right:4.75rem;width:min(22rem,calc(100vw - 2rem));max-height:min(70vh,34rem);overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-.55rem) scale(.98);transform-origin:top right;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}.post-toc-panel[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}.post-toc-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.55rem}.post-toc-head strong{font-size:calc(.78rem * var(--font-scale));letter-spacing:.1em;color:var(--muted)}.post-toc-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink);cursor:pointer}.post-toc-panel ol{list-style:none;margin:0;padding:0}.post-toc-panel a{display:block;padding:.4rem .55rem;border-radius:8px;text-decoration:none;font-size:calc(.88rem * var(--font-scale));color:var(--muted)}.post-toc-panel a:hover,.post-toc-panel a:focus-visible,.post-toc-panel a[aria-current=location]{background:var(--accent-soft);color:var(--accent)}.post-toc-panel .toc-level-3 a{padding-left:1.25rem}.post-toc-panel .toc-level-4 a{padding-left:2rem}@keyframes toc-arrive{from{opacity:0;transform:translateX(.55rem) scale(.94)}to{opacity:1;transform:none}}body[data-post-page=true] .site-header .nav-toggle{display:block}body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + .65rem);right:0;display:none;width:min(28rem,calc(100vw - 2rem));max-height:calc(100vh - 6rem);overflow:auto;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}body[data-post-page=true] .site-nav[data-open=true]{display:flex}.site-nav{margin-left:auto;display:flex;align-items:center;gap:1.1rem}.site-nav a{text-decoration:none;font-size:calc(.9rem * var(--font-scale));font-weight:650}.color-controls{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px}.color-controls button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}.color-controls button:hover,.color-controls button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}main{width:min(calc(100% - 2rem),var(--content));margin:auto}.site-footer{width:min(calc(100% - 2rem),var(--content));margin:5rem auto 0;padding:2rem 0 3rem;border-top:1px solid var(--line);display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.45rem;text-align:center;color:var(--muted);font-size:calc(.9rem * var(--font-scale))}.eyebrow{letter-spacing:.14em;font-size:calc(.72rem * var(--font-scale));font-weight:800;color:var(--accent)}.lead{font-size:calc(clamp(1.05rem,2vw,1.28rem) * var(--font-scale));color:var(--muted)}.muted,.post-meta{color:var(--muted);font-size:calc(.88rem * var(--font-scale))}.tag{display:inline-block;margin:.25rem .25rem 0 0;font-size:calc(.8rem * var(--font-scale));text-decoration:none;color:var(--muted)}.empty{margin:4rem 0;padding:3rem;border:1px dashed var(--line);border-radius:var(--radius);text-align:center;color:var(--muted)}.post-cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:calc(var(--radius) - 5px);background:var(--surface-2)}.page-heading{margin:4.5rem 0 2.5rem}.page-heading h1{margin:.2rem 0;font:700 calc(clamp(2.2rem,6vw,4.8rem) * var(--font-scale))/1.02 var(--font-ui);letter-spacing:-.055em}.page-heading p{max-width:48rem}.post-list{list-style:none;margin:0;padding:0}.post-list li{border-top:1px solid var(--line)}.post-list>li>a,.post-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;padding:1.2rem 0;text-decoration:none}.post-list strong{font-size:calc(1.08rem * var(--font-scale))}.post-list span{color:var(--muted);font-size:calc(.85rem * var(--font-scale))}.pagination{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:2.5rem 0}.pagination a{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;text-decoration:none}.pagination a[aria-current=page]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.article-shell{max-width:760px;padding-top:4rem}.article{min-width:0}.article-header{margin-bottom:2.5rem}.article-header h1{margin:.4rem 0 1rem;font:700 calc(clamp(2.3rem,6vw,4.8rem) * var(--font-scale))/1.03 var(--font-ui);letter-spacing:-.05em}.article-body{font-size:calc(1.05rem * var(--font-scale))}.article-body p{margin:0 0 .5rem}.article-body h2,.article-body h3,.article-body h4{scroll-margin-top:6rem;margin:2.5rem 0 .75rem;line-height:1.25;letter-spacing:-.025em}.article-body h2{font-size:calc(1.8rem * var(--font-scale))}.article-body h3{font-size:calc(1.35rem * var(--font-scale))}.heading-anchor{margin-left:.45rem;text-decoration:none;opacity:0}.article-body :is(h2,h3,h4):hover .heading-anchor,.heading-anchor:focus{opacity:1}.article-body pre{overflow:auto;margin:1.5rem 0;padding:1.2rem;border:1px solid var(--line);border-radius:15px;background:#171816;color:#f4f1ea;font:calc(14px * var(--font-scale))/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.article-body code{padding:.13em .36em;border-radius:6px;background:var(--surface-2);font:85% ui-monospace,SFMono-Regular,Menlo,monospace}.article-body pre code{padding:0;background:transparent;font:inherit}.article-body blockquote{margin:1.5rem 0;padding:.2rem 1.25rem;border-left:3px solid var(--accent);color:var(--muted)}.article-body hr{border:0;border-top:1px solid var(--line);margin:2.4rem 0}.article-body a{overflow-wrap:anywhere}
+.article-shell{max-width:760px;padding-top:4rem}.article{min-width:0}.article-header{margin-bottom:2.5rem}.article-meta{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:nowrap}.article-meta>span{flex:1;min-width:0}.article-meta>a{flex:0 1 auto;max-width:45%;min-width:0;margin-left:auto;text-align:right;overflow-wrap:anywhere}.article-header h1{margin:.4rem 0 1rem;font:700 calc(clamp(2.3rem,6vw,4.8rem) * var(--font-scale))/1.03 var(--font-ui);letter-spacing:-.05em}.article-body{font-size:calc(1.05rem * var(--font-scale))}.article-body p{margin:0 0 .5rem}.article-body h2,.article-body h3,.article-body h4{scroll-margin-top:6rem;margin:2.5rem 0 .75rem;line-height:1.25;letter-spacing:-.025em}.article-body h2{font-size:calc(1.8rem * var(--font-scale))}.article-body h3{font-size:calc(1.35rem * var(--font-scale))}.heading-anchor{margin-left:.45rem;text-decoration:none;opacity:0}.article-body :is(h2,h3,h4):hover .heading-anchor,.heading-anchor:focus{opacity:1}.article-body pre{overflow:auto;margin:1.5rem 0;padding:1.2rem;border:1px solid var(--line);border-radius:15px;background:#171816;color:#f4f1ea;font:calc(14px * var(--font-scale))/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.article-body code{padding:.13em .36em;border-radius:6px;background:var(--surface-2);font:85% ui-monospace,SFMono-Regular,Menlo,monospace}.article-body pre code{padding:0;background:transparent;font:inherit}.article-body blockquote{margin:1.5rem 0;padding:.2rem 1.25rem;border-left:3px solid var(--accent);color:var(--muted)}.article-body hr{border:0;border-top:1px solid var(--line);margin:2.4rem 0}.article-body a{overflow-wrap:anywhere}
 html[data-theme=layall]{--font-scale:1.125;--font-ui:"Omyu Pretty",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--paper:#f6f4f0;--surface:#fffdf8;--surface-2:#e8f7fb;--ink:#354146;--muted:#566b72;--line:#d9e4e2;--accent:#386c78;--accent-soft:#dff2f6;--shadow:0 22px 58px rgba(69,88,93,.13);--radius:20px;--content:1180px;}html[data-theme=layall] body{background:var(--paper)}html[data-theme=layall] .site-header{background:color-mix(in srgb,var(--surface) 86%,transparent)}.theme-article-layall .article{padding:clamp(1.25rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:0 18px 50px rgba(69,88,93,.08)}html[data-theme=layall] .article-table{background:var(--surface)}html[data-theme=layall] .article-table th{background:#eef8f8}html[data-theme=layall][data-color-mode=dark]{--paper:#17262d;--surface:#21343b;--surface-2:#29434c;--ink:#edf6f5;--muted:#aec4c8;--line:#38535c;--accent:#8dd2de;--accent-soft:#294b55;--shadow:0 22px 58px rgba(0,0,0,.28);}html[data-theme=layall][data-color-mode=dark] body{background:var(--paper)}html[data-theme=layall][data-color-mode=dark] .article-table th{background:var(--surface-2)}.theme-article-layall .article-header h1{word-break:keep-all;overflow-wrap:anywhere}
 html[data-theme=layall] :is(pre,code){font-family:var(--font-ui)}
 @media(prefers-color-scheme:dark){html[data-theme=layall][data-color-mode=system]{--paper:#17262d;--surface:#21343b;--surface-2:#29434c;--ink:#edf6f5;--muted:#aec4c8;--line:#38535c;--accent:#8dd2de;--accent-soft:#294b55;--shadow:0 22px 58px rgba(0,0,0,.28);}html[data-theme=layall][data-color-mode=system] body{background:var(--paper)}html[data-theme=layall][data-color-mode=system] .article-table th{background:var(--surface-2)}}
@@ -1841,7 +1856,7 @@ ${themeOrder.map((name) => `[data-palette="${name}"]{--palette-primary:${palette
 html[data-color-mode=dark] .palette-dot{background:var(--palette-dark)}@media(prefers-color-scheme:dark){html[data-color-mode=system] .palette-dot{background:var(--palette-dark)}}
 .palette-picker{position:relative;min-width:0;max-width:100%;flex:0 1 auto}.palette-picker summary{display:flex;align-items:center;gap:.5rem;min-height:36px;min-width:0;padding:.25rem .5rem;cursor:pointer;list-style:none;font-size:calc(.85rem * var(--font-scale))}.palette-picker summary::-webkit-details-marker{display:none}.palette-picker summary::after{content:"⌄";margin-left:.25rem}.palette-options{position:fixed;z-index:60;top:0;left:0;width:10rem;max-width:calc(100vw - 3rem);max-height:calc(100vh - 1rem);overflow:auto;overscroll-behavior:contain;padding:.3rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}.palette-options button{display:flex;align-items:center;gap:.65rem;min-height:40px;width:100%;min-width:0;border:0;border-radius:4px;padding:.45rem .65rem;background:transparent;color:var(--ink);cursor:pointer;text-align:left}.palette-options button[aria-checked=true]{background:var(--surface-2);font-weight:700}.palette-picker summary:focus-visible,.palette-options button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme=layall] .heatmap-day[data-level="0"]{background:color-mix(in srgb,var(--paper) 72%,var(--surface-2))}
-.discussion-thread{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line);min-width:0}.discussion-thread>button{padding:.5rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.discussion-thread>button:focus-visible,.reaction-selector button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.home-reaction{grid-column:1/-1;min-width:0;margin-bottom:2.5rem}.reaction-layout{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:1.5rem;margin-top:1rem}.reaction-selector{display:flex;flex-direction:column;align-items:stretch;gap:.15rem;min-width:44px;max-width:7rem}.reaction-selector button{position:relative;display:flex;align-items:center;justify-content:flex-start;gap:.5rem;min-width:44px;min-height:44px;padding:.4rem .4rem .4rem .85rem;border:0;background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer}.reaction-selector button::before{content:"";position:absolute;left:0;top:50%;width:4px;height:4px;border-radius:50%;background:transparent;transform:translateY(-50%)}.reaction-selector button:hover{color:var(--accent)}.reaction-selector button[aria-pressed=true]{color:var(--accent)}.reaction-selector button[aria-pressed=true]::before{background:currentColor}.reaction-selector button[aria-pressed=true] .reaction-total{font-weight:650}.reaction-total{min-width:0;overflow-wrap:anywhere;font-size:calc(.8rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-results{min-width:0}.reaction-panel-label{margin:0 0 .5rem;font-size:calc(.9rem * var(--font-scale));font-weight:600}html[data-js=true] .reaction-panel-label{display:none}.reaction-ranking{padding:0;margin:0;list-style:none}.reaction-ranking li{display:grid;grid-template-columns:1.25rem minmax(0,1fr) auto;align-items:baseline;gap:.75rem;padding:.5rem 0}.reaction-rank{color:var(--muted);font-size:calc(.8rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-ranking .linked-post-title{min-width:0;overflow-wrap:anywhere}.reaction-ranking-count{min-width:2ch;text-align:right;color:var(--muted);font-size:calc(.88rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-empty{margin:.75rem 0;padding:0}.article-frame>.docs-sidebar-wrap{display:none}html:not([data-js=true]) [data-discussion-status]{display:none}html:not([data-js=true]) .reaction-selector{display:none}html:not([data-js=true]) .reaction-layout{display:block}html:not([data-js=true]) [data-reaction-panel]{margin-bottom:1.5rem}html:not([data-js=true]) [data-reaction-panel][hidden]{display:block!important}
+.discussion-thread{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line);min-width:0}.discussion-thread>button{padding:.5rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.discussion-thread>button:focus-visible,.reaction-selector button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.home-reaction{grid-column:1/-1;min-width:0;margin-bottom:2.5rem}.reaction-layout{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:1.5rem;margin-top:1rem}.reaction-selector{display:flex;flex-direction:column;align-items:stretch;gap:.15rem;min-width:44px;max-width:7rem}.reaction-selector button{position:relative;display:flex;align-items:center;justify-content:flex-start;gap:.5rem;min-width:44px;min-height:44px;padding:.4rem .4rem .4rem 0;border:0;background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer}.reaction-selector button:hover{color:var(--accent)}.reaction-selector button[aria-pressed=true]{color:var(--accent)}.reaction-selector button[aria-pressed=true] .reaction-total{font-weight:650}.reaction-total{min-width:0;overflow-wrap:anywhere;font-size:calc(.8rem * var(--font-scale));font-variant-numeric:tabular-nums}.heatmap-year{margin-bottom:0}.heatmap-total{margin:0 0 .75rem}.reaction-results{min-width:0}.reaction-panel-label{margin:0 0 .5rem;font-size:calc(.9rem * var(--font-scale));font-weight:600}html[data-js=true] .reaction-panel-label{display:none}.reaction-ranking{padding:0;margin:0;list-style:none}.reaction-ranking li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:.75rem;padding:.5rem 0}.reaction-ranking .linked-post-title{min-width:0;overflow-wrap:anywhere}.reaction-ranking-count{min-width:2ch;text-align:right;color:var(--muted);font-size:calc(.88rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-empty{margin:.75rem 0;padding:0}.article-frame>.docs-sidebar-wrap{display:none}html:not([data-js=true]) [data-discussion-status]{display:none}html:not([data-js=true]) .reaction-selector{display:none}html:not([data-js=true]) .reaction-layout{display:block}html:not([data-js=true]) [data-reaction-panel]{margin-bottom:1.5rem}html:not([data-js=true]) [data-reaction-panel][hidden]{display:block!important}
 @media(max-width:680px){.discussion-thread{margin-top:2rem;padding-top:1.5rem}.reaction-layout{gap:.75rem}.reaction-selector{max-width:5.5rem}.reaction-selector button{gap:.3rem;padding-right:.1rem}.reaction-ranking li{gap:.5rem}}
 html:not([data-js=true]) .site-nav{display:flex;position:static;flex-wrap:wrap;width:auto;box-shadow:none}html:not([data-js=true]) .header-inner{flex-wrap:wrap}html:not([data-js=true]) :is(.nav-toggle,.post-toc-toggle,.appearance-controls){display:none}
 `;
@@ -2385,7 +2400,7 @@ const reactionOverview = () => {
 				)
 				.slice(0, 5);
 			const list = ranked.length
-				? `<ol class="reaction-ranking">${ranked.map(({ post, count }, rank) => `<li><span class="reaction-rank" aria-hidden="true">${rank + 1}</span><span class="linked-post-title">${linkedPostTitle(post)}</span><span class="reaction-ranking-count" aria-label="${label} ${count}">${count}</span></li>`).join('')}</ol>`
+				? `<ol class="reaction-ranking">${ranked.map(({ post, count }) => `<li><span class="linked-post-title">${linkedPostTitle(post)}</span><span class="reaction-ranking-count" aria-label="${label} ${count}">${count}</span></li>`).join('')}</ol>`
 				: `<p class="reaction-empty muted">아직 ${esc(label)} 반응이 없습니다.</p>`;
 			return `<div data-reaction-panel="${key}" aria-label="${label} Top 5"${index ? ' hidden' : ''}><h3 class="reaction-panel-label">${esc(label)} Top 5</h3>${list}</div>`;
 		})
@@ -2671,7 +2686,7 @@ const shell = (title, body, options = {}) => {
 };
 
 const compactRow = (post, bookThumbnails = false) => {
-	const text = `<strong class="linked-post-title">${linkedPostTitle(post)}</strong><span class="post-meta">${esc(formatDate(post.sourceUpdatedAt))}</span>`;
+	const text = `<strong class="linked-post-title">${linkedPostTitle(post)}</strong><span class="post-meta">${esc(formatDate(post.publicationDates?.publishedAt))}</span>`;
 	const image = bookThumbnails ? bookImageByPost.get(post.postId) : null;
 	return `<div class="post-row">${bookThumbnails ? `<div class="book-post-copy">${text}</div>` : text}${image ? `<img src="${esc(image)}" alt="" width="56" height="56" loading="lazy" decoding="async">` : ''}</div>`;
 };
@@ -2682,21 +2697,14 @@ const compactList = (items, bookThumbnails = false) => {
 		.join('')}</ul>`;
 };
 const blogCard = (post) =>
-	`<article class="blog-card">${picture(post)}<div class="post-meta">${esc(formatDate(post.sourceUpdatedAt))}</div><h2 class="linked-post-title">${linkedPostTitle(post)}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 130))}</p>` : ''}${tagsFor(post)}</article>`;
+	`<article class="blog-card">${picture(post)}<div class="post-meta">${esc(formatDate(post.publicationDates?.publishedAt))}</div><h2 class="linked-post-title">${linkedPostTitle(post)}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 130))}</p>` : ''}${tagsFor(post)}</article>`;
 const portfolioCard = (post) =>
-	`<article class="showcase-card">${picture(post)}<div class="showcase-card-content"><span class="post-meta">${esc(formatDate(post.sourceUpdatedAt))}</span><h3 class="linked-post-title">${linkedPostTitle(post)}</h3>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 120))}</p>` : ''}</div></article>`;
+	`<article class="showcase-card">${picture(post)}<div class="showcase-card-content"><span class="post-meta">${esc(formatDate(post.publicationDates?.publishedAt))}</span><h3 class="linked-post-title">${linkedPostTitle(post)}</h3>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 120))}</p>` : ''}</div></article>`;
 
 // All home themes share published data and interaction state.
 const postTags = (post) => [...new Set((Array.isArray(post.tags) ? post.tags : []).map(String))];
-const postDay = (post) => {
-	const raw = post.sourceUpdatedAt;
-	if (raw === undefined || raw === null || raw === '') return null;
-	const date = new Date(raw);
-	if (Number.isNaN(date.getTime())) return null;
-	const day = date.toISOString().slice(0, 10);
-	return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
-};
-const overviewDay = (post) => (post.protectedEnvelope ? post.protectedActivityDay : postDay(post));
+const postDay = publicationDay;
+const overviewDay = publicationDay;
 const folderTrail = (id) => {
 	const names = [];
 	const seen = new Set();
@@ -2749,8 +2757,8 @@ const blogBooks = () => {
 		[...book.items]
 			.sort(
 				(a, b) =>
-					(new Date(b.sourceUpdatedAt).getTime() || 0) -
-						(new Date(a.sourceUpdatedAt).getTime() || 0) ||
+					(Date.parse(b.publicationDates?.publishedAt) || 0) -
+						(Date.parse(a.publicationDates?.publishedAt) || 0) ||
 					String(a.postId).localeCompare(String(b.postId))
 			)
 			.map((post) => bookImageByPost.get(post.postId))
@@ -2801,7 +2809,7 @@ const blogHeatmap = (items) => {
 		);
 	}
 	const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
-	return `<p class="muted heatmap-year">${year}</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
+	return `<p class="muted heatmap-year">${year}</p><p class="muted heatmap-total">${total}개 글</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
 };
 const postByUrl = new Map(posts.map((post) => [postUrl(post), post]));
 const staticDocsTree = (entries, filterable = false) =>
@@ -2864,7 +2872,7 @@ const homeOverview = (selectedTheme) => {
 				: compactList(starred);
 	const stars = `<section class="home-stars"><h2>Pinned</h2>${starred.length ? starList : '<p class="muted">아직 고정한 글이 없습니다.</p>'}</section>`;
 	const heatmap = `<section class="home-heatmap"><h2>Post Activity</h2>${blogHeatmap(posts)}</section>`;
-	const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<div class="linked-post-title">${linkedPostTitle(post)}</div>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
+	const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<div class="linked-post-title">${linkedPostTitle(post)}</div>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">아직 게시한 글이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
 	const composition =
 		selectedTheme === 'layall'
 			? `<div class="archive-ledger">${heatmap}${activity}</div>`
@@ -2895,8 +2903,8 @@ const toc = (headings) => {
 };
 const articleContent = (post, rendered) =>
 	post.protectedEnvelope
-		? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post><h1>보호된 글</h1><p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/protected-post.js'))}"></script></article>`
-		: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
+		? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}">${articleMetadata(post)}<div data-protected-post><h1>보호된 글</h1><p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/protected-post.js'))}"></script></article>`
+		: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header">${articleMetadata(post)}<h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
 const articleSlot = '<span data-theme-slot="article"></span>';
 const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
 // The article and iframe stay connected while changing appearance. Moving an iframe
@@ -2961,7 +2969,7 @@ const collectionBody = (selectedTheme, title, items, pagination, kind) => {
 	if (selectedTheme === 'blog')
 		return `<main id="content" class="blog-home">${heading}<section class="blog-grid">${items.map(blogCard).join('')}</section>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</main>`;
 	if (selectedTheme === 'minimal')
-		return `<main id="content" class="minimal-home">${heading}<ul class="minimal-list">${items.map((post) => `<li><span class="post-meta">${esc(formatDate(post.sourceUpdatedAt))}</span><h2 class="linked-post-title">${linkedPostTitle(post)}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 150))}</p>` : ''}</li>`).join('')}</ul>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</main>`;
+		return `<main id="content" class="minimal-home">${heading}<ul class="minimal-list">${items.map((post) => `<li><span class="post-meta">${esc(formatDate(post.publicationDates?.publishedAt))}</span><h2 class="linked-post-title">${linkedPostTitle(post)}</h2>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 150))}</p>` : ''}</li>`).join('')}</ul>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</main>`;
 	if (selectedTheme === 'portfolio')
 		return `<main id="content" class="portfolio-home"><section class="showcase" id="work">${heading}<div class="showcase-grid">${items.map(portfolioCard).join('')}</div>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</section></main>`;
 	if (selectedTheme === 'docs')
@@ -3059,7 +3067,7 @@ write(
 if (site.feedEnabled !== false) {
 	const feedUpdated =
 		posts
-			.map((post) => new Date(post.sourceUpdatedAt ?? '').getTime())
+			.map((post) => Date.parse(post.publicationDates.updatedAt))
 			.filter(Number.isFinite)
 			.sort((a, b) => b - a)[0] ?? 0;
 	const feedUpdatedIso = new Date(feedUpdated).toISOString();
@@ -3067,16 +3075,16 @@ if (site.feedEnabled !== false) {
 		.filter((post) => !post.protectedEnvelope)
 		.map(
 			(post) =>
-				`<item><title>${esc(post.title || 'Untitled')}</title><link>${esc(absolute(`/posts/${post.permalink}/`))}</link><guid>${esc(absolute(`/posts/${post.permalink}/`))}</guid><description>${esc(excerpt(post.body, 240))}</description></item>`
+				`<item><title>${esc(post.title || 'Untitled')}</title><link>${esc(absolute(`/posts/${post.permalink}/`))}</link><guid>${esc(absolute(`/posts/${post.permalink}/`))}</guid><pubDate>${esc(new Date(post.publicationDates.publishedAt).toUTCString())}</pubDate><description>${esc(excerpt(post.body, 240))}</description></item>`
 		)
 		.join('');
 	const atomItems = posts
 		.filter((post) => !post.protectedEnvelope)
 		.map((post) => {
-			const postUpdated = new Date(post.sourceUpdatedAt ?? '').getTime();
+			const postUpdated = Date.parse(post.publicationDates.updatedAt);
 			const updated = new Date(Number.isFinite(postUpdated) ? postUpdated : 0).toISOString();
 			const url = absolute(`/posts/${post.permalink}/`);
-			return `<entry><title>${esc(post.title || 'Untitled')}</title><id>${esc(url)}</id><updated>${updated}</updated><link rel="alternate" href="${esc(url)}"/><summary>${esc(excerpt(post.body, 240))}</summary></entry>`;
+			return `<entry><title>${esc(post.title || 'Untitled')}</title><id>${esc(url)}</id><published>${esc(post.publicationDates.publishedAt)}</published><updated>${updated}</updated><link rel="alternate" href="${esc(url)}"/><summary>${esc(excerpt(post.body, 240))}</summary></entry>`;
 		})
 		.join('');
 	write(
@@ -3089,14 +3097,17 @@ if (site.feedEnabled !== false) {
 	);
 }
 const sitemapPages = [
-	'/',
-	'/search/',
-	'/docs/',
-	...posts.map((post) => `/posts/${post.permalink}/`),
+	{ url: '/' },
+	{ url: '/search/' },
+	{ url: '/docs/' },
+	...posts.map((post) => ({
+		url: `/posts/${post.permalink}/`,
+		updatedAt: post.publicationDates.updatedAt,
+	})),
 ];
 write(
 	'sitemap.xml',
-	`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapPages.map((url) => `<url><loc>${esc(absolute(url))}</loc></url>`).join('')}</urlset>`
+	`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapPages.map(({ url, updatedAt }) => `<url><loc>${esc(absolute(url))}</loc>${updatedAt ? `<lastmod>${esc(updatedAt)}</lastmod>` : ''}</url>`).join('')}</urlset>`
 );
 const notFoundVariants = variantsOf(
 	(name) =>
