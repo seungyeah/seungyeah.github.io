@@ -794,9 +794,11 @@ if (fs.existsSync(postRoot)) {
 			};
 			Object.defineProperty(post, 'protectedEnvelope', { value: envelope });
 			const activity = protectedActivity?.posts?.[envelope.postId];
-			Object.defineProperty(post, 'protectedActivityDay', {
-				value: activity?.sourceSha256 === inputHashes.get(file) ? activity.day : null,
-			});
+			if (!activity || activity.sourceSha256 !== inputHashes.get(file))
+				throw new Error(
+					'protected activity date missing or stale; refresh publication metadata'
+				);
+			Object.defineProperty(post, 'protectedActivityDay', { value: activity.day });
 			// No old asset/temp/update file can accompany a protected current source.
 			if (fs.readdirSync(sourceDir).some((name) => name !== 'post.layallnote'))
 				throw new Error('unexpected protected source file');
@@ -1834,8 +1836,8 @@ ${themeOrder.map((name) => `[data-palette="${name}"]{--palette-primary:${palette
 html[data-color-mode=dark] .palette-dot{background:var(--palette-dark)}@media(prefers-color-scheme:dark){html[data-color-mode=system] .palette-dot{background:var(--palette-dark)}}
 .palette-picker{position:relative;min-width:0;max-width:100%;flex:0 1 auto}.palette-picker summary{display:flex;align-items:center;gap:.5rem;min-height:36px;min-width:0;padding:.25rem .5rem;cursor:pointer;list-style:none;font-size:calc(.85rem * var(--font-scale))}.palette-picker summary::-webkit-details-marker{display:none}.palette-picker summary::after{content:"⌄";margin-left:.25rem}.palette-options{position:fixed;z-index:60;top:0;left:0;width:10rem;max-width:calc(100vw - 3rem);max-height:calc(100vh - 1rem);overflow:auto;overscroll-behavior:contain;padding:.3rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}.palette-options button{display:flex;align-items:center;gap:.65rem;min-height:40px;width:100%;min-width:0;border:0;border-radius:4px;padding:.45rem .65rem;background:transparent;color:var(--ink);cursor:pointer;text-align:left}.palette-options button[aria-checked=true]{background:var(--surface-2);font-weight:700}.palette-picker summary:focus-visible,.palette-options button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme=layall] .heatmap-day[data-level="0"]{background:color-mix(in srgb,var(--paper) 72%,var(--surface-2))}
-.discussion-thread{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line);min-width:0}.discussion-thread h2{font-size:calc(1.35rem * var(--font-scale));line-height:1.3;margin:0 0 1rem}.discussion-thread>button{padding:.5rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.discussion-thread>button:focus-visible,.reaction-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.home-reaction{grid-column:1/-1;min-width:0;margin-bottom:2.5rem}.reaction-caption{font-size:calc(.8rem * var(--font-scale))}.reaction-tabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}.reaction-tabs button{font:inherit;min-width:44px;min-height:44px;padding:.4rem .7rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.reaction-tabs button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}.reaction-ranking{padding:0;list-style:none}.reaction-ranking li{display:flex;align-items:baseline;gap:1rem;padding:.7rem 0;border-bottom:1px solid var(--line)}.reaction-ranking .linked-post-title{min-width:0;flex:1;overflow-wrap:anywhere}.reaction-ranking-count{flex:none;font-size:calc(.88rem * var(--font-scale));font-variant-numeric:tabular-nums}.article-frame>.docs-sidebar-wrap{display:none}html:not([data-js=true]) [data-discussion-status]{display:none}html:not([data-js=true]) .reaction-tabs{display:none}html:not([data-js=true]) [data-reaction-panel][hidden]{display:block!important}
-@media(max-width:680px){.discussion-thread{margin-top:2rem;padding-top:1.5rem}.reaction-ranking li{gap:.65rem}}
+.discussion-thread{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line);min-width:0}.discussion-thread>button{padding:.5rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.discussion-thread>button:focus-visible,.reaction-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.home-reaction{grid-column:1/-1;min-width:0;margin-bottom:2.5rem;padding:clamp(.9rem,2vw,1.4rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.reaction-heading{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}.reaction-heading h2{margin:0}.reaction-heading>span{color:var(--muted);font-size:calc(.78rem * var(--font-scale))}.reaction-tabs{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:.4rem;margin:1.2rem 0 .5rem}.reaction-tabs button{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.25rem .5rem;min-width:0;min-height:44px;padding:.5rem .3rem;border:1px solid transparent;border-radius:calc(var(--radius) * .55);background:var(--surface-2);color:var(--muted);font:inherit;cursor:pointer}.reaction-tabs button:hover{border-color:var(--line);color:var(--ink)}.reaction-tabs button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}.reaction-total{font-size:calc(.78rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-ranking{padding:0;margin:.5rem 0 0;list-style:none}.reaction-ranking li{display:grid;grid-template-columns:1.4rem minmax(0,1fr) auto;align-items:baseline;gap:.75rem;padding:.85rem .2rem;border-bottom:1px solid var(--line)}.reaction-ranking li:last-child{border-bottom:0}.reaction-rank{color:var(--muted);font-size:calc(.8rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-ranking .linked-post-title{min-width:0;overflow-wrap:anywhere}.reaction-ranking-count{min-width:2.5rem;padding:.1rem .6rem;border-radius:999px;background:var(--surface-2);text-align:center;font-size:calc(.88rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-empty{padding:1.5rem .25rem;margin:0;text-align:center}.article-frame>.docs-sidebar-wrap{display:none}html:not([data-js=true]) [data-discussion-status]{display:none}html:not([data-js=true]) .reaction-tabs{display:none}html:not([data-js=true]) [data-reaction-panel][hidden]{display:block!important}
+@media(max-width:680px){.discussion-thread{margin-top:2rem;padding-top:1.5rem}.reaction-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.reaction-ranking li{gap:.5rem}}
 html:not([data-js=true]) .site-nav{display:flex;position:static;flex-wrap:wrap;width:auto;box-shadow:none}html:not([data-js=true]) .header-inner{flex-wrap:wrap}html:not([data-js=true]) :is(.nav-toggle,.post-toc-toggle,.appearance-controls){display:none}
 `;
 
@@ -1990,7 +1992,7 @@ const giscusCss = (name, mode) => {
 	);
 	assign('prettylights-syntax-markup-ignored-text', tokens.ink);
 	assign('prettylights-syntax-markup-ignored-bg', tokens['surface-2']);
-	const radius = { layall: '12px', blog: '8px', minimal: '0', portfolio: '20px', docs: '6px' }[
+	const radius = { layall: '12px', blog: '8px', minimal: '0px', portfolio: '20px', docs: '6px' }[
 		name
 	];
 	const surface =
@@ -2011,7 +2013,8 @@ body,.gsc-main{font-size:calc(1rem * var(--layall-type-scale));background:transp
 .gsc-main .btn,.gsc-comment,.gsc-comment-box,.gsc-loading-text,.gsc-pagination-button{font-size:calc(.875rem * var(--layall-type-scale))}.gsc-comment-box-markdown-hint,.gsc-main .f6,.gsc-main .blob-num{font-size:calc(.75rem * var(--layall-type-scale))}
 .gsc-header{padding-bottom:1rem;gap:.75rem;flex-wrap:wrap}.gsc-comments-count{font-size:calc(1rem * var(--layall-type-scale));font-weight:650}
 .gsc-reactions{padding:.6rem 0 1.5rem}.gsc-upvotes,.gsc-upvote-button{display:none}
-.gsc-direct-reaction-buttons{flex-wrap:wrap;gap:.4rem}.gsc-social-reaction-summary-item{border-radius:999px;border:1px solid var(--color-border-default);background:var(--color-canvas-default);min-height:2.25rem;padding:.3rem .7rem;gap:.35rem;font-size:calc(.9rem * var(--layall-type-scale))}.gsc-social-reaction-summary-item-count{font-variant-numeric:tabular-nums}.gsc-social-reaction-summary-item.has-reacted{background:var(--color-accent-subtle);color:var(--color-accent-fg);border-color:var(--color-accent-fg)}
+.gsc-reactions>div,.gsc-comment-reactions,.gsc-reply-reactions{align-items:center;flex-wrap:wrap;min-width:0}.gsc-comment-footer,.gsc-reply-footer{align-items:center}.gsc-comment-replies-count{align-self:center;line-height:1.25}
+.gsc-direct-reaction-buttons{align-items:center;flex-wrap:wrap;min-width:0;max-width:100%;gap:.4rem}.gsc-social-reaction-summary-item{border-radius:calc(var(--layall-radius) * .5);border:1px solid var(--color-border-default);background:var(--color-canvas-default);font-size:calc(.9rem * var(--layall-type-scale))}.gsc-direct-reaction-button.gsc-social-reaction-summary-item,.gsc-reactions-button.gsc-social-reaction-summary-item{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:max-content;min-width:2.75rem;height:auto;min-height:0;aspect-ratio:1;line-height:1;padding:.2rem .35rem}.gsc-direct-reaction-button.gsc-social-reaction-summary-item{flex-direction:column;gap:.1rem}.gsc-direct-reaction-button .gsc-direct-reaction-button-emoji{display:block;width:auto;height:auto;line-height:1}.gsc-direct-reaction-button .gsc-social-reaction-summary-item-count{margin:0;padding:0;max-width:none;overflow:visible;text-overflow:clip;line-height:1;font-variant-numeric:tabular-nums}.gsc-reactions-button.gsc-social-reaction-summary-item{width:2.75rem;padding:0}.gsc-reactions-button>svg{display:block;flex-shrink:0}.gsc-reactions-menu{flex-shrink:0;align-self:center}.gsc-emoji-button{display:inline-flex;align-items:center;justify-content:center;aspect-ratio:1;line-height:1}.gsc-reactions-popover.bottom{top:calc(100% + .35rem)}.gsc-reactions-popover.top{bottom:calc(100% + .35rem)}.gsc-social-reaction-summary-item.has-reacted{background:var(--color-accent-subtle);color:var(--color-accent-fg);border-color:var(--color-accent-fg)}
 .gsc-timeline{gap:0}.gsc-comment{position:relative;min-width:0;margin-left:.8rem;padding:0 0 1.4rem 1.4rem;border-left:1px solid var(--layall-rail)}.gsc-comment:before{content:"";position:absolute;left:-.25rem;top:1rem;width:.45rem;height:.45rem;border-radius:50%;background:var(--color-accent-fg)}.gsc-comment>div:first-child{border-color:var(--color-border-default);border-radius:var(--layall-radius);background:${surface};overflow:visible}.gsc-comment-header{padding:.85rem 1rem;gap:.6rem;align-items:center;flex-wrap:wrap}.gsc-comment-author{color:var(--color-fg-default);font-size:calc(.95rem * var(--layall-type-scale))}.gsc-comment-author-avatar img,.gsc-reply-author-avatar img{border-radius:50%;border:1px solid var(--color-border-default)}.gsc-comment-header time,.gsc-reply-header time{color:var(--color-fg-muted);font-size:calc(.8rem * var(--layall-type-scale))}
 .gsc-comment-content,.gsc-reply-content{overflow-wrap:anywhere;line-height:1.7;font-size:calc(1rem * var(--layall-type-scale))}.gsc-comment-content{padding:.25rem 1rem .75rem}.gsc-comment-footer{padding:.5rem 1rem .9rem;gap:.5rem;flex-wrap:wrap}.gsc-comment-content blockquote,.gsc-reply-content blockquote{margin:.75rem 0;padding:.4rem .85rem;border-left:3px solid var(--color-accent-fg);background:var(--color-accent-subtle);color:var(--color-fg-muted)}
 .gsc-replies{min-width:0;background:transparent;border-color:var(--layall-rail)}.gsc-tl-line{background:var(--layall-rail)}.gsc-reply{min-width:0;padding-top:.7rem;padding-bottom:.7rem}.gsc-reply-header{gap:.5rem;flex-wrap:wrap}.gsc-reply-box{border-color:var(--color-border-default);border-radius:var(--layall-radius)}
@@ -2019,7 +2022,7 @@ body,.gsc-main{font-size:calc(1rem * var(--layall-type-scale));background:transp
 .gsc-main :is(button,a,textarea,input,summary):focus-visible{outline:2px solid var(--color-accent-fg);outline-offset:3px}.gsc-main button:disabled{cursor:not-allowed;opacity:.6}.gsc-main :is(pre,code){font-family:var(--font-family-monospace)}.gsc-main .markdown img{max-width:100%;height:auto}.gsc-main .markdown pre{overflow:auto}.gsc-main .markdown table{display:block;max-width:100%;overflow:auto}
 ${name === 'minimal' ? '.gsc-comment>div:first-child{border-width:0;background:transparent}.gsc-comment-header{padding-left:0;padding-right:0}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}' : ''}
 ${name === 'blog' || name === 'docs' ? '.gsc-comment-header{border-bottom:1px solid var(--color-border-default);background:var(--color-canvas-subtle);border-radius:var(--layall-radius) var(--layall-radius) 0 0}' : ''}
-@media(max-width:680px){:root{--layall-type-scale:${name === 'layall' ? 1.0546875 : 0.9375}}.gsc-comment{margin-left:.3rem;padding-left:.8rem;padding-bottom:1rem}.gsc-comment-header{padding:.65rem}.gsc-comment-content,.gsc-comment-footer{padding-left:.65rem;padding-right:.65rem}.gsc-reply{padding-left:.5rem;padding-right:.5rem}.gsc-social-reaction-summary-item{min-height:2.5rem}.gsc-comment-box-bottom{flex-wrap:wrap;gap:.5rem}}
+@media(max-width:680px){:root{--layall-type-scale:${name === 'layall' ? 1.0546875 : 0.9375}}.gsc-comment{margin-left:.3rem;padding-left:.8rem;padding-bottom:1rem}.gsc-comment-header{padding:.65rem}.gsc-comment-content,.gsc-comment-footer{padding-left:.65rem;padding-right:.65rem}.gsc-reply{padding-left:.5rem;padding-right:.5rem}.gsc-comment-box-bottom{flex-wrap:wrap;gap:.5rem}}
 @media(prefers-reduced-motion:reduce){.gsc-main *{scroll-behavior:auto;transition:none}}
 `;
 };
@@ -2156,7 +2159,7 @@ const discussionBehavior = (options) => {
 const discussionSection = (post) =>
 	!discussionsEnabled
 		? ''
-		: `<section class="discussion-thread" data-post-discussion="${esc(post.postId)}" aria-label="Comments And Reactions"><h2>Comments And Reactions</h2>${discussionFor(post.postId) ? '<p class="muted" data-discussion-status role="status">댓글·반응 불러오는 중…</p><button type="button" data-discussion-retry hidden>다시 시도</button><div class="giscus" id="comments"></div><noscript><p class="muted">댓글과 반응을 보려면 JavaScript를 켜 주세요.</p></noscript>' : '<p class="muted" role="status">댓글 연결이 준비되지 않았습니다. 블로그 소유자가 댓글 설정을 저장한 뒤 게시해 주세요.</p>'}</section>`;
+		: `<section class="discussion-thread" data-post-discussion="${esc(post.postId)}" aria-label="댓글과 반응">${discussionFor(post.postId) ? '<p class="muted" data-discussion-status role="status">댓글·반응 불러오는 중…</p><button type="button" data-discussion-retry hidden>다시 시도</button><div class="giscus" id="comments"></div><noscript><p class="muted">댓글과 반응을 보려면 JavaScript를 켜 주세요.</p></noscript>' : '<p class="muted" role="status">댓글 연결이 준비되지 않았습니다. 블로그 소유자가 댓글 설정을 저장한 뒤 게시해 주세요.</p>'}</section>`;
 
 const snapshotCounts = (post) => {
 	const mapping = discussionFor(post.postId);
@@ -2192,13 +2195,13 @@ const reactionOverview = () => {
 	if (!complete)
 		return '<section class="home-reaction"><h2>Reaction</h2><p class="muted" role="status">반응 집계가 준비되지 않았습니다. 블로그를 업데이트해 주세요.</p></section>';
 	const tabs = reactions
-		.map(
-			([key, emoji, label], index) =>
-				`<button type="button" data-reaction-kind="${key}" aria-pressed="${index === 0}" aria-label="${label} 순위"><span aria-hidden="true">${emoji}</span></button>`
-		)
+		.map(([key, emoji, label], index) => {
+			const total = posts.reduce((sum, post) => sum + (snapshotCounts(post)?.[key] ?? 0), 0);
+			return `<button type="button" data-reaction-kind="${key}" aria-pressed="${index === 0}" aria-label="${label} 순위 · ${total}개 반응"><span class="reaction-emoji" aria-hidden="true">${emoji}</span><span class="reaction-total" aria-hidden="true">${total}</span></button>`;
+		})
 		.join('');
 	const panels = reactions
-		.map(([key, emoji, label], index) => {
+		.map(([key, , label], index) => {
 			const ranked = posts
 				.flatMap((post) => {
 					const counts = snapshotCounts(post);
@@ -2212,12 +2215,12 @@ const reactionOverview = () => {
 				)
 				.slice(0, 5);
 			const list = ranked.length
-				? `<ol class="reaction-ranking">${ranked.map(({ post, count }) => `<li><span class="linked-post-title">${linkedPostTitle(post)}</span><span class="reaction-ranking-count" aria-label="${label} ${count}"><span aria-hidden="true">${emoji}</span> ${count}</span></li>`).join('')}</ol>`
-				: `<p class="muted">아직 ${esc(label)} 반응이 있는 글이 없습니다.</p>`;
+				? `<ol class="reaction-ranking">${ranked.map(({ post, count }, rank) => `<li><span class="reaction-rank" aria-hidden="true">${rank + 1}</span><span class="linked-post-title">${linkedPostTitle(post)}</span><span class="reaction-ranking-count" aria-label="${label} ${count}">${count}</span></li>`).join('')}</ol>`
+				: `<p class="reaction-empty muted">아직 ${esc(label)} 반응이 없습니다.</p>`;
 			return `<div data-reaction-panel="${key}" aria-label="${label} Top 5"${index ? ' hidden' : ''}>${list}</div>`;
 		})
 		.join('');
-	return `<section class="home-reaction" data-reaction-ranking><h2>Reaction</h2><p class="muted reaction-caption">게시·업데이트 시 집계 · <time datetime="${new Date(capturedAt).toISOString()}">${new Date(capturedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC</time></p><div class="reaction-tabs" role="group" aria-label="반응별 순위">${tabs}</div>${panels}</section>`;
+	return `<section class="home-reaction" data-reaction-ranking><header class="reaction-heading"><h2>Reaction</h2><span aria-hidden="true">Top 5</span></header><div class="reaction-tabs" role="group" aria-label="반응별 순위">${tabs}</div>${panels}</section>`;
 };
 
 const behavior = `<script>(()=>{
@@ -2601,11 +2604,7 @@ const blogBooks = () => {
 };
 const blogHeatmap = (items) => {
 	const dates = items.map(overviewDay).filter(Boolean).sort();
-	const unknown = items.filter((post) => post.protectedEnvelope && !overviewDay(post)).length;
-	const notice = unknown
-		? `<p class="muted">수정일을 확인할 수 없는 보호된 글 ${unknown}개는 날짜별 집계에서 제외됩니다.</p>`
-		: '';
-	if (!dates.length) return `<p class="muted">날짜가 있는 글이 아직 없습니다.</p>${notice}`;
+	if (!dates.length) return '<p class="muted">아직 활동이 없습니다.</p>';
 	const year = Number(dates.at(-1).slice(0, 4));
 	const counts = new Map();
 	for (const day of dates)
@@ -2632,7 +2631,7 @@ const blogHeatmap = (items) => {
 		);
 	}
 	const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
-	return `${notice}<p class="muted">${year} · ${total}개 글 · 마지막 수정일 기준 (UTC)</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
+	return `<p class="muted heatmap-year">${year}</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
 };
 const postByUrl = new Map(posts.map((post) => [postUrl(post), post]));
 const staticDocsTree = (entries, filterable = false) =>
@@ -2681,7 +2680,6 @@ const homeOverview = (selectedTheme) => {
 		.filter(overviewDay)
 		.sort((a, b) => overviewDay(b).localeCompare(overviewDay(a)))
 		.slice(0, 12);
-	const undated = posts.filter((post) => post.protectedEnvelope && !overviewDay(post));
 	const activityByDay = new Map();
 	for (const post of dated) {
 		const day = overviewDay(post);
@@ -2696,17 +2694,7 @@ const homeOverview = (selectedTheme) => {
 				: compactList(starred);
 	const stars = `<section class="home-stars"><h2>Pinned</h2>${starred.length ? starList : '<p class="muted">아직 고정한 글이 없습니다.</p>'}</section>`;
 	const heatmap = `<section class="home-heatmap"><h2>Post Activity</h2>${blogHeatmap(posts)}</section>`;
-	const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<div class="linked-post-title">${linkedPostTitle(post)}</div>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}${
-		undated.length
-			? `<p class="muted">날짜 미확인 · 보호된 글 ${undated.length}개</p><ul class="post-activity">${undated
-					.slice(0, 12)
-					.map(
-						(post) =>
-							`<li><div class="linked-post-title">${linkedPostTitle(post)}</div></li>`
-					)
-					.join('')}</ul>`
-			: ''
-	}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
+	const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<div class="linked-post-title">${linkedPostTitle(post)}</div>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
 	const composition =
 		selectedTheme === 'layall'
 			? `<div class="archive-ledger">${heatmap}${activity}</div>`

@@ -1,0 +1,14 @@
+{
+  "format": "layall-protected-activity",
+  "version": 1,
+  "posts": {
+    "post-23c354cda433bb63de6699862f0afa87": {
+      "sourceSha256": "0d5ed54ddbb5ec611610b0ea64456912e88024c35c64f816c6720cce3bbb50e9",
+      "day": "2026-10-16"
+    },
+    "post-821f44b92e12b2852d6da5b4c2c319d2": {
+      "sourceSha256": "288d1e924a77a4cd48086873569e9c0902c9fc528200813dc5b66edc82a5330a",
+      "day": "2026-10-16"
+    }
+  }
+}
