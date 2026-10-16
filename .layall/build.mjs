@@ -1856,6 +1856,12 @@ ${themeOrder.map((name) => `[data-palette="${name}"]{--palette-primary:${palette
 html[data-color-mode=dark] .palette-dot{background:var(--palette-dark)}@media(prefers-color-scheme:dark){html[data-color-mode=system] .palette-dot{background:var(--palette-dark)}}
 .palette-picker{position:relative;min-width:0;max-width:100%;flex:0 1 auto}.palette-picker summary{display:flex;align-items:center;gap:.5rem;min-height:36px;min-width:0;padding:.25rem .5rem;cursor:pointer;list-style:none;font-size:calc(.85rem * var(--font-scale))}.palette-picker summary::-webkit-details-marker{display:none}.palette-picker summary::after{content:"⌄";margin-left:.25rem}.palette-options{position:fixed;z-index:60;top:0;left:0;width:10rem;max-width:calc(100vw - 3rem);max-height:calc(100vh - 1rem);overflow:auto;overscroll-behavior:contain;padding:.3rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}.palette-options button{display:flex;align-items:center;gap:.65rem;min-height:40px;width:100%;min-width:0;border:0;border-radius:4px;padding:.45rem .65rem;background:transparent;color:var(--ink);cursor:pointer;text-align:left}.palette-options button[aria-checked=true]{background:var(--surface-2);font-weight:700}.palette-picker summary:focus-visible,.palette-options button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme=layall] .heatmap-day[data-level="0"]{background:color-mix(in srgb,var(--paper) 72%,var(--surface-2))}
+html[data-theme=layall] .home-heatmap .heatmap-year-picker>summary{min-height:2.75rem;padding:.35rem .75rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-weight:700}html[data-theme=layall] .home-heatmap .heatmap-year-options{min-width:8rem;border-radius:14px;padding:.45rem;box-shadow:0 12px 28px rgba(69,88,93,.16)}html[data-theme=layall] .home-heatmap .heatmap-year-options button{border-radius:9px}
+html[data-theme=blog] .home-heatmap .heatmap-summary{padding-bottom:.6rem;border-bottom:1px solid var(--line)}html[data-theme=blog] .home-heatmap .heatmap-year-picker>summary{min-height:32px;padding:.25rem .55rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-weight:600}html[data-theme=blog] .home-heatmap .heatmap-year-options{border-radius:6px;box-shadow:0 8px 20px rgba(27,31,36,.12)}html[data-theme=blog] .home-heatmap .heatmap-year-options button{min-height:36px;border-radius:4px;font-size:.92em}
+html[data-theme=minimal] .home-heatmap .heatmap-year-picker>summary{padding:.15rem 0;border-bottom:1px solid currentColor;color:var(--ink);font-weight:600}html[data-theme=minimal] .home-heatmap .heatmap-year-options{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:.25rem 0}html[data-theme=minimal] .home-heatmap .heatmap-year-options button{min-height:36px;border-radius:0;padding:.35rem .25rem}
+html[data-theme=portfolio] .home-heatmap .heatmap-year-picker>summary{min-height:2.8rem;padding:.45rem .9rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);box-shadow:var(--shadow);font-weight:700}html[data-theme=portfolio] .home-heatmap .heatmap-year-options{border-radius:18px;padding:.5rem;box-shadow:0 16px 32px rgba(73,77,60,.16)}html[data-theme=portfolio] .home-heatmap .heatmap-year-options button{min-height:42px;border-radius:12px}
+html[data-theme=docs] .home-heatmap .heatmap-year-picker>summary{min-height:36px;padding:.3rem .55rem;border:1px solid var(--line);border-radius:7px;background:var(--surface);font-size:.9em;font-weight:650}html[data-theme=docs] .home-heatmap .heatmap-year-options{border-radius:7px;box-shadow:0 8px 22px rgba(31,41,51,.14);padding:.25rem}html[data-theme=docs] .home-heatmap .heatmap-year-options button{min-height:36px;border-radius:4px;padding:.35rem .55rem}
+.heatmap-summary{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem;min-width:0}.heatmap-year-picker{position:relative;min-width:0}.heatmap-year-picker>summary{display:flex;align-items:center;gap:.4rem;margin:0;cursor:pointer;list-style:none;white-space:nowrap}.heatmap-year-picker>summary::-webkit-details-marker{display:none}.heatmap-year-picker>summary::after{content:"⌄";font-size:.8em}.heatmap-year-options{position:absolute;z-index:10;top:calc(100% + .35rem);left:0;display:grid;min-width:6rem;max-height:14rem;overflow:auto;padding:.3rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}.heatmap-year-options button{display:block;min-height:40px;border:0;border-radius:5px;padding:.45rem .7rem;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}.heatmap-year-options button:hover,.heatmap-year-options button[aria-selected=true]{background:var(--accent-soft);color:var(--accent)}.heatmap-summary .heatmap-total{flex:none;margin:0;white-space:nowrap}
 .discussion-thread{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line);min-width:0}.discussion-thread>button{padding:.5rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.discussion-thread>button:focus-visible,.reaction-selector button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.home-reaction{grid-column:1/-1;min-width:0;margin-bottom:2.5rem}.reaction-layout{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:1.5rem;margin-top:1rem}.reaction-selector{display:flex;flex-direction:column;align-items:stretch;gap:.15rem;min-width:44px;max-width:7rem}.reaction-selector button{position:relative;display:flex;align-items:center;justify-content:flex-start;gap:.5rem;min-width:44px;min-height:44px;padding:.4rem .4rem .4rem 0;border:0;background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer}.reaction-selector button:hover{color:var(--accent)}.reaction-selector button[aria-pressed=true]{color:var(--accent)}.reaction-selector button[aria-pressed=true] .reaction-total{font-weight:650}.reaction-total{min-width:0;overflow-wrap:anywhere;font-size:calc(.8rem * var(--font-scale));font-variant-numeric:tabular-nums}.heatmap-year{margin-bottom:0}.heatmap-total{margin:0 0 .75rem}.reaction-results{min-width:0}.reaction-panel-label{margin:0 0 .5rem;font-size:calc(.9rem * var(--font-scale));font-weight:600}html[data-js=true] .reaction-panel-label{display:none}.reaction-ranking{padding:0;margin:0;list-style:none}.reaction-ranking li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:.75rem;padding:.5rem 0}.reaction-ranking .linked-post-title{min-width:0;overflow-wrap:anywhere}.reaction-ranking-count{min-width:2ch;text-align:right;color:var(--muted);font-size:calc(.88rem * var(--font-scale));font-variant-numeric:tabular-nums}.reaction-empty{margin:.75rem 0;padding:0}.article-frame>.docs-sidebar-wrap{display:none}html:not([data-js=true]) [data-discussion-status]{display:none}html:not([data-js=true]) .reaction-selector{display:none}html:not([data-js=true]) .reaction-layout{display:block}html:not([data-js=true]) [data-reaction-panel]{margin-bottom:1.5rem}html:not([data-js=true]) [data-reaction-panel][hidden]{display:block!important}
 @media(max-width:680px){.discussion-thread{margin-top:2rem;padding-top:1.5rem}.reaction-layout{gap:.75rem}.reaction-selector{max-width:5.5rem}.reaction-selector button{gap:.3rem;padding-right:.1rem}.reaction-ranking li{gap:.5rem}}
 html:not([data-js=true]) .site-nav{display:flex;position:static;flex-wrap:wrap;width:auto;box-shadow:none}html:not([data-js=true]) .header-inner{flex-wrap:wrap}html:not([data-js=true]) :is(.nav-toggle,.post-toc-toggle,.appearance-controls){display:none}
@@ -2550,7 +2556,8 @@ const bindBlog=()=>{
 window.addEventListener('hashchange',()=>syncBlogHash());
 let selectedReaction='+1';
 const bindReactions=()=>{const section=document.querySelector('[data-reaction-ranking]');if(!section)return;const select=key=>{selectedReaction=key;section.querySelectorAll('[data-reaction-kind]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.reactionKind===key)));section.querySelectorAll('[data-reaction-panel]').forEach(panel=>panel.hidden=panel.dataset.reactionPanel!==key)};section.querySelectorAll('[data-reaction-kind]').forEach(button=>button.addEventListener('click',()=>select(button.dataset.reactionKind)));select(selectedReaction)};
-const bindPage=(query='')=>{bindDocs();bindSearch(query);bindBlog();bindReactions()};
+	const bindHeatmap=()=>{const section=mount?.querySelector('[data-heatmap]');if(!section)return;const picker=section.querySelector('[data-heatmap-year-picker]');const summary=picker?.querySelector('[data-heatmap-year-label]');const total=section.querySelector('[data-heatmap-total]');const options=[...section.querySelectorAll('[data-heatmap-year-option]')];const panels=[...section.querySelectorAll('[data-heatmap-panel]')];if(!picker||!summary||!total||!options.length||!panels.length)return;const syncExpanded=()=>summary.setAttribute('aria-expanded',String(picker.open));const select=year=>{const panel=panels.find(node=>node.dataset.heatmapPanel===year);if(!panel)return;summary.textContent=year;summary.setAttribute('aria-controls',panel.id);total.textContent=panel.dataset.heatmapTotal+'개 글';panels.forEach(node=>node.hidden=node!==panel);options.forEach(node=>node.setAttribute('aria-selected',String(node.dataset.heatmapYearOption===year)));picker.open=false;syncExpanded()};options.forEach(option=>option.addEventListener('click',()=>select(option.dataset.heatmapYearOption)));picker.addEventListener('toggle',syncExpanded);select(options.find(option=>option.getAttribute('aria-selected')==='true')?.dataset.heatmapYearOption||options[0].dataset.heatmapYearOption)};
+	const bindPage=(query='')=>{bindDocs();bindSearch(query);bindBlog();bindHeatmap();bindReactions()};
 const activate=(next)=>{if(!layoutThemes.has(next)||!mount)return;const articleShell=mount.querySelector('[data-article-shell]');if(articleShell){root.dataset.theme=next;root.dataset.layallTheme=next;articleShell.className=next==='docs'?'docs-layout':'article-frame';articleShell.querySelector('[data-article-main]').className=next==='docs'?'docs-content':'article-shell theme-article-'+next;syncLayout();bindDocs();return}const template=document.querySelector('template[data-theme-layout="'+next+'"]');if(!template)return;const query=document.querySelector('[data-search-input]')?.value||'';pageGeneration+=1;const fragment=template.content.cloneNode(true);fragment.querySelectorAll('[data-layout-id]').forEach(node=>{node.id=node.dataset.layoutId;node.removeAttribute('data-layout-id')});const retained=new Map([...document.querySelectorAll('[data-theme-piece]')].map(node=>[node.dataset.themePiece,node]));const used=new Set();fragment.querySelectorAll('[data-theme-slot]').forEach(target=>{const piece=retained.get(target.dataset.themeSlot);if(piece){used.add(target.dataset.themeSlot);target.replaceWith(piece)}});if(pool)pool.replaceChildren(...[...retained].filter(([name])=>!used.has(name)).map(([,node])=>node));root.dataset.theme=next;root.dataset.layallTheme=next;mount.replaceChildren(fragment);syncLayout();bindPage(query)};
 const savedColor=readStored('layall-color-mode');if(colorModes.has(savedColor))root.dataset.colorMode=savedColor;syncColor();
 document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{const mode=button.dataset.color;if(!colorModes.has(mode))return;root.dataset.colorMode=mode;writeStored('layall-color-mode',mode);syncColor()}));
@@ -2783,33 +2790,50 @@ const blogBooks = () => {
 const blogHeatmap = (items) => {
 	const dates = items.map(overviewDay).filter(Boolean).sort();
 	if (!dates.length) return '<p class="muted">아직 활동이 없습니다.</p>';
-	const year = Number(dates.at(-1).slice(0, 4));
-	const counts = new Map();
-	for (const day of dates)
-		if (Number(day.slice(0, 4)) === year) counts.set(day, (counts.get(day) ?? 0) + 1);
-	const first = new Date(`${String(year).padStart(4, '0')}-01-01T00:00:00.000Z`);
-	const offset = first.getUTCDay(); // Sunday-first UTC columns, including the partial first week.
-	const cells = Array.from({ length: offset }, () => '<span aria-hidden="true"></span>');
-	const months = [];
-	let index = offset;
-	for (
-		const date = new Date(first);
-		date.getUTCFullYear() === year;
-		date.setUTCDate(date.getUTCDate() + 1), index++
-	) {
-		const day = date.toISOString().slice(0, 10);
-		const count = counts.get(day) ?? 0;
-		const label = `${day}: ${count}개 글`;
-		if (date.getUTCDate() === 1)
-			months.push(
-				`<span style="grid-column:${Math.floor(index / 7) + 1}" data-month="${date.getUTCMonth() + 1}">${date.getUTCMonth() + 1}월</span>`
+	const years = [...new Set(dates.map((day) => Number(day.slice(0, 4))))].sort((a, b) => b - a);
+	const yearPanels = years.map((year) => {
+		const counts = new Map();
+		for (const day of dates)
+			if (Number(day.slice(0, 4)) === year) counts.set(day, (counts.get(day) ?? 0) + 1);
+		const first = new Date(`${String(year).padStart(4, '0')}-01-01T00:00:00.000Z`);
+		const offset = first.getUTCDay(); // Sunday-first UTC columns, including the partial first week.
+		const cells = Array.from({ length: offset }, () => '<span aria-hidden="true"></span>');
+		const months = [];
+		let index = offset;
+		for (
+			const date = new Date(first);
+			date.getUTCFullYear() === year;
+			date.setUTCDate(date.getUTCDate() + 1), index++
+		) {
+			const day = date.toISOString().slice(0, 10);
+			const count = counts.get(day) ?? 0;
+			const label = `${day}: ${count}개 글`;
+			if (date.getUTCDate() === 1)
+				months.push(
+					`<span style="grid-column:${Math.floor(index / 7) + 1}" data-month="${date.getUTCMonth() + 1}">${date.getUTCMonth() + 1}월</span>`
+				);
+			cells.push(
+				`<span class="heatmap-day" data-date="${day}" data-level="${Math.min(count, 4)}" title="${label}" role="img" aria-label="${label}"></span>`
 			);
-		cells.push(
-			`<span class="heatmap-day" data-date="${day}" data-level="${Math.min(count, 4)}" title="${label}" role="img" aria-label="${label}"></span>`
-		);
-	}
-	const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
-	return `<p class="muted heatmap-year">${year}</p><p class="muted heatmap-total">${total}개 글</p><div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
+		}
+		const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+		const panel = `<div class="heatmap-scroll" tabindex="0" role="region" aria-label="${year}년 포스팅 히트맵, ${counts.size}일에 ${total}개 글"><div class="heatmap-chart"><div class="heatmap-months" aria-hidden="true">${months.join('')}</div><div class="heatmap-weekdays" aria-hidden="true">${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}</div><div class="heatmap-grid">${cells.join('')}</div></div></div><div class="heatmap-legend" aria-hidden="true">${[0, 1, 2, 3, 4].map((level) => `<span class="heatmap-day" data-level="${level}"></span>`).join('')}</div>`;
+		return { year, total, panel };
+	});
+	const selected = yearPanels[0];
+	const options = yearPanels
+		.map(
+			({ year }, index) =>
+				`<button type="button" role="option" data-heatmap-year-option="${year}" aria-selected="${index === 0}">${year}</button>`
+		)
+		.join('');
+	const panels = yearPanels
+		.map(
+			({ year, total, panel }, index) =>
+				`<div id="heatmap-panel-${year}" data-heatmap-panel="${year}" data-heatmap-total="${total}"${index ? ' hidden' : ''}>${panel}</div>`
+		)
+		.join('');
+	return `<div class="heatmap-summary"><details class="heatmap-year-picker" data-heatmap-year-picker><summary class="muted heatmap-year" data-heatmap-year-label aria-label="Post Activity 연도 선택" aria-controls="heatmap-panel-${selected.year}" aria-expanded="false">${selected.year}</summary><div class="heatmap-year-options" role="listbox" aria-label="연도 선택">${options}</div></details><p class="muted heatmap-total" data-heatmap-total aria-live="polite">${selected.total}개 글</p></div>${panels}`;
 };
 const postByUrl = new Map(posts.map((post) => [postUrl(post), post]));
 const staticDocsTree = (entries, filterable = false) =>
@@ -2871,7 +2895,7 @@ const homeOverview = (selectedTheme) => {
 				? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>`
 				: compactList(starred);
 	const stars = `<section class="home-stars"><h2>Pinned</h2>${starred.length ? starList : '<p class="muted">아직 고정한 글이 없습니다.</p>'}</section>`;
-	const heatmap = `<section class="home-heatmap"><h2>Post Activity</h2>${blogHeatmap(posts)}</section>`;
+	const heatmap = `<section class="home-heatmap" data-heatmap><h2>Post Activity</h2>${blogHeatmap(posts)}</section>`;
 	const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<div class="linked-post-title">${linkedPostTitle(post)}</div>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">아직 게시한 글이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
 	const composition =
 		selectedTheme === 'layall'
