@@ -11,6 +11,41 @@
   ],
   "feedEnabled": true,
   "giscusEnabled": false,
+  "githubDiscussionCategory": "Post & Comments",
+  "githubDiscussionConfig": {
+    "categoryId": "DIC_kwDOUROzx84DIlvr",
+    "categoryName": "Post & Comments",
+    "repository": "seungyeah/seungyeah.github.io",
+    "repositoryId": "R_kgDOUROzxw"
+  },
+  "githubDiscussionMap": {
+    "post-23c354cda433bb63de6699862f0afa87": {
+      "authorId": "U_kgDOBwcVmQ",
+      "nodeId": "D_kwDOUROzx84AqGTm",
+      "number": 6
+    },
+    "post-2a9fbed645c5a2bc3681d4a711c452a8": {
+      "authorId": "U_kgDOBwcVmQ",
+      "nodeId": "D_kwDOUROzx84AqGTn",
+      "number": 7
+    },
+    "post-7f3dbd195859c67009bad241cfacd4a1": {
+      "authorId": "U_kgDOBwcVmQ",
+      "nodeId": "D_kwDOUROzx84AqGTo",
+      "number": 8
+    },
+    "post-821f44b92e12b2852d6da5b4c2c319d2": {
+      "authorId": "U_kgDOBwcVmQ",
+      "nodeId": "D_kwDOUROzx84AqGTp",
+      "number": 9
+    },
+    "post-bcaf33d3524fbd2a5bde0a9335ae4f83": {
+      "authorId": "U_kgDOBwcVmQ",
+      "nodeId": "D_kwDOUROzx84AqGTq",
+      "number": 10
+    }
+  },
+  "githubDiscussionsEnabled": true,
   "githubIssueMap": {
     "post-23c354cda433bb63de6699862f0afa87": {
       "authorId": 117904793,
@@ -30,6 +65,76 @@
     }
   },
   "githubIssuesEnabled": true,
+  "githubReactionSnapshot": {
+    "capturedAt": 1792143620398,
+    "posts": {
+      "post-23c354cda433bb63de6699862f0afa87": {
+        "counts": {
+          "+1": 0,
+          "-1": 0,
+          "confused": 0,
+          "eyes": 0,
+          "heart": 0,
+          "hooray": 0,
+          "laugh": 0,
+          "rocket": 0
+        },
+        "discussionId": "D_kwDOUROzx84AqGTm"
+      },
+      "post-2a9fbed645c5a2bc3681d4a711c452a8": {
+        "counts": {
+          "+1": 0,
+          "-1": 0,
+          "confused": 0,
+          "eyes": 0,
+          "heart": 0,
+          "hooray": 0,
+          "laugh": 0,
+          "rocket": 0
+        },
+        "discussionId": "D_kwDOUROzx84AqGTn"
+      },
+      "post-7f3dbd195859c67009bad241cfacd4a1": {
+        "counts": {
+          "+1": 0,
+          "-1": 0,
+          "confused": 0,
+          "eyes": 0,
+          "heart": 0,
+          "hooray": 0,
+          "laugh": 0,
+          "rocket": 0
+        },
+        "discussionId": "D_kwDOUROzx84AqGTo"
+      },
+      "post-821f44b92e12b2852d6da5b4c2c319d2": {
+        "counts": {
+          "+1": 0,
+          "-1": 0,
+          "confused": 0,
+          "eyes": 0,
+          "heart": 0,
+          "hooray": 0,
+          "laugh": 0,
+          "rocket": 0
+        },
+        "discussionId": "D_kwDOUROzx84AqGTp"
+      },
+      "post-bcaf33d3524fbd2a5bde0a9335ae4f83": {
+        "counts": {
+          "+1": 0,
+          "-1": 0,
+          "confused": 0,
+          "eyes": 0,
+          "heart": 0,
+          "hooray": 0,
+          "laugh": 0,
+          "rocket": 0
+        },
+        "discussionId": "D_kwDOUROzx84AqGTq"
+      }
+    }
+  },
   "locale": "ko-KR",
   "profileBio": "ai에게 뇌대리중인 인간의 인생 로그.",
   "profileImage": {
