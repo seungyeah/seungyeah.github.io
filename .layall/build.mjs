@@ -280,7 +280,7 @@ function folderCrypto(platform = globalThis) {
 	};
 	const derive = async (e, password) => {
 		const p = validate(e);
-		if (typeof password !== 'string' || !password || enc.encode(password).length > 1024) fail();
+		if (typeof password !== 'string' || !password) fail();
 		const material = await platform.crypto.subtle.importKey(
 			'raw',
 			enc.encode(password),
@@ -575,7 +575,8 @@ function mountProtected(envelope, renderMarkdown) {
 	const host = document.querySelector('[data-protected-post]');
 	if (!host) return;
 	const urls = [];
-	let generation = 0;
+	let generation = 0,
+		disposeComments;
 	const name = core.scope(core.namespace(envelope));
 	const channel =
 		typeof BroadcastChannel === 'function'
@@ -583,6 +584,8 @@ function mountProtected(envelope, renderMarkdown) {
 			: null;
 	const clear = () => {
 		generation++;
+		disposeComments?.();
+		disposeComments = undefined;
 		urls.splice(0).forEach((url) => URL.revokeObjectURL(url));
 		host.replaceChildren();
 		document.title = '보호된 글';
@@ -604,7 +607,6 @@ function mountProtected(envelope, renderMarkdown) {
 		input.type = 'password';
 		input.autocomplete = 'current-password';
 		input.required = true;
-		input.maxLength = 1024;
 		input.setAttribute('aria-label', '폴더 비밀번호');
 		const button = text('button', '잠금 해제');
 		button.type = 'submit';
@@ -701,6 +703,9 @@ function mountProtected(envelope, renderMarkdown) {
 			link.download = String(a.path).split('/').pop();
 			host.append(link, document.createElement('br'));
 		}
+		const comments = document.querySelector('[data-protected-discussion]');
+		if (comments)
+			disposeComments = mountProtectedDiscussion(JSON.parse(comments.textContent), host);
 	};
 	channel &&
 		(channel.onmessage = (event) => {
@@ -2027,17 +2032,182 @@ ${name === 'blog' || name === 'docs' ? '.gsc-comment-header{border-bottom:1px so
 `;
 };
 const giscusThemeUrls = {};
+const protectedGiscusThemeUrls = {};
 if (discussionSetup)
 	for (const name of themeOrder) {
 		giscusThemeUrls[name] = {};
+		protectedGiscusThemeUrls[name] = {};
 		for (const mode of ['light', 'dark']) {
 			const css = giscusCss(name, mode);
 			const digest = createHash('sha256').update(css).digest('hex').slice(0, 16);
 			const file = `assets/giscus/${name}-${mode}-${digest}.css`;
 			write(file, css);
 			giscusThemeUrls[name][mode] = absolute(`/${file}`);
+			if (posts.some((post) => post.protectedEnvelope)) {
+				// Upstream Giscus.tsx: h4.gsc-comments-count inside .gsc-left-header.
+				// A separate accessible description accompanies the iframe below.
+				const protectedCss =
+					css +
+					'\n.gsc-left-header{align-items:baseline;flex-wrap:wrap}.gsc-comments-count::after{content:"댓글은 암호화되지 않습니다.";display:block;margin-top:.35rem;color:var(--color-fg-muted);font-size:calc(.875rem * var(--layall-type-scale));font-weight:400;line-height:1.5;white-space:normal}';
+				const protectedDigest = createHash('sha256')
+					.update(protectedCss)
+					.digest('hex')
+					.slice(0, 16);
+				const protectedFile = `assets/giscus/${name}-${mode}-protected-${protectedDigest}.css`;
+				write(protectedFile, protectedCss);
+				protectedGiscusThemeUrls[name][mode] = absolute(`/${protectedFile}`);
+			}
 		}
 	}
+
+// Protected pages use the official widget directly: client.js reads page metadata
+// and runs in the decrypted parent's origin. No article data or keys enter this config.
+function mountProtectedDiscussion(config, host) {
+	const section = document.createElement('section');
+	section.className = 'discussion-thread';
+	section.setAttribute('aria-label', '댓글과 반응');
+	const status = document.createElement('p');
+	status.className = 'muted';
+	status.setAttribute('role', 'status');
+	section.append(status);
+	host.append(section);
+	if (!config) {
+		status.textContent = '댓글 연결이 준비되지 않았습니다.';
+		return () => section.remove();
+	}
+	const notice = document.createElement('p');
+	notice.id = 'protected-comments-notice';
+	notice.textContent = '댓글은 암호화되지 않습니다.';
+	// CSS generated content is not consistently announced by assistive technology.
+	// Give the iframe the same description without duplicating the visible notice.
+	notice.style.cssText =
+		'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap';
+	section.append(notice);
+	const frame = document.createElement('iframe');
+	frame.className = 'giscus-frame';
+	frame.title = '댓글과 반응';
+	frame.setAttribute('aria-describedby', notice.id);
+	frame.setAttribute('scrolling', 'no');
+	frame.setAttribute('allow', 'clipboard-write');
+	frame.referrerPolicy = 'no-referrer';
+	frame.style.cssText = 'width:100%;min-height:150px;border:0';
+	const root = document.documentElement;
+	const system = window.matchMedia('(prefers-color-scheme: dark)');
+	const theme = () => {
+		const name = Object.hasOwn(config.themes, root.dataset.theme)
+			? root.dataset.theme
+			: 'layall';
+		const mode =
+			root.dataset.colorMode === 'dark' ||
+			(root.dataset.colorMode === 'system' && system.matches)
+				? 'dark'
+				: 'light';
+		return config.themes[name][mode];
+	};
+	let disposed = false,
+		session = '';
+	const returned = new URL(location.href);
+	const incoming = returned.searchParams.get('giscus');
+	if (incoming) {
+		session = incoming;
+		returned.searchParams.delete('giscus');
+		history.replaceState(history.state, '', returned);
+	}
+	try {
+		if (incoming) localStorage.setItem('giscus-session', JSON.stringify(incoming));
+		else session = JSON.parse(localStorage.getItem('giscus-session') || '""');
+	} catch {}
+	if (typeof session !== 'string' || session.length > 16384) session = '';
+	const start = () => {
+		if (disposed) return;
+		status.hidden = false;
+		status.textContent = '댓글·반응 불러오는 중…';
+		const params = new URLSearchParams({
+			origin: config.url,
+			backLink: config.url,
+			description: '',
+			repo: config.repo,
+			repoId: config.repoId,
+			category: config.category,
+			categoryId: config.categoryId,
+			number: String(config.number),
+			strict: '1',
+			reactionsEnabled: '1',
+			emitMetadata: '1',
+			inputPosition: 'top',
+			theme: theme(),
+			session,
+		});
+		frame.src = `https://giscus.app/${config.lang}/widget?${params}`;
+	};
+	const sync = () => {
+		if (!disposed)
+			frame.contentWindow?.postMessage(
+				{ giscus: { setConfig: { theme: theme() } } },
+				'https://giscus.app'
+			);
+	};
+	const message = (event) => {
+		if (
+			disposed ||
+			event.origin !== 'https://giscus.app' ||
+			event.source !== frame.contentWindow ||
+			!event.data?.giscus
+		)
+			return;
+		const data = event.data.giscus;
+		if (
+			data.signOut ||
+			(typeof data.error === 'string' &&
+				/Bad credentials|Invalid state value|State has expired/.test(data.error))
+		) {
+			try {
+				localStorage.removeItem('giscus-session');
+			} catch {}
+			if (session) {
+				session = '';
+				start();
+			}
+		} else if (data.error) {
+			status.hidden = false;
+			status.textContent = '댓글을 불러오지 못했습니다. 페이지를 새로고침해 주세요.';
+		} else if (Number.isFinite(data.resizeHeight) && data.resizeHeight > 0) {
+			frame.style.height = `${Math.min(100000, data.resizeHeight)}px`;
+			status.hidden = true;
+		} else if (data.discussion) status.hidden = true;
+	};
+	const appearance = new MutationObserver(sync);
+	appearance.observe(root, {
+		attributes: true,
+		attributeFilter: ['data-theme', 'data-color-mode'],
+	});
+	system.addEventListener('change', sync);
+	window.addEventListener('message', message);
+	frame.addEventListener('load', sync);
+	start();
+	section.append(frame);
+	return () => {
+		disposed = true;
+		session = '';
+		appearance.disconnect();
+		system.removeEventListener('change', sync);
+		window.removeEventListener('message', message);
+		frame.removeEventListener('load', sync);
+		section.remove();
+	};
+}
+const protectedDiscussionConfig = (post) => {
+	const mapping = discussionFor(post.postId);
+	return mapping
+		? {
+				...discussionSetup,
+				number: mapping.number,
+				url: absolute(`/posts/${encodeURIComponent(post.postId)}/`),
+				themes: protectedGiscusThemeUrls,
+				lang: String(site.locale || 'ko').startsWith('ko') ? 'ko' : 'en',
+			}
+		: null;
+};
 
 // This function is serialized into articles only. It owns exactly one client/iframe.
 function mountDiscussion(config) {
@@ -2725,7 +2895,7 @@ const toc = (headings) => {
 };
 const articleContent = (post, rendered) =>
 	post.protectedEnvelope
-		? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post><h1>보호된 글</h1><p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script><script defer src="${esc(href('/protected-post.js'))}"></script></article>`
+		? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post><h1>보호된 글</h1><p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/protected-post.js'))}"></script></article>`
 		: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
 const articleSlot = '<span data-theme-slot="article"></span>';
 const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
@@ -2734,7 +2904,7 @@ const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
 const articleLayout = (selectedTheme) =>
 	`<div data-article-shell class="${selectedTheme === 'docs' ? 'docs-layout' : 'article-frame'}">${docsNavigationSlot}<main id="content" data-article-main class="${selectedTheme === 'docs' ? 'docs-content' : `article-shell theme-article-${selectedTheme}`}">${articleSlot}</main></div>`;
 
-const protectedClient = `const href = value => ${js(basePath)}+value;const esc = ${esc.toString()};const safeExternal = ${safeExternal.toString()};const isInternalHostname = ${isInternalHostname.toString()};const safeSocialImage = ${safeSocialImage.toString()};const safeContentHref = ${safeContentHref.toString()};const plainText = ${plainText.toString()};const slugify = ${slugify.toString()};const inlineMarkdown = ${inlineMarkdown.toString()};const tableCells = ${tableCells.toString()};const imageLine = ${imageLine.toString()};const finiteMapCoordinate = ${finiteMapCoordinate.toString()};const mapCoordinatePair = ${mapCoordinatePair.toString()};const naverCameraPair = ${naverCameraPair.toString()};const parseMapPlaceUrl = ${parseMapPlaceUrl.toString()};const naverPlaceOpenUrl = ${naverPlaceOpenUrl.toString()};const mapPlaceFromLine = ${mapPlaceFromLine.toString()};const mapPlaceTile = ${mapPlaceTile.toString()};const mapPlaceCardHtml = ${mapPlaceCardHtml.toString()};const renderMarkdown = ${renderMarkdown.toString()};${folderCrypto.toString()};${mountProtected.toString()};const e=document.querySelector("[data-protected-envelope]");if(e)mountProtected(JSON.parse(e.textContent),renderMarkdown);`;
+const protectedClient = `const href = value => ${js(basePath)}+value;const esc = ${esc.toString()};const safeExternal = ${safeExternal.toString()};const isInternalHostname = ${isInternalHostname.toString()};const safeSocialImage = ${safeSocialImage.toString()};const safeContentHref = ${safeContentHref.toString()};const plainText = ${plainText.toString()};const slugify = ${slugify.toString()};const inlineMarkdown = ${inlineMarkdown.toString()};const tableCells = ${tableCells.toString()};const imageLine = ${imageLine.toString()};const finiteMapCoordinate = ${finiteMapCoordinate.toString()};const mapCoordinatePair = ${mapCoordinatePair.toString()};const naverCameraPair = ${naverCameraPair.toString()};const parseMapPlaceUrl = ${parseMapPlaceUrl.toString()};const naverPlaceOpenUrl = ${naverPlaceOpenUrl.toString()};const mapPlaceFromLine = ${mapPlaceFromLine.toString()};const mapPlaceTile = ${mapPlaceTile.toString()};const mapPlaceCardHtml = ${mapPlaceCardHtml.toString()};const renderMarkdown = ${renderMarkdown.toString()};${folderCrypto.toString()};${mountProtectedDiscussion.toString()};${mountProtected.toString()};const e=document.querySelector("[data-protected-envelope]");if(e)mountProtected(JSON.parse(e.textContent),renderMarkdown);`;
 if (posts.some((post) => post.protectedEnvelope)) write('protected-post.js', protectedClient);
 
 for (const post of posts) {
