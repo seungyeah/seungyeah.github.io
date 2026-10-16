@@ -1158,7 +1158,7 @@ const styles = `
 :root{--font-scale:1;--font-ui:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--paper:#f7f3ea;--surface:#fffdf8;--surface-2:#eee7da;--ink:#292723;--muted:#716d65;--line:#ded6c7;--accent:#716690;--accent-soft:#e8e1f3;--shadow:0 18px 60px rgba(65,55,43,.09);--radius:22px;--content:1180px;color-scheme:light}
 html[data-theme][data-color-mode=dark]{--paper:#1d1c1a;--surface:#272521;--surface-2:#33302a;--ink:#f2eee6;--muted:#bbb3a7;--line:#454139;--accent:#c8b9ec;--accent-soft:#3b344b;--shadow:0 18px 60px rgba(0,0,0,.28);color-scheme:dark}
 @media(prefers-color-scheme:dark){html[data-theme][data-color-mode=system]{--paper:#1d1c1a;--surface:#272521;--surface-2:#33302a;--ink:#f2eee6;--muted:#bbb3a7;--line:#454139;--accent:#c8b9ec;--accent-soft:#3b344b;--shadow:0 18px 60px rgba(0,0,0,.28);color-scheme:dark}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:calc(16px * var(--font-scale))/1.7 var(--font-ui)}a{color:inherit;text-decoration-color:color-mix(in srgb,var(--accent) 52%,transparent);text-underline-offset:.2em}a:hover{color:var(--accent)}img{display:block;max-width:100%}button,input{font:inherit}.skip-link{position:fixed;z-index:100;top:.75rem;left:.75rem;transform:translateY(-180%);padding:.65rem 1rem;border-radius:999px;background:var(--ink);color:var(--paper)}.skip-link:focus{transform:none}.site-header{position:sticky;z-index:30;top:0;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(18px)}.header-inner{position:relative;width:min(calc(100% - 2rem),var(--content));min-height:68px;margin:auto;display:flex;align-items:center;gap:1rem}.brand{min-width:0;overflow-wrap:anywhere;font-weight:800;letter-spacing:-.03em;text-decoration:none}.nav-toggle,.post-toc-toggle{display:none;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:.42rem .8rem;color:var(--ink);cursor:pointer}.nav-toggle{margin-left:auto}.header-actions{margin-left:auto;display:flex;align-items:center;gap:.45rem}.header-actions .nav-toggle{margin-left:0}.post-toc-toggle{position:relative;display:block;animation:toc-arrive .32s cubic-bezier(.2,.8,.2,1) both}.post-toc-toggle:hover,.post-toc-toggle[aria-expanded=true],.nav-toggle:hover,.nav-toggle[aria-expanded=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.post-toc-panel{position:absolute;z-index:50;top:calc(100% + .65rem);right:4.75rem;width:min(22rem,calc(100vw - 2rem));max-height:min(70vh,34rem);overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-.55rem) scale(.98);transform-origin:top right;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}.post-toc-panel[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}.post-toc-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.55rem}.post-toc-head strong{font-size:calc(.78rem * var(--font-scale));text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}.post-toc-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink);cursor:pointer}.post-toc-panel ol{list-style:none;margin:0;padding:0}.post-toc-panel a{display:block;padding:.4rem .55rem;border-radius:8px;text-decoration:none;font-size:calc(.88rem * var(--font-scale));color:var(--muted)}.post-toc-panel a:hover,.post-toc-panel a:focus-visible,.post-toc-panel a[aria-current=location]{background:var(--accent-soft);color:var(--accent)}.post-toc-panel .toc-level-3 a{padding-left:1.25rem}.post-toc-panel .toc-level-4 a{padding-left:2rem}@keyframes toc-arrive{from{opacity:0;transform:translateX(.55rem) scale(.94)}to{opacity:1;transform:none}}body[data-post-page=true] .site-header .nav-toggle{display:block}body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + .65rem);right:0;display:none;width:min(28rem,calc(100vw - 2rem));max-height:calc(100vh - 6rem);overflow:auto;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}body[data-post-page=true] .site-nav[data-open=true]{display:flex}.site-nav{margin-left:auto;display:flex;align-items:center;gap:1.1rem}.site-nav a{text-decoration:none;font-size:calc(.9rem * var(--font-scale));font-weight:650}.color-controls{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px}.color-controls button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}.color-controls button:hover,.color-controls button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}main{width:min(calc(100% - 2rem),var(--content));margin:auto}.site-footer{width:min(calc(100% - 2rem),var(--content));margin:5rem auto 0;padding:2rem 0 3rem;border-top:1px solid var(--line);display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.45rem;text-align:center;color:var(--muted);font-size:calc(.9rem * var(--font-scale))}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:calc(.72rem * var(--font-scale));font-weight:800;color:var(--accent)}.lead{font-size:calc(clamp(1.05rem,2vw,1.28rem) * var(--font-scale));color:var(--muted)}.muted,.post-meta{color:var(--muted);font-size:calc(.88rem * var(--font-scale))}.tag{display:inline-block;margin:.25rem .25rem 0 0;font-size:calc(.8rem * var(--font-scale));text-decoration:none;color:var(--muted)}.empty{margin:4rem 0;padding:3rem;border:1px dashed var(--line);border-radius:var(--radius);text-align:center;color:var(--muted)}.post-cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:calc(var(--radius) - 5px);background:var(--surface-2)}.page-heading{margin:4.5rem 0 2.5rem}.page-heading h1{margin:.2rem 0;font:700 calc(clamp(2.2rem,6vw,4.8rem) * var(--font-scale))/1.02 var(--font-ui);letter-spacing:-.055em}.page-heading p{max-width:48rem}.post-list{list-style:none;margin:0;padding:0}.post-list li{border-top:1px solid var(--line)}.post-list a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;padding:1.2rem 0;text-decoration:none}.post-list strong{font-size:calc(1.08rem * var(--font-scale))}.post-list span{color:var(--muted);font-size:calc(.85rem * var(--font-scale))}.pagination{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:2.5rem 0}.pagination a{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;text-decoration:none}.pagination a[aria-current=page]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:calc(16px * var(--font-scale))/1.7 var(--font-ui)}a{color:inherit;text-decoration-color:color-mix(in srgb,var(--accent) 52%,transparent);text-underline-offset:.2em}a:hover{color:var(--accent)}img{display:block;max-width:100%}button,input{font:inherit}.skip-link{position:fixed;z-index:100;top:.75rem;left:.75rem;transform:translateY(-180%);padding:.65rem 1rem;border-radius:999px;background:var(--ink);color:var(--paper)}.skip-link:focus{transform:none}.site-header{position:sticky;z-index:30;top:0;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(18px)}.header-inner{position:relative;width:min(calc(100% - 2rem),var(--content));min-height:68px;margin:auto;display:flex;align-items:center;gap:1rem}.brand{min-width:0;overflow-wrap:anywhere;font-weight:800;letter-spacing:-.03em;text-decoration:none}.nav-toggle,.post-toc-toggle{display:none;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:.42rem .8rem;color:var(--ink);cursor:pointer}.nav-toggle{margin-left:auto}.header-actions{margin-left:auto;display:flex;align-items:center;gap:.45rem}.header-actions .nav-toggle{margin-left:0}.post-toc-toggle{position:relative;display:block;animation:toc-arrive .32s cubic-bezier(.2,.8,.2,1) both}.post-toc-toggle:hover,.post-toc-toggle[aria-expanded=true],.nav-toggle:hover,.nav-toggle[aria-expanded=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.post-toc-panel{position:absolute;z-index:50;top:calc(100% + .65rem);right:4.75rem;width:min(22rem,calc(100vw - 2rem));max-height:min(70vh,34rem);overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-.55rem) scale(.98);transform-origin:top right;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}.post-toc-panel[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}.post-toc-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.55rem}.post-toc-head strong{font-size:calc(.78rem * var(--font-scale));letter-spacing:.1em;color:var(--muted)}.post-toc-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink);cursor:pointer}.post-toc-panel ol{list-style:none;margin:0;padding:0}.post-toc-panel a{display:block;padding:.4rem .55rem;border-radius:8px;text-decoration:none;font-size:calc(.88rem * var(--font-scale));color:var(--muted)}.post-toc-panel a:hover,.post-toc-panel a:focus-visible,.post-toc-panel a[aria-current=location]{background:var(--accent-soft);color:var(--accent)}.post-toc-panel .toc-level-3 a{padding-left:1.25rem}.post-toc-panel .toc-level-4 a{padding-left:2rem}@keyframes toc-arrive{from{opacity:0;transform:translateX(.55rem) scale(.94)}to{opacity:1;transform:none}}body[data-post-page=true] .site-header .nav-toggle{display:block}body[data-post-page=true] .site-nav{position:absolute;top:calc(100% + .65rem);right:0;display:none;width:min(28rem,calc(100vw - 2rem));max-height:calc(100vh - 6rem);overflow:auto;flex-direction:column;align-items:stretch;padding:1rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}body[data-post-page=true] .site-nav[data-open=true]{display:flex}.site-nav{margin-left:auto;display:flex;align-items:center;gap:1.1rem}.site-nav a{text-decoration:none;font-size:calc(.9rem * var(--font-scale));font-weight:650}.color-controls{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px}.color-controls button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}.color-controls button:hover,.color-controls button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}main{width:min(calc(100% - 2rem),var(--content));margin:auto}.site-footer{width:min(calc(100% - 2rem),var(--content));margin:5rem auto 0;padding:2rem 0 3rem;border-top:1px solid var(--line);display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.45rem;text-align:center;color:var(--muted);font-size:calc(.9rem * var(--font-scale))}.eyebrow{letter-spacing:.14em;font-size:calc(.72rem * var(--font-scale));font-weight:800;color:var(--accent)}.lead{font-size:calc(clamp(1.05rem,2vw,1.28rem) * var(--font-scale));color:var(--muted)}.muted,.post-meta{color:var(--muted);font-size:calc(.88rem * var(--font-scale))}.tag{display:inline-block;margin:.25rem .25rem 0 0;font-size:calc(.8rem * var(--font-scale));text-decoration:none;color:var(--muted)}.empty{margin:4rem 0;padding:3rem;border:1px dashed var(--line);border-radius:var(--radius);text-align:center;color:var(--muted)}.post-cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:calc(var(--radius) - 5px);background:var(--surface-2)}.page-heading{margin:4.5rem 0 2.5rem}.page-heading h1{margin:.2rem 0;font:700 calc(clamp(2.2rem,6vw,4.8rem) * var(--font-scale))/1.02 var(--font-ui);letter-spacing:-.055em}.page-heading p{max-width:48rem}.post-list{list-style:none;margin:0;padding:0}.post-list li{border-top:1px solid var(--line)}.post-list a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;padding:1.2rem 0;text-decoration:none}.post-list strong{font-size:calc(1.08rem * var(--font-scale))}.post-list span{color:var(--muted);font-size:calc(.85rem * var(--font-scale))}.pagination{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:2.5rem 0}.pagination a{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;text-decoration:none}.pagination a[aria-current=page]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .article-shell{max-width:760px;padding-top:4rem}.article{min-width:0}.article-header{margin-bottom:2.5rem}.article-header h1{margin:.4rem 0 1rem;font:700 calc(clamp(2.3rem,6vw,4.8rem) * var(--font-scale))/1.03 var(--font-ui);letter-spacing:-.05em}.article-body{font-size:calc(1.05rem * var(--font-scale))}.article-body p{margin:0 0 .5rem}.article-body h2,.article-body h3,.article-body h4{scroll-margin-top:6rem;margin:2.5rem 0 .75rem;line-height:1.25;letter-spacing:-.025em}.article-body h2{font-size:calc(1.8rem * var(--font-scale))}.article-body h3{font-size:calc(1.35rem * var(--font-scale))}.heading-anchor{margin-left:.45rem;text-decoration:none;opacity:0}.article-body :is(h2,h3,h4):hover .heading-anchor,.heading-anchor:focus{opacity:1}.article-body pre{overflow:auto;margin:1.5rem 0;padding:1.2rem;border:1px solid var(--line);border-radius:15px;background:#171816;color:#f4f1ea;font:calc(14px * var(--font-scale))/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.article-body code{padding:.13em .36em;border-radius:6px;background:var(--surface-2);font:85% ui-monospace,SFMono-Regular,Menlo,monospace}.article-body pre code{padding:0;background:transparent;font:inherit}.article-body blockquote{margin:1.5rem 0;padding:.2rem 1.25rem;border-left:3px solid var(--accent);color:var(--muted)}.article-body hr{border:0;border-top:1px solid var(--line);margin:2.4rem 0}.article-body a{overflow-wrap:anywhere}
 html[data-theme=layall]{--font-scale:1.125;--font-ui:"Omyu Pretty",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--paper:#f6f4f0;--surface:#fffdf8;--surface-2:#e8f7fb;--ink:#354146;--muted:#566b72;--line:#d9e4e2;--accent:#386c78;--accent-soft:#dff2f6;--shadow:0 22px 58px rgba(69,88,93,.13);--radius:20px;--content:1180px;}html[data-theme=layall] body{background:var(--paper)}html[data-theme=layall] .site-header{background:color-mix(in srgb,var(--surface) 86%,transparent)}.theme-article-layall .article{padding:clamp(1.25rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:0 18px 50px rgba(69,88,93,.08)}html[data-theme=layall] .article-table{background:var(--surface)}html[data-theme=layall] .article-table th{background:#eef8f8}html[data-theme=layall][data-color-mode=dark]{--paper:#17262d;--surface:#21343b;--surface-2:#29434c;--ink:#edf6f5;--muted:#aec4c8;--line:#38535c;--accent:#8dd2de;--accent-soft:#294b55;--shadow:0 22px 58px rgba(0,0,0,.28);}html[data-theme=layall][data-color-mode=dark] body{background:var(--paper)}html[data-theme=layall][data-color-mode=dark] .article-table th{background:var(--surface-2)}.theme-article-layall .article-header h1{word-break:keep-all;overflow-wrap:anywhere}
 html[data-theme=layall] :is(pre,code){font-family:var(--font-ui)}
@@ -1174,11 +1174,11 @@ html[data-theme=docs]{--paper:#fbfcfd;--surface:#fff;--surface-2:#f1f4f7;--ink:#
 select{font:inherit}.appearance-controls{display:flex;align-items:center;gap:.45rem}.theme-control{display:flex;align-items:center;gap:.35rem;color:var(--muted);font-size:calc(.78rem * var(--font-scale))}.theme-control select{max-width:8.5rem;border:1px solid var(--line);border-radius:999px;padding:.38rem 1.8rem .38rem .7rem;background:var(--surface);color:var(--ink);cursor:pointer}.floating-nav{display:none}html[data-theme=portfolio] .floating-nav{display:flex}.theme-article-blog .article{padding:clamp(1.2rem,4vw,3.5rem);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.theme-article-portfolio{max-width:820px}.theme-article-portfolio .article{padding:clamp(1.2rem,4vw,3rem);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}@media(max-width:680px){.theme-control select{min-height:36px}.color-controls{align-self:auto}}
 a.map-place-card,a.map-place-card:hover{color:var(--ink);text-decoration:none}.map-place-card{display:flex;min-height:7.5rem;margin:1.25rem 0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:none}.map-place-card:hover{border-color:var(--accent);box-shadow:none}.map-place-map{position:relative;width:7.5rem;flex:none;overflow:hidden;background:var(--surface-2)}.map-place-map img{width:100%;height:100%;max-width:none;margin:0;object-fit:cover;border-radius:0}.map-place-pin{position:absolute;width:.9rem;height:.9rem;border:2px solid #fff;border-radius:999px;background:#dc2626;box-shadow:none;transform:translate(-50%,-100%)}.map-place-credit{position:absolute;left:.25rem;bottom:.12rem;color:#fff;font-size:calc(.62rem * var(--font-scale));line-height:1;text-shadow:0 1px 1px rgba(0,0,0,.75)}.map-place-body{min-width:0;display:flex;flex:1;flex-direction:column;justify-content:center;gap:.12rem;padding:.9rem 1rem}.map-place-name{font-weight:750;letter-spacing:-.02em;line-height:1.35}.map-place-meta{color:var(--muted);font-size:calc(.82rem * var(--font-scale));font-weight:650}.map-place-coords{color:var(--muted);font-size:calc(.78rem * var(--font-scale));font-variant-numeric:tabular-nums}
 
-.home{padding:3rem 0;min-width:0}.home-main,.home section,.home-profile,.profile-copy,.knowledge-layout,.archive-ledger{min-width:0;max-width:100%}.home-profile{overflow-wrap:anywhere}.profile-portrait{min-width:0}.profile-copy:only-child{grid-column:1/-1}.profile-photo{margin:0 auto 1rem}.profile-copy h1{font:650 calc(1.7rem * var(--font-scale))/1.2 var(--font-ui);margin:.3rem 0 .8rem}.profile-bio{white-space:pre-line;color:var(--muted);margin:.5rem 0 1rem}.profile-links{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;min-width:0;max-width:100%;font-size:calc(.88rem * var(--font-scale))}.profile-links a{min-width:0;max-width:100%;overflow-wrap:anywhere}.blog-tabs{display:flex;gap:.4rem;border-bottom:1px solid var(--line);min-width:0;max-width:100%}.blog-tabs>a{min-width:0;min-height:48px;padding:.6rem 1rem;text-decoration:none;border-bottom:2px solid transparent}.blog-tabs>a[aria-selected=true]{border-bottom-color:var(--accent);font-weight:700}.blog-panel{padding-top:1.75rem;scroll-margin-top:6rem}.blog-panel:focus,.book-contents:focus{outline:none}.books-back{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;min-height:44px;text-align:center;text-decoration:none}.books-back svg{justify-self:center}.books-back span{min-width:0;overflow-wrap:anywhere}.blog-panel h2{font-size:calc(1.1rem * var(--font-scale));line-height:1.4;margin:0 0 1rem}.home-introduction{margin-bottom:2.5rem;font-size:inherit;white-space:normal;overflow-wrap:anywhere}.home-introduction p{margin:0}.home-introduction :is(h1,h2,h3,h4,h5,h6){scroll-margin-top:6rem;margin:1.5em 0 .25em;line-height:1.25;letter-spacing:-.025em}.home-introduction :is(h1,h2,h3,h4,h5,h6)+:not(h1,h2,h3,h4,h5,h6,hr),.home-introduction :is(h1,h2,h3,h4,h5,h6)+br+:not(h1,h2,h3,h4,h5,h6,hr){margin-top:0}.home-introduction :is(h1,h2,h3,h4,h5,h6)+br{display:none}.home-introduction :is(.article-table,table,thead,tbody,tfoot,tr,th,td,colgroup,col){background:transparent!important}.home-introduction h1{font-size:1.8em}.home-introduction h2{font-size:1.5em}.home-introduction h3{font-size:1.25em}.home-introduction h4{font-size:1.1em}.home-introduction :is(h5,h6){font-size:1em}.home-introduction :is(h1,h2,h3,h4,h5,h6):hover .heading-anchor{opacity:1}.home-introduction :is(ul,ol){padding-left:1.5em}.home-introduction>:first-child{margin-top:0}.home-introduction>:last-child{margin-bottom:0}.home-stars,.home-heatmap,.home-activity{margin-bottom:2.5rem}.home-stars .blog-grid{margin:0}.blog-card{min-width:0;overflow-wrap:anywhere}.blog-card h2{font:650 calc(1.1rem * var(--font-scale))/1.4 var(--font-ui)}.blog-card p{color:var(--muted);font-size:calc(.9rem * var(--font-scale))}.blog-card .post-cover{aspect-ratio:2/1}.heatmap-scroll{min-width:0;max-width:100%;overflow-x:auto;padding:.4rem 0;overscroll-behavior-x:contain}.heatmap-chart{display:grid;grid-template-columns:1.5rem max-content;grid-template-rows:1.2rem auto;column-gap:5px;width:max-content}.heatmap-months{grid-column:2;display:grid;grid-auto-columns:11px;column-gap:3px;font-size:calc(.65rem * var(--font-scale));line-height:1;white-space:nowrap;color:var(--muted)}.heatmap-weekdays{grid-column:1;grid-row:2;display:grid;grid-template-rows:repeat(7,11px);gap:3px;font-size:calc(.65rem * var(--font-scale));line-height:11px;color:var(--muted)}.heatmap-grid{grid-column:2;grid-row:2;display:grid;grid-template-rows:repeat(7,11px);grid-auto-columns:11px;grid-auto-flow:column;gap:3px;width:max-content}.heatmap-day{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--surface-2);border:1px solid var(--line)}.heatmap-day[data-level="1"]{background:color-mix(in srgb,var(--accent) 25%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="2"]{background:color-mix(in srgb,var(--accent) 50%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="3"]{background:color-mix(in srgb,var(--accent) 75%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="4"]{background:var(--accent);border-color:var(--accent)}.heatmap-legend{display:flex;justify-content:flex-end;gap:4px;margin-top:.5rem}.post-activity{list-style:none;margin:1rem 0 1.5rem;padding:0 0 0 1rem}.post-activity>li{position:relative;display:flex;align-items:baseline;gap:.75rem;margin:0;padding:.1rem 0 .9rem 1.25rem;border:0;border-left:1px solid var(--line)}.post-activity>li:last-child{padding-bottom:0}.post-activity>li::before{content:"";position:absolute;top:.9rem;left:-4px;width:7px;height:7px;border-radius:50%;background:var(--accent)}.post-activity time{flex-shrink:0;white-space:nowrap;padding:.55rem 0;color:var(--muted);font-size:calc(.8rem * var(--font-scale))}.post-activity>li.post-activity-multiple{display:block}.post-activity-multiple>time{display:block;padding-bottom:.4rem}.post-activity a{display:block;flex:1;min-width:0;min-height:44px;padding:.45rem 0;text-decoration:none;overflow-wrap:anywhere}.post-activity a:hover{text-decoration:underline}.book-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,4rem),1fr));row-gap:1.5rem;min-width:0;max-width:100%;margin:1.5rem 0;position:relative}.book-shelf::after{content:"";position:absolute;left:0;right:0;bottom:0;border-bottom:5px solid var(--line);pointer-events:none}.book-slot{display:flex;align-items:flex-end;justify-content:center;min-width:0;padding:.5rem .25rem;border-bottom:5px solid var(--line)}.book-shelf>.muted{grid-column:1/-1}.book-spine{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;flex:0 1 3.5rem;width:3.5rem;max-width:100%;height:15rem;padding:.8rem .6rem;overflow:hidden;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:3px;background:var(--surface-2);text-decoration:none}.book-spine img{position:absolute;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover;opacity:.6}.book-spine>span{writing-mode:vertical-rl;text-orientation:mixed;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:bold calc(1rem * var(--font-scale))/1.6 var(--font-ui)}.book-spine:hover{border-color:var(--accent)}.book-contents{padding:0;scroll-margin-top:6rem}.blog-panel .books-heading h2{margin:0}.books-meta{display:flex;justify-content:center;align-items:baseline;flex-wrap:wrap;gap:.25rem 1rem;margin:.25rem 0 .75rem;overflow-wrap:anywhere}.books-meta>span{min-width:0}.books-meta>span:first-child{white-space:nowrap}.blog-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}.blog-tags a{min-width:0;max-width:100%;overflow-wrap:anywhere;padding:.3rem .7rem;border:1px solid var(--line);border-radius:999px;text-decoration:none;margin:0}.blog-tags a[aria-pressed=true]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}.tag-filter-controls{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1.2rem}.tag-filter-controls label{display:flex;align-items:center;gap:.5rem}.tag-filter-controls input{width:1.1rem;height:1.1rem;accent-color:var(--accent)}.tag-filter-controls button{padding:.35rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}.tag-filter-controls button:disabled{opacity:.5;cursor:default}.home .post-list strong,.home .post-list span{min-width:0;overflow-wrap:anywhere}.home a:focus-visible,.home button:focus-visible,.home input:focus-visible,.heatmap-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.docs-directory ul ul{margin:.25rem 0 .75rem .5rem;padding-left:.75rem;border-left:1px solid var(--line)}.docs-directory>ul>li{padding:.5rem 0}.docs-directory a{font-size:calc(.95rem * var(--font-scale));padding:.4rem .6rem}.docs-nav{min-width:0;overflow-wrap:anywhere}.docs-nav ul ul{padding-left:.75rem}.docs-content{width:100%}
+.home{padding:3rem 0;min-width:0}.home-main,.home section,.home-profile,.profile-copy,.knowledge-layout,.archive-ledger{min-width:0;max-width:100%}.home-profile{overflow-wrap:anywhere}.profile-portrait{min-width:0}.profile-copy:only-child{grid-column:1/-1}.profile-photo{margin:0 auto 1rem}.profile-copy h1{font:650 calc(1.7rem * var(--font-scale))/1.2 var(--font-ui);margin:.3rem 0 .8rem}.profile-bio{white-space:pre-line;color:var(--muted);margin:.5rem 0 1rem}.profile-links{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;min-width:0;max-width:100%;font-size:calc(.88rem * var(--font-scale))}.profile-links a{min-width:0;max-width:100%;overflow-wrap:anywhere}.blog-tabs{display:flex;flex-wrap:wrap;gap:.4rem;border-bottom:1px solid var(--line);min-width:0;max-width:100%}.blog-tabs>a{min-width:0;min-height:48px;white-space:nowrap;padding:.6rem 1rem;text-decoration:none;border-bottom:2px solid transparent}.blog-tabs>a[aria-selected=true]{border-bottom-color:var(--accent);font-weight:700}.blog-panel{padding-top:1.75rem;scroll-margin-top:6rem}.blog-panel:focus,.book-contents:focus{outline:none}.books-back{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;min-height:44px;text-align:center;text-decoration:none}.books-back svg{justify-self:center}.books-back span{min-width:0;overflow-wrap:anywhere}.blog-panel h2{font-size:calc(1.1rem * var(--font-scale));line-height:1.4;margin:0 0 1rem}.home-introduction{margin-bottom:2.5rem;font-size:inherit;white-space:normal;overflow-wrap:anywhere}.home-introduction p{margin:0}.home-introduction :is(h1,h2,h3,h4,h5,h6){scroll-margin-top:6rem;margin:1.5em 0 .25em;line-height:1.25;letter-spacing:-.025em}.home-introduction :is(h1,h2,h3,h4,h5,h6)+:not(h1,h2,h3,h4,h5,h6,hr),.home-introduction :is(h1,h2,h3,h4,h5,h6)+br+:not(h1,h2,h3,h4,h5,h6,hr){margin-top:0}.home-introduction :is(h1,h2,h3,h4,h5,h6)+br{display:none}.home-introduction :is(.article-table,table,thead,tbody,tfoot,tr,th,td,colgroup,col){background:transparent!important}.home-introduction h1{font-size:1.8em}.home-introduction h2{font-size:1.5em}.home-introduction h3{font-size:1.25em}.home-introduction h4{font-size:1.1em}.home-introduction :is(h5,h6){font-size:1em}.home-introduction :is(h1,h2,h3,h4,h5,h6):hover .heading-anchor{opacity:1}.home-introduction :is(ul,ol){padding-left:1.5em}.home-introduction>:first-child{margin-top:0}.home-introduction>:last-child{margin-bottom:0}.home-stars,.home-heatmap,.home-activity{margin-bottom:2.5rem}.home-stars .blog-grid{margin:0}.blog-card{min-width:0;overflow-wrap:anywhere}.blog-card h2{font:650 calc(1.1rem * var(--font-scale))/1.4 var(--font-ui)}.blog-card p{color:var(--muted);font-size:calc(.9rem * var(--font-scale))}.blog-card .post-cover{aspect-ratio:2/1}.heatmap-scroll{min-width:0;max-width:100%;overflow-x:auto;padding:.4rem 0;overscroll-behavior-x:contain}.heatmap-chart{display:grid;grid-template-columns:1.5rem max-content;grid-template-rows:1.2rem auto;column-gap:5px;width:max-content}.heatmap-months{grid-column:2;display:grid;grid-auto-columns:11px;column-gap:3px;font-size:calc(.65rem * var(--font-scale));line-height:1;white-space:nowrap;color:var(--muted)}.heatmap-weekdays{grid-column:1;grid-row:2;display:grid;grid-template-rows:repeat(7,11px);gap:3px;font-size:calc(.65rem * var(--font-scale));line-height:11px;color:var(--muted)}.heatmap-grid{grid-column:2;grid-row:2;display:grid;grid-template-rows:repeat(7,11px);grid-auto-columns:11px;grid-auto-flow:column;gap:3px;width:max-content}.heatmap-day{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--surface-2);border:1px solid var(--line)}.heatmap-day[data-level="1"]{background:color-mix(in srgb,var(--accent) 25%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="2"]{background:color-mix(in srgb,var(--accent) 50%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="3"]{background:color-mix(in srgb,var(--accent) 75%,var(--surface));border-color:var(--accent)}.heatmap-day[data-level="4"]{background:var(--accent);border-color:var(--accent)}.heatmap-legend{display:flex;justify-content:flex-end;gap:4px;margin-top:.5rem}.post-activity{list-style:none;margin:1rem 0 1.5rem;padding:0 0 0 1rem}.post-activity>li{position:relative;display:flex;align-items:baseline;gap:.75rem;margin:0;padding:.1rem 0 .9rem 1.25rem;border:0;border-left:1px solid var(--line)}.post-activity>li:last-child{padding-bottom:0}.post-activity>li::before{content:"";position:absolute;top:.9rem;left:-4px;width:7px;height:7px;border-radius:50%;background:var(--accent)}.post-activity time{flex-shrink:0;white-space:nowrap;padding:.55rem 0;color:var(--muted);font-size:calc(.8rem * var(--font-scale))}.post-activity>li.post-activity-multiple{display:block}.post-activity-multiple>time{display:block;padding-bottom:.4rem}.post-activity a{display:block;flex:1;min-width:0;min-height:44px;padding:.45rem 0;text-decoration:none;overflow-wrap:anywhere}.post-activity a:hover{text-decoration:underline}.book-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,4rem),1fr));row-gap:1.5rem;min-width:0;max-width:100%;margin:1.5rem 0;position:relative}.book-shelf::after{content:"";position:absolute;left:0;right:0;bottom:0;border-bottom:5px solid var(--line);pointer-events:none}.book-slot{display:flex;align-items:flex-end;justify-content:center;min-width:0;padding:.5rem .25rem;border-bottom:5px solid var(--line)}.book-shelf>.muted{grid-column:1/-1}.book-spine{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;flex:0 1 3.5rem;width:3.5rem;max-width:100%;height:15rem;padding:.8rem .6rem;overflow:hidden;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:3px;background:var(--surface-2);text-decoration:none}.book-spine img{position:absolute;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover;opacity:.6}.book-spine>span{writing-mode:vertical-rl;text-orientation:mixed;max-height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:bold calc(1rem * var(--font-scale))/1.6 var(--font-ui)}.book-spine:hover{border-color:var(--accent)}.book-contents{padding:0;scroll-margin-top:6rem}.blog-panel .books-heading h2{margin:0}.books-meta{display:flex;justify-content:center;align-items:baseline;flex-wrap:wrap;gap:.25rem 1rem;margin:.25rem 0 .75rem;overflow-wrap:anywhere}.books-meta>span{min-width:0}.books-meta>span:first-child{white-space:nowrap}.blog-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}.blog-tags a{min-width:0;max-width:100%;overflow-wrap:anywhere;padding:.3rem .7rem;border:1px solid var(--line);border-radius:999px;text-decoration:none;margin:0}.blog-tags a[aria-pressed=true]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}.tag-filter-controls{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1.2rem}.tag-filter-controls label{display:flex;align-items:center;gap:.5rem}.tag-filter-controls input{width:1.1rem;height:1.1rem;accent-color:var(--accent)}.tag-filter-controls button{padding:.35rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}.tag-filter-controls button:disabled{opacity:.5;cursor:default}.home .post-list strong,.home .post-list span{min-width:0;overflow-wrap:anywhere}.home a:focus-visible,.home button:focus-visible,.home input:focus-visible,.heatmap-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.docs-directory ul ul{margin:.25rem 0 .75rem .5rem;padding-left:.75rem;border-left:1px solid var(--line)}.docs-directory>ul>li{padding:.5rem 0}.docs-directory a{font-size:calc(.95rem * var(--font-scale));padding:.4rem .6rem}.docs-nav{min-width:0;overflow-wrap:anywhere}.docs-nav ul ul{padding-left:.75rem}.docs-content{width:100%}
 .home-blog{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:2.5rem}.home-blog .home-introduction{padding:1.2rem;border:1px solid var(--line);border-radius:8px}.home-minimal{padding-top:4rem}:is(.home-blog,.home-docs,.home-minimal) .home-profile{display:grid;grid-template-columns:fit-content(38%) minmax(0,1fr);gap:clamp(.75rem,3vw,1.5rem);align-items:center;text-align:left}.home-minimal .home-profile{margin:0 0 2.5rem}:is(.home-blog,.home-docs,.home-minimal) .profile-photo{--profile-photo-height:96px;margin:0}:is(.home-blog,.home-docs,.home-minimal) .profile-links{justify-content:flex-start}.home-minimal .blog-tabs{justify-content:center}.home-minimal .home-introduction{font:calc(1.2rem * var(--font-scale))/1.8 var(--font-ui);margin:1rem 0 3rem}.home-minimal .home-stars .post-list a{padding:1rem 0}.home-minimal .blog-panel>section{margin-bottom:3rem}.home-minimal .book-spine{background:var(--surface);height:13rem}.home-layall .home-profile{display:grid;grid-template-columns:fit-content(45%) minmax(0,1fr);gap:2rem;align-items:center;margin:0 0 2rem}.home-layall .profile-photo{--profile-photo-height:128px;margin-bottom:0}.home-layall .profile-copy h1{font-size:calc(2rem * var(--font-scale))}.home-layall .home-stars{padding:1.5rem;border-radius:12px;background:var(--surface)}.home-layall .archive-ledger{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:2rem}.home-portfolio .home-profile{display:grid;grid-template-columns:minmax(140px,.65fr) minmax(0,1.35fr);gap:2.5rem;align-items:center;padding:1rem 0 3rem}.home-portfolio .profile-copy h1{font:650 calc(clamp(2.4rem,5vw,4rem) * var(--font-scale))/1.1 var(--font-ui)}.home-portfolio .profile-photo{border-radius:3px}.home-portfolio .home-introduction{font-size:calc(1.2rem * var(--font-scale));max-width:46rem}.home-projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem}.home-projects .showcase-card:nth-child(n){grid-column:auto;min-height:0;border:0;border-radius:4px;padding:0;background:transparent;box-shadow:none}.home-projects .showcase-card-content{padding:1rem 0}.home-projects .post-cover{border-radius:4px;aspect-ratio:3/2}.home-docs{max-width:1180px}.knowledge-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:2.5rem;margin-top:1.5rem}.home-docs .profile-photo{border-radius:8px}.home-docs .profile-copy h1{font:650 calc(1.2rem * var(--font-scale))/1.4 var(--font-ui)}.home-docs .blog-tabs>a{border-radius:0}.home-docs .home-introduction{border-left:2px solid var(--line);padding-left:1rem}.home-docs .home-stars .post-list a{display:block;padding:.7rem 0}.home-docs .home-stars .post-list span{display:block;font-size:calc(.75rem * var(--font-scale))}.home-docs .book-spine>span{font-family:var(--font-ui)}
 .appearance-controls,body[data-post-page=true] .appearance-controls{display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.5rem;min-width:0;max-width:100%}.theme-control{min-width:0;flex-wrap:wrap}.theme-control select{min-width:0;max-width:100%}.color-controls{flex:none;align-self:center}.site-nav{min-width:0}.site-nav>a{overflow-wrap:anywhere}.site-footer>span{min-width:0;overflow-wrap:anywhere}
 @media(max-width:900px){.home-blog{grid-template-columns:180px minmax(0,1fr);gap:1.5rem}.home-layall .archive-ledger{display:block}.knowledge-layout{grid-template-columns:160px minmax(0,1fr);gap:1.5rem}}
-@media(max-width:680px){.home{padding-top:1.5rem}.home-blog,.knowledge-layout{display:block}.home-profile{margin-bottom:1.5rem}.home-layall .home-profile,.home-portfolio .home-profile{display:block;text-align:center;padding:0;margin-bottom:1.5rem}.home-layall .profile-photo{margin-bottom:1rem}.home-layall .profile-links,.home-portfolio .profile-links{justify-content:center}.home-portfolio .profile-photo{--profile-photo-height:144px}.home-projects{grid-template-columns:1fr}.blog-tabs>a{padding:.6rem .7rem}.book-shelf{grid-template-columns:repeat(auto-fill,minmax(min(100%,3.5rem),1fr))}.book-spine{flex-basis:3rem;width:3rem;height:13rem}.home .post-list a{grid-template-columns:1fr;gap:.3rem}.home-layall .home-stars{padding:1rem}.appearance-controls{width:100%}.theme-control select{max-width:8rem}}
+@media(max-width:680px){.home{padding-top:1.5rem}.home-blog,.knowledge-layout{display:block}.home-profile{margin-bottom:1.5rem}.home-layall .home-profile,.home-portfolio .home-profile{display:block;text-align:center;padding:0;margin-bottom:1.5rem}.home-layall .profile-photo{margin-bottom:1rem}.home-layall .profile-links,.home-portfolio .profile-links{justify-content:center}.home-portfolio .profile-photo{--profile-photo-height:144px}.home-projects{grid-template-columns:1fr}.blog-tabs>a{padding:.6rem .45rem}.book-shelf{grid-template-columns:repeat(auto-fill,minmax(min(100%,3.5rem),1fr))}.book-spine{flex-basis:3rem;width:3rem;height:13rem}.home .post-list a{grid-template-columns:1fr;gap:.3rem}.home-layall .home-stars{padding:1rem}.appearance-controls{width:100%}.theme-control select{max-width:8rem}}
 .home .book-post-list a{display:flex;align-items:center;gap:1rem}.book-post-copy{flex:1;min-width:0}.book-post-copy strong,.book-post-copy span{display:block}.book-post-list img{flex:none;width:3.5rem;height:3.5rem;object-fit:cover;border-radius:4px}
 .home-docs:is([data-blog-active-tab=books],[data-blog-active-tab=posts]) .home-profile{display:none}.home-docs:is([data-blog-active-tab=books],[data-blog-active-tab=posts]) .knowledge-layout{display:block}
 ${themeOrder.map((name) => `[data-palette="${name}"]{--palette-primary:${palettes[name].primary};--palette-dark:${palettes[name].dark}}html[data-theme=${name}][data-color-mode=dark]{--accent:${palettes[name].dark};--accent-soft:color-mix(in srgb,${palettes[name].dark} 16%,var(--surface))}`).join('')}
@@ -1190,6 +1190,291 @@ html[data-theme=layall] .heatmap-day[data-level="0"]{background:color-mix(in srg
 html:not([data-js=true]) .site-nav{display:flex;position:static;flex-wrap:wrap;width:auto;box-shadow:none}html:not([data-js=true]) .header-inner{flex-wrap:wrap}html:not([data-js=true]) :is(.nav-toggle,.post-toc-toggle,.appearance-controls){display:none}
 `;
 
+// Public GitHub data is loaded only after explicit opt-in. No credentials or third-party services.
+const issueConfig =
+	site.githubIssuesEnabled === true &&
+	/^[a-zA-Z0-9-]+$/.test(owner) &&
+	/^[a-zA-Z0-9_.-]+$/.test(repo)
+		? {
+				owner,
+				repo,
+				cacheRevision: generatorSha256 + ':' + siteSha256,
+				posts: posts.flatMap((post) => {
+					const entry = site.githubIssueMap?.[post.postId];
+					return Number.isSafeInteger(entry?.number) &&
+						entry.number > 0 &&
+						Number.isSafeInteger(entry?.authorId) &&
+						entry.authorId > 0
+						? [
+								{
+									id: post.postId,
+									title: String(post.title || 'Untitled'),
+									url: postUrl(post),
+									number: entry.number,
+									authorId: entry.authorId,
+								},
+							]
+						: [];
+				}),
+			}
+		: null;
+function publicIssues(config) {
+	const api = 'https://api.github.com/repos/' + config.owner + '/' + config.repo;
+	const canonical = (number) =>
+		'https://github.com/' + config.owner + '/' + config.repo + '/issues/' + number;
+	const cacheKey = 'layall-public-issues-v1';
+	const cacheContext = config.owner + '/' + config.repo + ':' + config.cacheRevision;
+	let cache = {};
+	const shape = (route, value) =>
+		route.includes('?')
+			? Array.isArray(value)
+			: value && typeof value === 'object' && !Array.isArray(value);
+	try {
+		const raw = sessionStorage.getItem(cacheKey) || 'null';
+		const saved = new TextEncoder().encode(raw).byteLength <= 2000000 ? JSON.parse(raw) : null;
+		if (
+			saved?.context === cacheContext &&
+			saved.responses &&
+			typeof saved.responses === 'object' &&
+			!Array.isArray(saved.responses)
+		)
+			cache = saved.responses;
+	} catch {}
+	const pending = new Map();
+	const request = (route) => {
+		const entry = cache[route];
+		if (
+			entry &&
+			Date.now() >= entry.time &&
+			Date.now() - entry.time < 120000 &&
+			shape(route, entry.data)
+		)
+			return Promise.resolve(entry.data);
+		if (pending.has(route)) return pending.get(route);
+		const promise = (async () => {
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 15000);
+			try {
+				const response = await fetch(api + route, {
+					headers: { Accept: 'application/vnd.github+json' },
+					credentials: 'omit',
+					cache: 'no-store',
+					signal: controller.signal,
+				});
+				if (!response.ok)
+					throw new Error(
+						response.status === 403 || response.status === 429
+							? 'GitHub 요청 한도에 도달했습니다. 잠시 후 다시 방문해 주세요.'
+							: 'GitHub 데이터를 불러오지 못했습니다. 잠시 후 다시 방문해 주세요.'
+					);
+				const result = await response.json();
+				if (!shape(route, result)) throw new Error('GitHub 응답을 읽을 수 없습니다.');
+				for (const key of Object.keys(cache))
+					if (!cache[key] || Date.now() - cache[key].time >= 120000) delete cache[key];
+				if (Object.keys(cache).length >= 100)
+					delete cache[
+						Object.keys(cache).sort((a, b) => cache[a].time - cache[b].time)[0]
+					];
+				cache[route] = { time: Date.now(), data: result };
+				try {
+					const payload = JSON.stringify({ context: cacheContext, responses: cache });
+					if (new TextEncoder().encode(payload).byteLength <= 2000000)
+						sessionStorage.setItem(cacheKey, payload);
+					else delete cache[route];
+				} catch {}
+				return result;
+			} finally {
+				clearTimeout(timeout);
+				pending.delete(route);
+			}
+		})();
+		pending.set(route, promise);
+		return promise;
+	};
+	const valid = (issue, post) =>
+		issue &&
+		!issue.pull_request &&
+		issue.number === post.number &&
+		typeof issue.repository_url === 'string' &&
+		issue.repository_url.toLowerCase() === api.toLowerCase() &&
+		issue.user?.id === post.authorId &&
+		typeof issue.body === 'string' &&
+		issue.body.split(/\r?\n/).includes('<!-- layall-post:' + post.id + ' -->');
+	const node = (tag, text) => {
+		const element = document.createElement(tag);
+		if (text !== undefined) element.textContent = text;
+		return element;
+	};
+	const link = (text, url) => {
+		const a = node('a', text);
+		a.href = url;
+		a.target = '_blank';
+		a.rel = 'noopener noreferrer';
+		return a;
+	};
+	// One bounded repository scan per document, including closed issues; PRs are excluded.
+	let aggregate;
+	const getAggregate = () =>
+		(aggregate ||= (async () => {
+			const found = new Map();
+			for (let page = 1; page <= 30; page++) {
+				const batch = await request(
+					'/issues?state=all&sort=created&direction=asc&per_page=100&page=' + page
+				);
+				if (!Array.isArray(batch)) throw new Error('GitHub 응답을 읽을 수 없습니다.');
+				for (const issue of batch) {
+					if (!issue || !Number.isSafeInteger(issue.number))
+						throw new Error('GitHub 응답을 읽을 수 없습니다.');
+					found.set(issue.number, issue);
+				}
+				if (batch.length < 100) return found;
+			}
+			throw new Error(
+				'GitHub Issue가 많아 순위를 불러오지 못했습니다. GitHub에서 확인해 주세요.'
+			);
+		})());
+	const comments = new Map();
+	const mount = () => {
+		for (const section of document.querySelectorAll(
+			'[data-most-liked]:not([data-issues-mounted])'
+		)) {
+			section.dataset.issuesMounted = 'true';
+			const status = section.querySelector('[role="status"]');
+			getAggregate()
+				.then((issues) => {
+					const ranked = config.posts
+						.flatMap((post) => {
+							const issue = issues.get(post.number),
+								count = issue?.reactions?.heart;
+							if (
+								!issue ||
+								!valid(issue, post) ||
+								!Number.isSafeInteger(count) ||
+								count < 0
+							)
+								throw new Error(
+									'연결된 GitHub Issue 데이터를 모두 확인할 수 없습니다.'
+								);
+							return issue &&
+								valid(issue, post) &&
+								Number.isSafeInteger(count) &&
+								count > 0
+								? [{ ...post, count }]
+								: [];
+						})
+						.sort(
+							(a, b) => b.count - a.count || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+						)
+						.slice(0, 5);
+					status.textContent = ranked.length
+						? ''
+						: '아직 좋아요가 있는 공개 글이 없습니다.';
+					const list = node('ol');
+					for (const post of ranked) {
+						const item = node('li');
+						item.append(
+							link(post.title, post.url),
+							node('span', ' · ❤️ ' + post.count)
+						);
+						list.append(item);
+					}
+					section.append(list);
+				})
+				.catch((error) => {
+					status.textContent = error.message;
+				});
+		}
+		for (const section of document.querySelectorAll(
+			'[data-post-issues]:not([data-issues-mounted])'
+		)) {
+			section.dataset.issuesMounted = 'true';
+			const post = config.posts.find((post) => post.id === section.dataset.postIssues);
+			if (!post) {
+				section.hidden = true;
+				continue;
+			}
+			const status = section.querySelector('[role="status"]');
+			section.append(link('좋아요 · 댓글 참여', canonical(post.number)));
+			request('/issues/' + post.number)
+				.then((issue) => {
+					if (!valid(issue, post) || !Number.isSafeInteger(issue.reactions?.heart))
+						throw new Error('연결된 GitHub Issue를 확인할 수 없습니다.');
+					status.textContent = '❤️ ' + issue.reactions.heart;
+					section.append(node('p', 'GitHub 계정으로 참여하며 댓글은 공개됩니다.'));
+					const list = node('div');
+					section.append(list);
+					const more = node('button', '댓글 더 보기');
+					more.type = 'button';
+					section.append(more);
+					const state = comments.get(post.number) || { page: 1, items: [], done: false };
+					comments.set(post.number, state);
+					const render = () => {
+						list.replaceChildren();
+						for (const comment of state.items) {
+							const item = node('article');
+							const heading = node(
+								'p',
+								String(comment?.user?.login || 'GitHub User') + ' · '
+							);
+							const time = node('time', String(comment?.created_at || ''));
+							time.dateTime = String(comment?.created_at || '');
+							heading.append(time);
+							const body = node('p', String(comment?.body || ''));
+							body.style.whiteSpace = 'pre-wrap';
+							item.append(heading, body);
+							list.append(item);
+						}
+						more.hidden = state.done;
+						if (state.done && !state.items.length)
+							list.append(node('p', '아직 댓글이 없습니다.'));
+					};
+					const load = async () => {
+						more.disabled = true;
+						more.textContent = '댓글 불러오는 중…';
+						try {
+							const batch = await request(
+								'/issues/' +
+									post.number +
+									'/comments?per_page=100&page=' +
+									state.page
+							);
+							if (!Array.isArray(batch))
+								throw new Error('댓글 응답을 읽을 수 없습니다.');
+							state.items.push(...batch);
+							state.page++;
+							state.done = batch.length < 100;
+							render();
+						} catch (error) {
+							status.textContent = error.message;
+						} finally {
+							more.disabled = false;
+							more.textContent = '댓글 더 보기';
+						}
+					};
+					more.addEventListener('click', load);
+					render();
+					if (state.page === 1) load();
+				})
+				.catch((error) => {
+					status.textContent = error.message;
+				});
+		}
+	};
+	mount();
+	new MutationObserver(mount).observe(document.querySelector('[data-theme-view]'), {
+		childList: true,
+	});
+}
+const issueBehavior = (options) => {
+	if (!issueConfig || (!options.article && options.kind !== 'home')) return '';
+	const config = options.article
+		? {
+				...issueConfig,
+				posts: issueConfig.posts.filter((post) => post.id === options.issuePostId),
+			}
+		: issueConfig;
+	return `<script>(${publicIssues.toString()})(${js(config)})</script>`;
+};
 const behavior = `<script>(()=>{
 const root=document.documentElement;
 root.dataset.js='true';
@@ -1307,7 +1592,7 @@ const bindBlog=()=>{
   home.querySelectorAll('[data-blog-book]').forEach(node=>{if(node.dataset.blogBook===book)node.setAttribute('aria-current','true');else node.removeAttribute('aria-current')});
   if(sync)setHash(book||tab);
  };
- syncBlogHash=()=>{let hash=location.hash.slice(1);try{hash=decodeURIComponent(hash)}catch{};if(books.some(node=>node.id===hash))show('books',hash);else if(tabs.some(node=>node.dataset.blogTab===hash))show(hash);else if([...home.querySelectorAll('.home-introduction [id]')].some(node=>node.id===hash))show('overview');else show(blogState.tab,blogState.book)};
+ syncBlogHash=()=>{let hash=location.hash.slice(1);try{hash=decodeURIComponent(hash)}catch{};if(books.some(node=>node.id===hash))show('books',hash);else if(tabs.some(node=>node.dataset.blogTab===hash))show(hash);else if([...home.querySelectorAll('.home-introduction [id]')].some(node=>node.id===hash))show('about-me');else show(blogState.tab,blogState.book)};
  tabs.forEach((node,index)=>{
   node.addEventListener('click',event=>{event.preventDefault();show(node.dataset.blogTab,'',true)});
   node.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else if(event.key===' '){event.preventDefault();show(node.dataset.blogTab,'',true);return}else return;event.preventDefault();show(tabs[next].dataset.blogTab,'',true);tabs[next].focus()});
@@ -1459,9 +1744,9 @@ const shell = (title, body, options = {}) => {
 		.map((name) => `<span>${esc(name)}</span>`)
 		.join('<span aria-hidden="true">·</span>');
 	const postToc = options.postToc
-		? `<div class="header-actions"><button class="post-toc-toggle" type="button" data-post-toc-toggle aria-expanded="false" aria-controls="post-table-of-contents">TOC</button><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button></div><aside class="post-toc-panel" id="post-table-of-contents" data-post-toc-panel data-open="false" aria-hidden="true" tabindex="-1"><div class="post-toc-head"><strong>On this page</strong><button class="post-toc-close" type="button" data-post-toc-close aria-label="목차 닫기">×</button></div><nav aria-label="현재 글 목차">${options.postToc}</nav></aside>`
+		? `<div class="header-actions"><button class="post-toc-toggle" type="button" data-post-toc-toggle aria-expanded="false" aria-controls="post-table-of-contents">TOC</button><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button></div><aside class="post-toc-panel" id="post-table-of-contents" data-post-toc-panel data-open="false" aria-hidden="true" tabindex="-1"><div class="post-toc-head"><strong>On This Page</strong><button class="post-toc-close" type="button" data-post-toc-close aria-label="목차 닫기">×</button></div><nav aria-label="현재 글 목차">${options.postToc}</nav></aside>`
 		: '<button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button>';
-	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<div class="appearance-controls">${palettePicker}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></div></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer">${footerIdentity}</footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Post</a><a href="${href('/search/')}">Search</a></nav>${templates}${pwaRegistration}${behavior}</body></html>`;
+	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<div class="appearance-controls">${palettePicker}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></div></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer">${footerIdentity}</footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Post</a><a href="${href('/search/')}">Search</a></nav>${templates}${pwaRegistration}${behavior}${issueBehavior(options)}</body></html>`;
 };
 
 const compactList = (items, bookThumbnails = false) => {
@@ -1607,14 +1892,15 @@ const docsHome = () =>
 	`<main id="content" class="docs-home"><nav class="docs-nav docs-directory" aria-label="전체 문서">${staticDocsTree(docsTreeEntries)}</nav></main>`;
 const homeProfile = () => {
 	const links = [
-		...(profileUrl ? [{ label: 'contact', url: profileUrl }] : []),
+		...(profileUrl ? [{ label: 'Contact', url: profileUrl }] : []),
 		...externalLinks,
 	];
 	const image = profileImageMarkup();
-	return `<aside class="home-profile">${image ? `<div class="profile-portrait">${image}</div>` : ''}<div class="profile-copy">${author ? `<h1>${esc(author)}</h1>` : ''}${authorBio ? `<p class="profile-bio">${esc(authorBio)}</p>` : ''}${links.length ? `<nav class="profile-links" aria-label="contact 및 외부 링크">${links.map((link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`).join('')}</nav>` : ''}</div></aside>`;
+	return `<aside class="home-profile">${image ? `<div class="profile-portrait">${image}</div>` : ''}<div class="profile-copy">${author ? `<h1>${esc(author)}</h1>` : ''}${authorBio ? `<p class="profile-bio">${esc(authorBio)}</p>` : ''}${links.length ? `<nav class="profile-links" aria-label="Contact 및 외부 링크">${links.map((link) => `<a href="${esc(link.url)}" rel="me noopener">${esc(link.label)}</a>`).join('')}</nav>` : ''}</div></aside>`;
 };
 const homeTabs = () =>
 	`<nav class="blog-tabs" data-blog-tabs aria-label="블로그 탐색">${[
+		['about-me', 'About Me'],
 		['overview', 'Overview'],
 		['books', 'Books'],
 		['posts', 'Posts'],
@@ -1647,27 +1933,28 @@ const homeOverview = (selectedTheme) => {
 		if (!activityByDay.has(day)) activityByDay.set(day, []);
 		activityByDay.get(day).push(post);
 	}
-	const intro = siteDescription.trim()
-		? `<div class="home-introduction article-body">${renderMarkdown(siteDescription).html}</div>`
-		: '';
 	const starList =
 		selectedTheme === 'portfolio'
 			? `<div class="home-projects">${starred.map(portfolioCard).join('')}</div>`
 			: selectedTheme === 'blog'
 				? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>`
 				: compactList(starred);
-	const stars = `<section class="home-stars"><h2>Star posts</h2>${starred.length ? starList : '<p class="muted">아직 별표로 선택한 글이 없습니다.</p>'}</section>`;
-	const heatmap = `<section class="home-heatmap"><h2>Post activity</h2>${blogHeatmap(posts)}</section>`;
+	const stars = `<section class="home-stars"><h2>Pinned</h2>${starred.length ? starList : '<p class="muted">아직 고정한 글이 없습니다.</p>'}</section>`;
+	const heatmap = `<section class="home-heatmap"><h2>Post Activity</h2>${blogHeatmap(posts)}</section>`;
 	const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<a href="${postUrl(post)}">${esc(post.title || 'Untitled')}</a>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">표시할 수정 기록이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
 	const composition =
 		selectedTheme === 'layall'
-			? `${intro}${stars}<div class="archive-ledger">${heatmap}${activity}</div>`
-			: `${intro}${stars}${heatmap}${activity}`;
-	return `<section id="overview" data-blog-panel="overview" class="blog-panel">${composition}</section>`;
+			? `${stars}<div class="archive-ledger">${heatmap}${activity}</div>`
+			: `${stars}${heatmap}${activity}`;
+	const mostLiked = issueConfig
+		? '<section class="home-most-liked" data-most-liked style="grid-column:1/-1"><h2>Most Liked</h2><p class="muted" role="status">좋아요 불러오는 중…</p></section>'
+		: '';
+	return `<section id="overview" data-blog-panel="overview" class="blog-panel">${composition}${mostLiked}</section>`;
 };
 const renderHome = (_items, selectedTheme = theme) => {
 	const tabs = homeTabs();
-	const panels = `${homeOverview(selectedTheme)}<section id="books" data-blog-panel="books" class="blog-panel"><header class="books-heading" data-books-heading hidden><h2><a class="books-back" href="#books" data-books-back aria-label="Books 목차로 돌아가기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg><span data-books-title></span></a></h2><p class="books-meta muted"><span data-books-count></span><span data-books-period></span></p></header>${blogBooks()}</section>${homePosts(selectedTheme)}`;
+	const aboutMe = `<section id="about-me" data-blog-panel="about-me" class="blog-panel">${siteDescription.trim() ? `<div class="home-introduction article-body">${renderMarkdown(siteDescription).html}</div>` : '<p class="muted">아직 블로그 소개가 없습니다.</p>'}</section>`;
+	const panels = `${aboutMe}${homeOverview(selectedTheme)}<section id="books" data-blog-panel="books" class="blog-panel"><header class="books-heading" data-books-heading hidden><h2><a class="books-back" href="#books" data-books-back aria-label="Books 목차로 돌아가기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg><span data-books-title></span></a></h2><p class="books-meta muted"><span data-books-count></span><span data-books-period></span></p></header>${blogBooks()}</section>${homePosts(selectedTheme)}`;
 	const profile = homeProfile();
 	const composition =
 		selectedTheme === 'blog'
@@ -1687,7 +1974,7 @@ const toc = (headings) => {
 		: '<p class="muted">이 문서에는 세부 목차가 없습니다.</p>';
 };
 const articleContent = (post, rendered) =>
-	`<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${site.giscusEnabled ? '<section data-giscus-enabled="true" aria-label="Comments"></section>' : ''}</article>`;
+	`<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${issueConfig?.posts.some((entry) => entry.id === post.postId) ? `<section data-post-issues="${esc(post.postId)}" aria-label="Comments And Likes"><h2>Comments And Likes</h2><p role="status">댓글·좋아요 불러오는 중…</p></section>` : ''}</article>`;
 const articleSlot = '<span data-theme-slot="article"></span>';
 const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
 const standardArticle = (selectedTheme) =>
@@ -1717,6 +2004,7 @@ for (const post of posts) {
 	const html = shell(post.title || 'Untitled', variants[theme], {
 		kind: theme === 'docs' ? 'docs-article' : 'article',
 		article: true,
+		issuePostId: post.postId,
 		description: excerpt(post.body, 160),
 		url: absolute(`/posts/${encodeURIComponent(post.permalink)}/`),
 		image: rendered.firstImage?.url,
@@ -1746,7 +2034,7 @@ const paginationFor = (prefix, index, pages) => {
 	return `<nav class="pagination" aria-label="페이지">${index ? `<a rel="prev" aria-label="이전 페이지" href="${url(index - 1)}">←</a>` : ''}${links}${index + 1 < pages ? `<a rel="next" aria-label="다음 페이지" href="${url(index + 1)}">→</a>` : ''}</nav>`;
 };
 const collectionBody = (selectedTheme, title, items, pagination, kind) => {
-	const heading = `<header class="page-heading"><p class="eyebrow">${esc(kind)}</p><h1>${esc(title)}</h1></header>`;
+	const heading = `<header class="page-heading"><p class="eyebrow">${esc(kind.charAt(0).toUpperCase() + kind.slice(1))}</p><h1>${esc(title)}</h1></header>`;
 	if (selectedTheme === 'blog')
 		return `<main id="content" class="blog-home">${heading}<section class="blog-grid">${items.map(blogCard).join('')}</section>${items.length ? '' : '<div class="empty">아직 공개된 글이 없습니다.</div>'}${pagination}</main>`;
 	if (selectedTheme === 'minimal')
@@ -1825,7 +2113,7 @@ const search = posts.map((post) => ({
 	folder: post.folderId ? folderName(post.folderId) : '',
 }));
 write('search.json', JSON.stringify(search));
-const searchPanel = `<p class="eyebrow">Archive search</p><h1>Search</h1><form class="search-form" data-search-form role="search"><label class="skip-link" for="search-query">검색어</label><input id="search-query" data-search-input type="search" autocomplete="off" placeholder="제목, 내용, 태그 검색"><button type="submit">검색</button></form><p class="muted" data-search-status aria-live="polite"></p><ul class="post-list search-results" data-search-results></ul>`;
+const searchPanel = `<p class="eyebrow">Archive Search</p><h1>Search</h1><form class="search-form" data-search-form role="search"><label class="skip-link" for="search-query">검색어</label><input id="search-query" data-search-input type="search" autocomplete="off" placeholder="제목, 내용, 태그 검색"><button type="submit">검색</button></form><p class="muted" data-search-status aria-live="polite"></p><ul class="post-list search-results" data-search-results></ul>`;
 const searchVariants = variantsOf((name) => {
 	if (name === 'docs')
 		return `<div class="docs-layout"><div class="docs-sidebar-wrap"><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation()}</aside></div><main id="content" class="search-shell">${searchPanel}</main><aside></aside></div>`;
