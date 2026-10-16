@@ -162,14 +162,569 @@ if (fs.existsSync(folderRoot)) {
 		const folderPath = path.join(folderRoot, name);
 		if (fs.lstatSync(folderPath).isSymbolicLink()) throw new Error('unsafe managed source');
 		const folder = readJson(folderPath, {});
-		if (folder.format === 'layall-folder' && folder.folderId) {
-			const folderId = String(folder.folderId);
-			if (!/^[a-zA-Z0-9_-]{1,128}$/.test(folderId)) throw new Error('invalid folder id');
-			folders.set(folderId, folder);
-		}
+		if (
+			folder.format !== 'layall-folder' ||
+			(folder.version !== undefined && folder.version !== 1) ||
+			typeof folder.folderId !== 'string' ||
+			!/^[a-zA-Z0-9_-]{1,128}$/.test(folder.folderId) ||
+			name !== `${folder.folderId}.json` ||
+			(folder.parentFolderId != null &&
+				(typeof folder.parentFolderId !== 'string' ||
+					!/^[a-zA-Z0-9_-]{1,128}$/.test(folder.parentFolderId)))
+		)
+			throw new Error('invalid folder metadata');
+		folders.set(folder.folderId, folder);
 	}
 }
 
+// Shared platform-only crypto core; also executed by the headless interop tests.
+function folderCrypto(platform = globalThis) {
+	const max = 64 * 1024 * 1024;
+	const enc = new TextEncoder();
+	const fail = () => {
+		throw new Error('Invalid protected post');
+	};
+	const decode = (s, limit) => {
+		if (
+			typeof s !== 'string' ||
+			s.length > Math.ceil(limit / 3) * 4 ||
+			!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s)
+		)
+			fail();
+		const b = Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+		if (b.length > limit) fail();
+		return b;
+	};
+	const parameters = (p) => {
+		if (
+			!p ||
+			Object.keys(p).sort().join(',') !==
+				'folderId,iterations,keyVersion,salt,siteId,version' ||
+			p.version !== 1 ||
+			p.iterations !== 600000 ||
+			!/^github:[0-9]+$/.test(p.siteId) ||
+			!/^[a-zA-Z0-9_-]{1,128}$/.test(p.folderId) ||
+			!/^[a-f0-9]{32}$/.test(p.keyVersion) ||
+			decode(p.salt, 16).length !== 16
+		)
+			fail();
+		return p;
+	};
+	const validate = (e) => {
+		const p = e?.protection;
+		if (
+			!e ||
+			Object.keys(e).sort().join(',') !==
+				'ciphertext,folderId,format,nonce,permalink,postId,protection,version' ||
+			e.format !== 'layall-protected' ||
+			e.version !== 1 ||
+			typeof e.postId !== 'string' ||
+			!/^[a-zA-Z0-9_-]{1,128}$/.test(e.postId) ||
+			e.permalink !== e.postId ||
+			(e.folderId !== null &&
+				(typeof e.folderId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(e.folderId)))
+		)
+			fail();
+		parameters(p);
+		if (
+			decode(e.nonce, 12).length !== 12 ||
+			typeof e.ciphertext !== 'string' ||
+			e.ciphertext.length > Math.ceil((max + 16) / 3) * 4 ||
+			e.ciphertext.length < 24
+		)
+			fail();
+		return p;
+	};
+	const namespace = (e) => {
+		const p = validate(e);
+		return JSON.stringify([
+			platform.location?.origin || '',
+			p.siteId,
+			p.folderId,
+			p.keyVersion,
+			p.salt,
+			p.iterations,
+		]);
+	};
+	const derive = async (e, password) => {
+		const p = validate(e);
+		if (typeof password !== 'string' || !password || enc.encode(password).length > 1024) fail();
+		const material = await platform.crypto.subtle.importKey(
+			'raw',
+			enc.encode(password),
+			'PBKDF2',
+			false,
+			['deriveKey']
+		);
+		return platform.crypto.subtle.deriveKey(
+			{ name: 'PBKDF2', salt: decode(p.salt, 16), iterations: p.iterations, hash: 'SHA-256' },
+			material,
+			{ name: 'AES-GCM', length: 256 },
+			false,
+			['decrypt']
+		);
+	};
+	const open = async (e, key) => {
+		const p = validate(e);
+		if (
+			!key ||
+			key.extractable ||
+			key.type !== 'secret' ||
+			key.algorithm?.name !== 'AES-GCM' ||
+			key.algorithm.length !== 256 ||
+			key.usages.length !== 1 ||
+			key.usages[0] !== 'decrypt'
+		)
+			fail();
+		const additionalData = enc.encode(
+			JSON.stringify([
+				'layall-protected',
+				1,
+				p.siteId,
+				p.folderId,
+				p.keyVersion,
+				p.salt,
+				p.iterations,
+				e.postId,
+				e.folderId,
+			])
+		);
+		const bytes = await platform.crypto.subtle.decrypt(
+			{ name: 'AES-GCM', iv: decode(e.nonce, 12), additionalData, tagLength: 128 },
+			key,
+			decode(e.ciphertext, max + 16)
+		);
+		const payload = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+		const s = payload.source;
+		if (
+			!s ||
+			s.format !== 'layall-note' ||
+			s.postId !== e.postId ||
+			s.folderId !== e.folderId ||
+			s.permalink !== e.postId ||
+			!payload.assets ||
+			typeof payload.assets !== 'object' ||
+			Array.isArray(payload.assets)
+		)
+			fail();
+		for (const [path, bytes] of Object.entries(payload.assets)) {
+			if (
+				!path.startsWith(`content/posts/${e.postId}/assets/`) ||
+				path.includes('\\') ||
+				path.split('/').some((p) => !p || p === '.' || p === '..')
+			)
+				fail();
+			decode(bytes, max);
+		}
+		return payload;
+	};
+	const scope = (name) => {
+		try {
+			return JSON.stringify(JSON.parse(name).slice(0, 3));
+		} catch {
+			return null;
+		}
+	};
+	const session = new Map();
+	const epochs = new Map();
+	const revisions = new Map();
+	const revoked = () => Object.assign(new Error('Unlock was revoked'), { revoked: true });
+	// Revision read/compare/write shares one IDB transaction with the key write.
+	// A relock in another tab therefore wins against a KDF or put already in flight.
+	const storage = (op, name, key, expected) =>
+		new Promise((resolve, reject) => {
+			let db,
+				tx,
+				settled = false,
+				result,
+				reason;
+			const end = (error) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				if (error)
+					try {
+						tx?.abort();
+					} catch {}
+				db?.close();
+				error ? reject(reason || new Error('Unlock storage unavailable')) : resolve(result);
+			};
+			const timer = setTimeout(() => {
+				reason = new Error('Unlock storage timed out');
+				if (tx) {
+					try {
+						tx.abort(); // wait for abort settlement; close() does not roll back writes
+						return;
+					} catch {}
+				}
+				end(true);
+			}, 3000);
+			try {
+				const request = platform.indexedDB.open('layall-folder-keys-v1', 1);
+				request.onupgradeneeded = () => request.result.createObjectStore('keys');
+				request.onerror = request.onblocked = () => end(true);
+				request.onsuccess = () => {
+					db = request.result;
+					if (settled) {
+						db.close();
+						return;
+					}
+					try {
+						tx = db.transaction(
+							'keys',
+							op === 'forget' || op === 'put' ? 'readwrite' : 'readonly'
+						);
+						const store = tx.objectStore('keys'),
+							revName = 'rev:' + scope(name),
+							r = store.get(revName);
+						r.onsuccess = () => {
+							const revision = r.result ?? 0;
+							if (
+								!Number.isSafeInteger(revision) ||
+								revision < 0 ||
+								revision >= Number.MAX_SAFE_INTEGER
+							) {
+								tx.abort();
+								return;
+							}
+							if (op === 'forget') {
+								store.put(revision + 1, revName);
+								result = revision + 1;
+								const all = store.getAllKeys();
+								all.onsuccess = () => {
+									for (const candidate of all.result)
+										if (scope(candidate) === scope(name))
+											store.delete(candidate);
+								};
+							} else if (op === 'put') {
+								if (revision !== expected) {
+									reason = revoked();
+									tx.abort();
+									return;
+								}
+								store.put(key, name);
+								result = revision;
+							} else if (op === 'revision') result = revision;
+							else {
+								const k = store.get(name);
+								k.onsuccess = () => {
+									result = { key: k.result, revision };
+								};
+							}
+						};
+						tx.oncomplete = () => end(false);
+						tx.onerror = tx.onabort = () => end(true);
+					} catch {
+						end(true);
+					}
+				};
+			} catch {
+				end(true);
+			}
+		});
+	const invalidate = (e) => {
+		const name = namespace(e),
+			group = scope(name);
+		epochs.set(group, (epochs.get(group) || 0) + 1);
+		for (const candidate of session.keys())
+			if (scope(candidate) === group) session.delete(candidate);
+	};
+	const observe = (name, revision) => {
+		const group = scope(name);
+		revisions.set(group, Math.max(revision, revisions.get(group) ?? -1));
+	};
+	// BroadcastChannel is only a notification. Older events must not revoke a
+	// newer explicit unlock, and no event writes/deletes persistent key records.
+	const notify = (e, revision) => {
+		const name = namespace(e);
+		if (
+			!Number.isSafeInteger(revision) ||
+			revision < 0 ||
+			revision <= (revisions.get(scope(name)) ?? -1)
+		)
+			return false;
+		observe(name, revision);
+		invalidate(e);
+		return true;
+	};
+	const unlock = async (e, password) => {
+		const name = namespace(e),
+			epoch = epochs.get(scope(name)) || 0;
+		let revision,
+			persisted = true;
+		try {
+			revision = await storage('revision', name);
+			observe(name, revision);
+		} catch {
+			persisted = false;
+		}
+		const key = await derive(e, password),
+			payload = await open(e, key);
+		if ((epochs.get(scope(name)) || 0) !== epoch) throw revoked();
+		if (persisted)
+			try {
+				await storage('put', name, key, revision);
+				if ((await storage('revision', name)) !== revision) throw revoked();
+			} catch (error) {
+				if (error.revoked) throw error;
+				persisted = false;
+			}
+		if ((epochs.get(scope(name)) || 0) !== epoch) throw revoked();
+		session.set(name, { key, revision, persisted });
+		return { payload, persisted };
+	};
+	const restore = async (e) => {
+		const name = namespace(e),
+			epoch = epochs.get(scope(name)) || 0;
+		let remembered = session.get(name),
+			storageFailed = false,
+			stored;
+		try {
+			stored = await storage('get', name);
+			observe(name, stored.revision);
+		} catch {
+			storageFailed = true;
+		}
+		if (
+			stored &&
+			remembered &&
+			(remembered.revision !== stored.revision || (remembered.persisted && !stored.key))
+		) {
+			session.delete(name);
+			remembered = null;
+		}
+		// A saved key needs an authoritative revision; only explicit session-only
+		// unlocks can keep working while storage is unavailable on this page.
+		const key = stored?.key || ((!storageFailed || !remembered?.persisted) && remembered?.key);
+		if (!key) return { payload: null, storageFailed };
+		try {
+			const payload = await open(e, key);
+			if ((epochs.get(scope(name)) || 0) !== epoch) return { payload: null, storageFailed };
+			if (stored && (await storage('revision', name)) !== stored.revision) {
+				session.delete(name);
+				return { payload: null, storageFailed };
+			}
+			session.set(name, {
+				key,
+				revision: stored?.revision ?? remembered?.revision,
+				persisted: !!stored?.key,
+			});
+			return { payload, storageFailed };
+		} catch {
+			session.delete(name);
+			return { payload: null, storageFailed };
+		}
+	};
+	const forget = async (e) => {
+		invalidate(e);
+		const name = namespace(e),
+			revision = await storage('forget', name);
+		observe(name, revision);
+		return revision;
+	};
+
+	return {
+		validate,
+		parameters,
+		namespace,
+		scope,
+		derive,
+		open,
+		unlock,
+		restore,
+		forget,
+		invalidate,
+		notify,
+		decode,
+	};
+}
+function mountProtected(envelope, renderMarkdown) {
+	const core = folderCrypto();
+	const host = document.querySelector('[data-protected-post]');
+	if (!host) return;
+	const urls = [];
+	let generation = 0;
+	const name = core.scope(core.namespace(envelope));
+	const channel =
+		typeof BroadcastChannel === 'function'
+			? new BroadcastChannel('layall-folder-locks-v1')
+			: null;
+	const clear = () => {
+		generation++;
+		urls.splice(0).forEach((url) => URL.revokeObjectURL(url));
+		host.replaceChildren();
+		document.title = '보호된 글';
+	};
+	const text = (tag, value) => {
+		const el = document.createElement(tag);
+		el.textContent = value;
+		return el;
+	};
+	const locked = (notice = '') => {
+		clear();
+		host.append(
+			text('h1', '보호된 글'),
+			text('p', '이 폴더의 비밀번호를 입력하세요. 잠금 해제는 이 브라우저에 기억됩니다.')
+		);
+		const form = document.createElement('form');
+		form.className = 'search-form';
+		const input = document.createElement('input');
+		input.type = 'password';
+		input.autocomplete = 'current-password';
+		input.required = true;
+		input.maxLength = 1024;
+		input.setAttribute('aria-label', '폴더 비밀번호');
+		const button = text('button', '잠금 해제');
+		button.type = 'submit';
+		const status = text('p', notice);
+		status.setAttribute('role', 'status');
+		form.append(input, button);
+		host.append(form, status);
+		form.onsubmit = async (event) => {
+			event.preventDefault();
+			const current = ++generation;
+			button.disabled = true;
+			let password = input.value;
+			input.value = '';
+			try {
+				const result = await core.unlock(envelope, password);
+				password = '';
+				if (current !== generation) return;
+				show(
+					result.payload,
+					result.persisted
+						? ''
+						: '브라우저 저장을 확인하지 못했습니다. 현재 페이지는 열리지만 다음 방문에 비밀번호가 다시 필요할 수 있습니다.'
+				);
+			} catch {
+				if (current === generation) {
+					status.textContent = '비밀번호가 다르거나 글을 열 수 없습니다.';
+					button.disabled = false;
+				}
+			} finally {
+				password = '';
+			}
+		};
+	};
+	const show = (payload, notice = '') => {
+		clear();
+		const source = payload.source,
+			assets = new Map();
+		for (const a of Array.isArray(source.attachments) ? source.attachments : []) {
+			const bytes = payload.assets[`content/posts/${source.postId}/${a.path}`];
+			if (typeof bytes !== 'string') continue;
+			const mime = /^image\/(png|jpeg|gif|webp|avif)$/.test(a.mimeType)
+				? a.mimeType
+				: 'application/octet-stream';
+			const url = URL.createObjectURL(
+				new Blob([core.decode(bytes, 64 * 1024 * 1024)], { type: mime })
+			);
+			urls.push(url);
+			assets.set(String(a.id), { url, image: mime.startsWith('image/') });
+		}
+		const relock = text('button', '다시 잠금');
+		relock.type = 'button';
+		const status = text('p', notice);
+		status.setAttribute('role', 'status');
+		relock.onclick = async () => {
+			clear();
+			let failed = false,
+				revision;
+			try {
+				revision = await core.forget(envelope);
+			} catch {
+				failed = true;
+			}
+			channel?.postMessage({ scope: name, revision });
+			locked(
+				failed
+					? '저장된 키를 지우지 못했습니다. 브라우저의 사이트 데이터를 삭제하세요.'
+					: '잠금 해제 정보를 지웠습니다.'
+			);
+		};
+		host.append(relock, status, text('h1', String(source.title || '제목 없는 글')));
+		const content = document.createElement('div');
+		content.className = 'article-body';
+		content.innerHTML = renderMarkdown(source.body, assets).html;
+		host.append(content);
+		for (const [field, label] of [
+			['tags', '태그'],
+			['summaries', '요약'],
+			['tasks', '할 일'],
+			['highlights', '강조 표시'],
+		]) {
+			if (!Array.isArray(source[field]) || !source[field].length) continue;
+			host.append(text('h2', label));
+			for (const item of source[field]) {
+				const row = document.createElement('div');
+				row.innerHTML = renderMarkdown(String(item), assets).html;
+				host.append(row);
+			}
+		}
+		for (const a of Array.isArray(source.attachments) ? source.attachments : []) {
+			const asset = assets.get(String(a.id));
+			if (!asset) continue;
+			const link = text('a', String(a.path).split('/').pop() || '첨부파일');
+			link.href = asset.url;
+			link.download = String(a.path).split('/').pop();
+			host.append(link, document.createElement('br'));
+		}
+	};
+	channel &&
+		(channel.onmessage = (event) => {
+			if (event.data?.scope === name && core.notify(envelope, event.data.revision)) {
+				locked('이 폴더를 다시 잠갔습니다.');
+			}
+		});
+	const restore = async () => {
+		locked();
+		const current = generation;
+		try {
+			const result = await core.restore(envelope);
+			if (current !== generation) return;
+			if (result.payload) show(result.payload);
+			else if (result.storageFailed)
+				locked('브라우저의 잠금 해제 저장소에 접근할 수 없습니다.');
+		} catch {
+			locked('보호된 글을 열 수 없습니다.');
+		}
+	};
+	window.addEventListener('pagehide', () => {
+		core.invalidate(envelope);
+		clear();
+	});
+	window.addEventListener('pageshow', (event) => {
+		if (event.persisted) void restore();
+	});
+	void restore();
+}
+
+const effectiveProtection = (folderId) => {
+	const seen = new Set();
+	let selected = null;
+	if (folderId != null && typeof folderId !== 'string')
+		throw new Error('invalid folder identity');
+	while (folderId) {
+		if (seen.has(folderId) || !folders.has(folderId)) {
+			if (selected) throw new Error('invalid protected ancestry');
+			return null;
+		}
+		seen.add(folderId);
+		const f = folders.get(folderId);
+		if (f.protection != null) {
+			if (f.protection.folderId !== folderId) throw new Error('invalid protection owner');
+			selected ??= f.protection;
+		}
+		if (f.parentFolderId != null && typeof f.parentFolderId !== 'string')
+			throw new Error('invalid folder ancestry');
+		folderId = f.parentFolderId;
+	}
+	return selected;
+};
+for (const id of folders.keys()) effectiveProtection(id);
+const protectedCore = folderCrypto();
+for (const folder of folders.values())
+	if (folder.protection != null) protectedCore.parameters(folder.protection);
 const posts = [];
 const postRoot = 'content/posts';
 if (fs.existsSync(postRoot)) {
@@ -183,7 +738,33 @@ if (fs.existsSync(postRoot)) {
 		const file = path.join(sourceDir, 'post.layallnote');
 		if (!fs.existsSync(file)) continue;
 		if (fs.lstatSync(file).isSymbolicLink()) throw new Error('unsafe managed source');
-		const post = readJson(file, {});
+		let post = readJson(file, {});
+		const protection = effectiveProtection(post.folderId);
+		if (post.format === 'layall-protected') {
+			protectedCore.validate(post);
+			if (
+				!protection ||
+				['version', 'siteId', 'folderId', 'keyVersion', 'salt', 'iterations'].some(
+					(k) => protection[k] !== post.protection[k]
+				)
+			)
+				throw new Error('protection mismatch');
+			const envelope = post;
+			post = {
+				format: 'layall-note',
+				postId: envelope.postId,
+				permalink: envelope.postId,
+				folderId: envelope.folderId,
+				title: '보호된 글',
+				body: '',
+				tags: [],
+				attachments: [],
+			};
+			Object.defineProperty(post, 'protectedEnvelope', { value: envelope });
+			// No old asset/temp/update file can accompany a protected current source.
+			if (fs.readdirSync(sourceDir).some((name) => name !== 'post.layallnote'))
+				throw new Error('unexpected protected source file');
+		} else if (protection) throw new Error('plaintext post in protected folder');
 		if (post.format !== 'layall-note' || post.postId !== id)
 			throw new Error('invalid managed source');
 		if (!/^[a-z0-9][a-z0-9-]{0,127}$/.test(String(post.permalink ?? ''))) {
@@ -352,9 +933,8 @@ for (const post of posts) {
 		const realSourceRoot = fs.realpathSync(sourceRoot);
 		const realSource = fs.realpathSync(source);
 		if (!realSource.startsWith(`${realSourceRoot}${path.sep}`)) throw new Error('unsafe asset');
-		const destination = `assets/posts/${post.postId}/${segments.map(encodeURIComponent).join('/')}`;
+		let destination = `assets/posts/${post.postId}/${segments.map(encodeURIComponent).join('/')}`;
 		const bytes = fs.readFileSync(source);
-		write(destination, bytes, post.postId);
 		// Covers use only copied raster attachments, never SVG, remote URLs or private paths.
 		const raster =
 			(/\.png$/i.test(relative) &&
@@ -366,21 +946,43 @@ for (const post of posts) {
 				bytes.subarray(0, 4).toString() === 'RIFF' &&
 				bytes.subarray(8, 12).toString() === 'WEBP') ||
 			(/\.avif$/i.test(relative) &&
+				bytes.length >= 16 &&
+				bytes.readUInt32BE(0) >= 16 &&
+				bytes.readUInt32BE(0) <= bytes.length &&
 				bytes.subarray(4, 8).toString() === 'ftyp' &&
 				/^avi[fs]$/.test(bytes.subarray(8, 12).toString()));
-		if (raster) coverAssets.push({ id: String(asset.id ?? ''), url: href(`/${destination}`) });
-		assetClaims.push({ postId: post.postId, path: destination, sha256: asset.sha256 });
-		const looksLikeImage =
-			String(asset.mimeType ?? asset.contentType ?? '').startsWith('image/') ||
-			/\.(avif|gif|jpe?g|png|webp)$/i.test(relative);
+		// Only signature-checked raster files retain an executable-origin URL. Everything
+		// else is base64 JSON, including HTML/SVG/PDF/media and misleading extensions.
+		// Even a direct URL cannot execute uploaded content on the key's origin.
+		const published = raster
+			? bytes
+			: Buffer.from(
+					JSON.stringify({
+						format: 'layall-download',
+						version: 1,
+						name: Buffer.from(segments.at(-1)).toString('base64'),
+						data: bytes.toString('base64'),
+					})
+				);
+		if (!raster)
+			destination = `assets/posts/${post.postId}/downloads/${createHash('sha256').update(relative).digest('hex')}.layall-download.json`;
+		write(destination, published, post.postId);
+		const assetUrl = raster
+			? href(`/${destination}`)
+			: href('/download.html') + '#' + encodeURIComponent(destination);
+		if (raster) coverAssets.push({ id: String(asset.id ?? ''), url: assetUrl });
+		assetClaims.push({
+			postId: post.postId,
+			path: destination,
+			sha256: createHash('sha256').update(published).digest('hex'),
+		});
 		if (asset.id)
 			assets.set(String(asset.id), {
-				url: href(`/${destination}`),
-				publicUrl: safeSocialImage(absolute(`/${destination}`)),
-				image: looksLikeImage,
+				url: assetUrl,
+				publicUrl: raster ? safeSocialImage(absolute(`/${destination}`)) : '',
+				image: raster,
 			});
-		if (looksLikeImage && !imageByPost.has(post.postId))
-			imageByPost.set(post.postId, href(`/${destination}`));
+		if (raster && !imageByPost.has(post.postId)) imageByPost.set(post.postId, assetUrl);
 	}
 }
 
@@ -731,6 +1333,7 @@ const parseMapPlaceUrl = (raw) => {
 	} catch {
 		return null;
 	}
+	if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
 	const host = url.hostname.replace(/^www\./, '');
 	if (host === 'google.com' && url.pathname.startsWith('/maps')) {
 		const query = url.searchParams.get('query') || url.searchParams.get('q') || '';
@@ -1187,294 +1790,379 @@ ${themeOrder.map((name) => `[data-palette="${name}"]{--palette-primary:${palette
 html[data-color-mode=dark] .palette-dot{background:var(--palette-dark)}@media(prefers-color-scheme:dark){html[data-color-mode=system] .palette-dot{background:var(--palette-dark)}}
 .palette-picker{position:relative;min-width:0;max-width:100%;flex:0 1 auto}.palette-picker summary{display:flex;align-items:center;gap:.5rem;min-height:36px;min-width:0;padding:.25rem .5rem;cursor:pointer;list-style:none;font-size:calc(.85rem * var(--font-scale))}.palette-picker summary::-webkit-details-marker{display:none}.palette-picker summary::after{content:"⌄";margin-left:.25rem}.palette-options{position:fixed;z-index:60;top:0;left:0;width:10rem;max-width:calc(100vw - 3rem);max-height:calc(100vh - 1rem);overflow:auto;overscroll-behavior:contain;padding:.3rem;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}.palette-options button{display:flex;align-items:center;gap:.65rem;min-height:40px;width:100%;min-width:0;border:0;border-radius:4px;padding:.45rem .65rem;background:transparent;color:var(--ink);cursor:pointer;text-align:left}.palette-options button[aria-checked=true]{background:var(--surface-2);font-weight:700}.palette-picker summary:focus-visible,.palette-options button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme=layall] .heatmap-day[data-level="0"]{background:color-mix(in srgb,var(--paper) 72%,var(--surface-2))}
+.discussion-thread{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line);min-width:0}.discussion-thread h2{font-size:calc(1.35rem * var(--font-scale));line-height:1.3;margin:0 0 1rem}.discussion-thread>button{padding:.5rem 1rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.discussion-thread>button:focus-visible,.reaction-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.home-reaction{grid-column:1/-1;min-width:0;margin-top:2rem}.reaction-caption{font-size:calc(.8rem * var(--font-scale))}.reaction-tabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}.reaction-tabs button{font:inherit;min-width:44px;min-height:44px;padding:.4rem .7rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}.reaction-tabs button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}.reaction-ranking{padding:0;list-style:none}.reaction-ranking li{display:flex;align-items:baseline;gap:1rem;padding:.7rem 0;border-bottom:1px solid var(--line)}.reaction-ranking a{min-width:0;flex:1;overflow-wrap:anywhere}.reaction-ranking-count{flex:none;font-size:calc(.88rem * var(--font-scale));font-variant-numeric:tabular-nums}.article-frame>.docs-sidebar-wrap{display:none}html:not([data-js=true]) [data-discussion-status]{display:none}html:not([data-js=true]) .reaction-tabs{display:none}html:not([data-js=true]) [data-reaction-panel][hidden]{display:block!important}
+@media(max-width:680px){.discussion-thread{margin-top:2rem;padding-top:1.5rem}.reaction-ranking li{gap:.65rem}}
 html:not([data-js=true]) .site-nav{display:flex;position:static;flex-wrap:wrap;width:auto;box-shadow:none}html:not([data-js=true]) .header-inner{flex-wrap:wrap}html:not([data-js=true]) :is(.nav-toggle,.post-toc-toggle,.appearance-controls){display:none}
 `;
 
-// Public GitHub data is loaded only after explicit opt-in. No credentials or third-party services.
-const issueConfig =
-	site.githubIssuesEnabled === true &&
-	/^[a-zA-Z0-9-]+$/.test(owner) &&
-	/^[a-zA-Z0-9_.-]+$/.test(repo)
-		? {
-				owner,
-				repo,
-				cacheRevision: generatorSha256 + ':' + siteSha256,
-				posts: posts.flatMap((post) => {
-					const entry = site.githubIssueMap?.[post.postId];
-					return Number.isSafeInteger(entry?.number) &&
-						entry.number > 0 &&
-						Number.isSafeInteger(entry?.authorId) &&
-						entry.authorId > 0
-						? [
-								{
-									id: post.postId,
-									title: String(post.title || 'Untitled'),
-									url: postUrl(post),
-									number: entry.number,
-									authorId: entry.authorId,
-								},
-							]
-						: [];
-				}),
-			}
-		: null;
-function publicIssues(config) {
-	const api = 'https://api.github.com/repos/' + config.owner + '/' + config.repo;
-	const canonical = (number) =>
-		'https://github.com/' + config.owner + '/' + config.repo + '/issues/' + number;
-	const cacheKey = 'layall-public-issues-v1';
-	const cacheContext = config.owner + '/' + config.repo + ':' + config.cacheRevision;
-	let cache = {};
-	const shape = (route, value) =>
-		route.includes('?')
-			? Array.isArray(value)
-			: value && typeof value === 'object' && !Array.isArray(value);
+// Only this explicit flag enables Discussions. Historical Issue settings remain inert.
+const discussionsEnabled = site.githubDiscussionsEnabled === true;
+const reactions = [
+	['+1', '👍', 'Thumbs Up'],
+	['-1', '👎', 'Thumbs Down'],
+	['laugh', '😄', 'Laugh'],
+	['hooray', '🎉', 'Hooray'],
+	['confused', '😕', 'Confused'],
+	['heart', '❤️', 'Heart'],
+	['rocket', '🚀', 'Rocket'],
+	['eyes', '👀', 'Eyes'],
+];
+const nodeId = (value) => typeof value === 'string' && /^[A-Za-z0-9_=-]{1,200}$/.test(value);
+const discussionSetup = (() => {
+	if (!discussionsEnabled) return null;
+	const setup = site.githubDiscussionConfig;
+	let base;
 	try {
-		const raw = sessionStorage.getItem(cacheKey) || 'null';
-		const saved = new TextEncoder().encode(raw).byteLength <= 2000000 ? JSON.parse(raw) : null;
-		if (
-			saved?.context === cacheContext &&
-			saved.responses &&
-			typeof saved.responses === 'object' &&
-			!Array.isArray(saved.responses)
-		)
-			cache = saved.responses;
-	} catch {}
-	const pending = new Map();
-	const request = (route) => {
-		const entry = cache[route];
-		if (
-			entry &&
-			Date.now() >= entry.time &&
-			Date.now() - entry.time < 120000 &&
-			shape(route, entry.data)
-		)
-			return Promise.resolve(entry.data);
-		if (pending.has(route)) return pending.get(route);
-		const promise = (async () => {
-			const controller = new AbortController();
-			const timeout = setTimeout(() => controller.abort(), 15000);
-			try {
-				const response = await fetch(api + route, {
-					headers: { Accept: 'application/vnd.github+json' },
-					credentials: 'omit',
-					cache: 'no-store',
-					signal: controller.signal,
-				});
-				if (!response.ok)
-					throw new Error(
-						response.status === 403 || response.status === 429
-							? 'GitHub 요청 한도에 도달했습니다. 잠시 후 다시 방문해 주세요.'
-							: 'GitHub 데이터를 불러오지 못했습니다. 잠시 후 다시 방문해 주세요.'
-					);
-				const result = await response.json();
-				if (!shape(route, result)) throw new Error('GitHub 응답을 읽을 수 없습니다.');
-				for (const key of Object.keys(cache))
-					if (!cache[key] || Date.now() - cache[key].time >= 120000) delete cache[key];
-				if (Object.keys(cache).length >= 100)
-					delete cache[
-						Object.keys(cache).sort((a, b) => cache[a].time - cache[b].time)[0]
-					];
-				cache[route] = { time: Date.now(), data: result };
-				try {
-					const payload = JSON.stringify({ context: cacheContext, responses: cache });
-					if (new TextEncoder().encode(payload).byteLength <= 2000000)
-						sessionStorage.setItem(cacheKey, payload);
-					else delete cache[route];
-				} catch {}
-				return result;
-			} finally {
-				clearTimeout(timeout);
-				pending.delete(route);
-			}
-		})();
-		pending.set(route, promise);
-		return promise;
+		base = new URL(publicBase);
+	} catch {
+		return null;
+	}
+	if (
+		base.protocol !== 'https:' ||
+		base.username ||
+		base.password ||
+		!/^[a-zA-Z0-9-]+$/.test(owner) ||
+		!/^[a-zA-Z0-9_.-]+$/.test(repo) ||
+		setup?.repository?.toLowerCase() !== `${owner}/${repo}`.toLowerCase() ||
+		!nodeId(setup.repositoryId) ||
+		!nodeId(setup.categoryId) ||
+		typeof setup.categoryName !== 'string' ||
+		!setup.categoryName.trim()
+	)
+		return null;
+	return {
+		repo: `${owner}/${repo}`,
+		repoId: setup.repositoryId,
+		category: setup.categoryName,
+		categoryId: setup.categoryId,
 	};
-	const valid = (issue, post) =>
-		issue &&
-		!issue.pull_request &&
-		issue.number === post.number &&
-		typeof issue.repository_url === 'string' &&
-		issue.repository_url.toLowerCase() === api.toLowerCase() &&
-		issue.user?.id === post.authorId &&
-		typeof issue.body === 'string' &&
-		issue.body.split(/\r?\n/).includes('<!-- layall-post:' + post.id + ' -->');
-	const node = (tag, text) => {
-		const element = document.createElement(tag);
-		if (text !== undefined) element.textContent = text;
-		return element;
-	};
-	const link = (text, url) => {
-		const a = node('a', text);
-		a.href = url;
-		a.target = '_blank';
-		a.rel = 'noopener noreferrer';
-		return a;
-	};
-	// One bounded repository scan per document, including closed issues; PRs are excluded.
-	let aggregate;
-	const getAggregate = () =>
-		(aggregate ||= (async () => {
-			const found = new Map();
-			for (let page = 1; page <= 30; page++) {
-				const batch = await request(
-					'/issues?state=all&sort=created&direction=asc&per_page=100&page=' + page
-				);
-				if (!Array.isArray(batch)) throw new Error('GitHub 응답을 읽을 수 없습니다.');
-				for (const issue of batch) {
-					if (!issue || !Number.isSafeInteger(issue.number))
-						throw new Error('GitHub 응답을 읽을 수 없습니다.');
-					found.set(issue.number, issue);
-				}
-				if (batch.length < 100) return found;
-			}
-			throw new Error(
-				'GitHub Issue가 많아 순위를 불러오지 못했습니다. GitHub에서 확인해 주세요.'
-			);
-		})());
-	const comments = new Map();
-	const mount = () => {
-		for (const section of document.querySelectorAll(
-			'[data-most-liked]:not([data-issues-mounted])'
-		)) {
-			section.dataset.issuesMounted = 'true';
-			const status = section.querySelector('[role="status"]');
-			getAggregate()
-				.then((issues) => {
-					const ranked = config.posts
-						.flatMap((post) => {
-							const issue = issues.get(post.number),
-								count = issue?.reactions?.heart;
-							if (
-								!issue ||
-								!valid(issue, post) ||
-								!Number.isSafeInteger(count) ||
-								count < 0
-							)
-								throw new Error(
-									'연결된 GitHub Issue 데이터를 모두 확인할 수 없습니다.'
-								);
-							return issue &&
-								valid(issue, post) &&
-								Number.isSafeInteger(count) &&
-								count > 0
-								? [{ ...post, count }]
-								: [];
-						})
-						.sort(
-							(a, b) => b.count - a.count || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-						)
-						.slice(0, 5);
-					status.textContent = ranked.length
-						? ''
-						: '아직 좋아요가 있는 공개 글이 없습니다.';
-					const list = node('ol');
-					for (const post of ranked) {
-						const item = node('li');
-						item.append(
-							link(post.title, post.url),
-							node('span', ' · ❤️ ' + post.count)
-						);
-						list.append(item);
-					}
-					section.append(list);
-				})
-				.catch((error) => {
-					status.textContent = error.message;
-				});
-		}
-		for (const section of document.querySelectorAll(
-			'[data-post-issues]:not([data-issues-mounted])'
-		)) {
-			section.dataset.issuesMounted = 'true';
-			const post = config.posts.find((post) => post.id === section.dataset.postIssues);
-			if (!post) {
-				section.hidden = true;
-				continue;
-			}
-			const status = section.querySelector('[role="status"]');
-			section.append(link('좋아요 · 댓글 참여', canonical(post.number)));
-			request('/issues/' + post.number)
-				.then((issue) => {
-					if (!valid(issue, post) || !Number.isSafeInteger(issue.reactions?.heart))
-						throw new Error('연결된 GitHub Issue를 확인할 수 없습니다.');
-					status.textContent = '❤️ ' + issue.reactions.heart;
-					section.append(node('p', 'GitHub 계정으로 참여하며 댓글은 공개됩니다.'));
-					const list = node('div');
-					section.append(list);
-					const more = node('button', '댓글 더 보기');
-					more.type = 'button';
-					section.append(more);
-					const state = comments.get(post.number) || { page: 1, items: [], done: false };
-					comments.set(post.number, state);
-					const render = () => {
-						list.replaceChildren();
-						for (const comment of state.items) {
-							const item = node('article');
-							const heading = node(
-								'p',
-								String(comment?.user?.login || 'GitHub User') + ' · '
-							);
-							const time = node('time', String(comment?.created_at || ''));
-							time.dateTime = String(comment?.created_at || '');
-							heading.append(time);
-							const body = node('p', String(comment?.body || ''));
-							body.style.whiteSpace = 'pre-wrap';
-							item.append(heading, body);
-							list.append(item);
-						}
-						more.hidden = state.done;
-						if (state.done && !state.items.length)
-							list.append(node('p', '아직 댓글이 없습니다.'));
-					};
-					const load = async () => {
-						more.disabled = true;
-						more.textContent = '댓글 불러오는 중…';
-						try {
-							const batch = await request(
-								'/issues/' +
-									post.number +
-									'/comments?per_page=100&page=' +
-									state.page
-							);
-							if (!Array.isArray(batch))
-								throw new Error('댓글 응답을 읽을 수 없습니다.');
-							state.items.push(...batch);
-							state.page++;
-							state.done = batch.length < 100;
-							render();
-						} catch (error) {
-							status.textContent = error.message;
-						} finally {
-							more.disabled = false;
-							more.textContent = '댓글 더 보기';
-						}
-					};
-					more.addEventListener('click', load);
-					render();
-					if (state.page === 1) load();
-				})
-				.catch((error) => {
-					status.textContent = error.message;
-				});
-		}
-	};
-	mount();
-	new MutationObserver(mount).observe(document.querySelector('[data-theme-view]'), {
-		childList: true,
-	});
-}
-const issueBehavior = (options) => {
-	if (!issueConfig || (!options.article && options.kind !== 'home')) return '';
-	const config = options.article
-		? {
-				...issueConfig,
-				posts: issueConfig.posts.filter((post) => post.id === options.issuePostId),
-			}
-		: issueConfig;
-	return `<script>(${publicIssues.toString()})(${js(config)})</script>`;
+})();
+const discussionFor = (id) => {
+	const entry = site.githubDiscussionMap?.[id];
+	return discussionSetup &&
+		Number.isSafeInteger(entry?.number) &&
+		entry.number > 0 &&
+		entry.number <= 2147483647 &&
+		nodeId(entry.nodeId) &&
+		nodeId(entry.authorId)
+		? entry
+		: null;
 };
+
+// Generate every iframe stylesheet before article cache reuse. Values are extracted from
+// this generator's actual theme tokens; CSS in a cross-origin iframe cannot inherit them.
+const themeDeclarations = (selector) => {
+	const start = styles.indexOf(selector + '{');
+	if (start < 0) throw new Error(`missing theme tokens: ${selector}`);
+	return Object.fromEntries(
+		[
+			...styles
+				.slice(start + selector.length + 1, styles.indexOf('}', start))
+				.matchAll(/--([\w-]+):([^;]+);?/g),
+		].map((match) => [match[1], match[2]])
+	);
+};
+const giscusCss = (name, mode) => {
+	const tokens = {
+		...themeDeclarations(':root'),
+		...themeDeclarations(`html[data-theme=${name}]`),
+	};
+	if (mode === 'dark') {
+		Object.assign(tokens, themeDeclarations('html[data-theme][data-color-mode=dark]'));
+		if (name === 'layall')
+			Object.assign(
+				tokens,
+				themeDeclarations('html[data-theme=layall][data-color-mode=dark]')
+			);
+		tokens.accent = palettes[name].dark;
+		tokens['accent-soft'] = `color-mix(in srgb,${tokens.accent} 16%,${tokens.surface})`;
+	}
+	const font =
+		name === 'layall'
+			? '"Omyu Pretty",ui-sans-serif,system-ui,sans-serif'
+			: 'ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+	const vars = {};
+	const assign = (names, value) => names.split(' ').forEach((key) => (vars[key] = value));
+	assign(
+		'fg-default text-primary btn-text prettylights-syntax-markup-bold prettylights-syntax-markup-italic prettylights-syntax-storage-modifier-import',
+		tokens.ink
+	);
+	assign(
+		'fg-muted fg-subtle text-secondary text-tertiary diff-blob-num-text diff-blob-num-hover-text prettylights-syntax-comment prettylights-syntax-brackethighlighter-angle prettylights-syntax-sublimelinter-gutter-mark',
+		tokens.muted
+	);
+	assign(
+		'canvas-default canvas-overlay bg-canvas bg-primary bg-overlay input-bg segmented-control-button-bg',
+		tokens.surface
+	);
+	assign(
+		'canvas-inset canvas-subtle bg-canvas-inset bg-secondary bg-tertiary btn-bg btn-selected-bg input-contrast-bg hidden-text-expander-bg segmented-control-bg',
+		tokens['surface-2']
+	);
+	assign(
+		'border-default border-muted border-primary border-secondary border-tertiary input-border label-border btn-border btn-primary-border btn-primary-disabled-border segmented-control-button-selected-border',
+		tokens.line
+	);
+	assign(
+		'accent-fg accent-emphasis text-link btn-hover-border btn-active-border btn-primary-bg btn-primary-hover-bg btn-primary-hover-border btn-primary-selected-bg border-info box-border-info prettylights-syntax-keyword prettylights-syntax-constant prettylights-syntax-entity prettylights-syntax-entity-tag prettylights-syntax-string prettylights-syntax-string-regexp prettylights-syntax-variable prettylights-syntax-markup-heading prettylights-syntax-constant-other-reference-link prettylights-syntax-meta-diff-range',
+		tokens.accent
+	);
+	assign(
+		'accent-subtle accent-muted neutral-muted bg-info social-reaction-bg-hover social-reaction-bg-reacted-hover btn-hover-bg btn-active-bg btn-primary-disabled-bg action-list-item-default-hover-bg',
+		tokens['accent-soft']
+	);
+	assign('btn-primary-text', mode === 'dark' ? tokens.paper : '#ffffff');
+	assign('btn-primary-disabled-text', tokens.muted);
+	assign('scale-gray-1', tokens['surface-2']);
+	assign('scale-blue-1', tokens['accent-soft']);
+	assign(
+		'btn-shadow btn-inset-shadow btn-primary-shadow btn-primary-inset-shadow btn-primary-selected-shadow primer-shadow-inset',
+		'none'
+	);
+	const danger = mode === 'dark' ? '#ffb4ab' : '#a52a26';
+	const success = mode === 'dark' ? '#8dcca4' : '#286a47';
+	const attention = mode === 'dark' ? '#efd064' : '#805b08';
+	assign('danger-fg text-danger prettylights-syntax-brackethighlighter-unmatched', danger);
+	assign('success-fg text-success prettylights-syntax-markup-inserted-text', success);
+	assign(
+		'attention-fg prettylights-syntax-markup-list prettylights-syntax-markup-changed-text',
+		attention
+	);
+	assign(
+		'danger-muted danger-subtle prettylights-syntax-invalid-illegal-bg prettylights-syntax-carriage-return-bg prettylights-syntax-markup-deleted-bg',
+		`color-mix(in srgb,${danger} 12%,${tokens.surface})`
+	);
+	assign(
+		'attention-muted attention-subtle prettylights-syntax-markup-changed-bg',
+		`color-mix(in srgb,${attention} 12%,${tokens.surface})`
+	);
+	assign(
+		'prettylights-syntax-markup-inserted-bg',
+		`color-mix(in srgb,${success} 12%,${tokens.surface})`
+	);
+	assign(
+		'prettylights-syntax-invalid-illegal-text prettylights-syntax-carriage-return-text prettylights-syntax-markup-deleted-text',
+		danger
+	);
+	assign('prettylights-syntax-markup-ignored-text', tokens.ink);
+	assign('prettylights-syntax-markup-ignored-bg', tokens['surface-2']);
+	const radius = { layall: '12px', blog: '8px', minimal: '0', portfolio: '20px', docs: '6px' }[
+		name
+	];
+	const surface =
+		name === 'layall'
+			? `color-mix(in srgb,${tokens['accent-soft']} 35%,${tokens.surface})`
+			: tokens.surface;
+	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
+${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
+:root{color-scheme:${mode};font-size:16px;--layall-type-scale:${name === 'layall' ? 1.125 : 1};--font-family-default:${font};--font-family-sans:${font};--font-family-monospace:${name === 'layall' ? font : 'ui-monospace,SFMono-Regular,Consolas,monospace'};${Object.entries(
+		vars
+	)
+		.map(([key, value]) => `--color-${key}:${value}`)
+		.join(';')}}
+body,.gsc-main{font-size:calc(1rem * var(--layall-type-scale));background:transparent;color:var(--color-fg-default);font-family:var(--font-family-default);line-height:1.65}
+.gsc-main :is(button,input,textarea,select){font-family:var(--font-family-default)}
+.gsc-main .text-xs{font-size:calc(.75rem * var(--layall-type-scale))}.gsc-main .text-sm{font-size:calc(.875rem * var(--layall-type-scale))}.gsc-main .text-base{font-size:calc(1rem * var(--layall-type-scale))}.gsc-main .text-lg{font-size:calc(1.125rem * var(--layall-type-scale))}.gsc-main .text-xl{font-size:calc(1.25rem * var(--layall-type-scale))}.gsc-main .text-2xl{font-size:calc(1.5rem * var(--layall-type-scale))}
+.gsc-main{--layall-rail:${tokens.line};--layall-radius:${radius}}
+.gsc-main .btn,.gsc-comment,.gsc-comment-box,.gsc-loading-text,.gsc-pagination-button{font-size:calc(.875rem * var(--layall-type-scale))}.gsc-comment-box-markdown-hint,.gsc-main .f6,.gsc-main .blob-num{font-size:calc(.75rem * var(--layall-type-scale))}
+.gsc-header{padding-bottom:1rem;gap:.75rem;flex-wrap:wrap}.gsc-comments-count{font-size:calc(1rem * var(--layall-type-scale));font-weight:650}
+.gsc-reactions{padding:.6rem 0 1.5rem}.gsc-upvotes,.gsc-upvote-button{display:none}
+.gsc-direct-reaction-buttons{flex-wrap:wrap;gap:.4rem}.gsc-social-reaction-summary-item{border-radius:999px;border:1px solid var(--color-border-default);background:var(--color-canvas-default);min-height:2.25rem;padding:.3rem .7rem;gap:.35rem;font-size:calc(.9rem * var(--layall-type-scale))}.gsc-social-reaction-summary-item-count{font-variant-numeric:tabular-nums}.gsc-social-reaction-summary-item.has-reacted{background:var(--color-accent-subtle);color:var(--color-accent-fg);border-color:var(--color-accent-fg)}
+.gsc-timeline{gap:0}.gsc-comment{position:relative;min-width:0;margin-left:.8rem;padding:0 0 1.4rem 1.4rem;border-left:1px solid var(--layall-rail)}.gsc-comment:before{content:"";position:absolute;left:-.25rem;top:1rem;width:.45rem;height:.45rem;border-radius:50%;background:var(--color-accent-fg)}.gsc-comment>div:first-child{border-color:var(--color-border-default);border-radius:var(--layall-radius);background:${surface};overflow:visible}.gsc-comment-header{padding:.85rem 1rem;gap:.6rem;align-items:center;flex-wrap:wrap}.gsc-comment-author{color:var(--color-fg-default);font-size:calc(.95rem * var(--layall-type-scale))}.gsc-comment-author-avatar img,.gsc-reply-author-avatar img{border-radius:50%;border:1px solid var(--color-border-default)}.gsc-comment-header time,.gsc-reply-header time{color:var(--color-fg-muted);font-size:calc(.8rem * var(--layall-type-scale))}
+.gsc-comment-content,.gsc-reply-content{overflow-wrap:anywhere;line-height:1.7;font-size:calc(1rem * var(--layall-type-scale))}.gsc-comment-content{padding:.25rem 1rem .75rem}.gsc-comment-footer{padding:.5rem 1rem .9rem;gap:.5rem;flex-wrap:wrap}.gsc-comment-content blockquote,.gsc-reply-content blockquote{margin:.75rem 0;padding:.4rem .85rem;border-left:3px solid var(--color-accent-fg);background:var(--color-accent-subtle);color:var(--color-fg-muted)}
+.gsc-replies{min-width:0;background:transparent;border-color:var(--layall-rail)}.gsc-tl-line{background:var(--layall-rail)}.gsc-reply{min-width:0;padding-top:.7rem;padding-bottom:.7rem}.gsc-reply-header{gap:.5rem;flex-wrap:wrap}.gsc-reply-box{border-color:var(--color-border-default);border-radius:var(--layall-radius)}
+.gsc-comment-box{border-color:var(--color-border-default);border-radius:var(--layall-radius);background:var(--color-canvas-default)}.gsc-comment-box-tabs{border-color:var(--color-border-default);background:var(--color-canvas-subtle)}.gsc-comment-box-textarea{font-family:var(--font-family-default);font-size:calc(1rem * var(--layall-type-scale));line-height:1.7;min-height:8rem;background:var(--color-canvas-default);color:var(--color-fg-default);border-color:var(--color-border-default);resize:vertical}.gsc-comment-box-is-reply .gsc-comment-box-textarea{min-height:5rem}.gsc-comment-box-buttons{gap:.5rem;flex-wrap:wrap}.gsc-comment-box-md-toolbar{flex-wrap:wrap}.gsc-pagination-button{min-height:2.75rem;border-radius:999px}
+.gsc-main :is(button,a,textarea,input,summary):focus-visible{outline:2px solid var(--color-accent-fg);outline-offset:3px}.gsc-main button:disabled{cursor:not-allowed;opacity:.6}.gsc-main :is(pre,code){font-family:var(--font-family-monospace)}.gsc-main .markdown img{max-width:100%;height:auto}.gsc-main .markdown pre{overflow:auto}.gsc-main .markdown table{display:block;max-width:100%;overflow:auto}
+${name === 'minimal' ? '.gsc-comment>div:first-child{border-width:0;background:transparent}.gsc-comment-header{padding-left:0;padding-right:0}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}' : ''}
+${name === 'blog' || name === 'docs' ? '.gsc-comment-header{border-bottom:1px solid var(--color-border-default);background:var(--color-canvas-subtle);border-radius:var(--layall-radius) var(--layall-radius) 0 0}' : ''}
+@media(max-width:680px){:root{--layall-type-scale:${name === 'layall' ? 1.0546875 : 0.9375}}.gsc-comment{margin-left:.3rem;padding-left:.8rem;padding-bottom:1rem}.gsc-comment-header{padding:.65rem}.gsc-comment-content,.gsc-comment-footer{padding-left:.65rem;padding-right:.65rem}.gsc-reply{padding-left:.5rem;padding-right:.5rem}.gsc-social-reaction-summary-item{min-height:2.5rem}.gsc-comment-box-bottom{flex-wrap:wrap;gap:.5rem}}
+@media(prefers-reduced-motion:reduce){.gsc-main *{scroll-behavior:auto;transition:none}}
+`;
+};
+const giscusThemeUrls = {};
+if (discussionSetup)
+	for (const name of themeOrder) {
+		giscusThemeUrls[name] = {};
+		for (const mode of ['light', 'dark']) {
+			const css = giscusCss(name, mode);
+			const digest = createHash('sha256').update(css).digest('hex').slice(0, 16);
+			const file = `assets/giscus/${name}-${mode}-${digest}.css`;
+			write(file, css);
+			giscusThemeUrls[name][mode] = absolute(`/${file}`);
+		}
+	}
+
+// This function is serialized into articles only. It owns exactly one client/iframe.
+function mountDiscussion(config) {
+	const root = document.documentElement;
+	const holder = document.querySelector('[data-post-discussion]');
+	const container = holder?.querySelector('.giscus');
+	if (!container || holder.dataset.giscusMounted === 'true') return;
+	holder.dataset.giscusMounted = 'true';
+	const status = holder.querySelector('[data-discussion-status]');
+	const retry = holder.querySelector('[data-discussion-retry]');
+	const system = window.matchMedia('(prefers-color-scheme: dark)');
+	const themeUrl = () => {
+		const name = Object.hasOwn(config.themes, root.dataset.theme)
+			? root.dataset.theme
+			: 'layall';
+		const mode =
+			root.dataset.colorMode === 'dark' ||
+			(root.dataset.colorMode === 'system' && system.matches)
+				? 'dark'
+				: 'light';
+		return config.themes[name][mode];
+	};
+	const frame = () => container.querySelector('iframe.giscus-frame');
+	let lastTheme = '';
+	const sync = (force = false) => {
+		const target = frame();
+		const theme = themeUrl();
+		if (!target?.contentWindow || (!force && theme === lastTheme)) return;
+		target.contentWindow.postMessage(
+			{ giscus: { setConfig: { theme } } },
+			'https://giscus.app'
+		);
+		lastTheme = theme;
+	};
+	const appearance = new MutationObserver(() => sync());
+	appearance.observe(root, {
+		attributes: true,
+		attributeFilter: ['data-theme', 'data-color-mode'],
+	});
+	const frames = new MutationObserver(() => {
+		const target = frame();
+		if (target && target.dataset.layallObserved !== 'true') {
+			target.dataset.layallObserved = 'true';
+			target.addEventListener('load', () => sync(true));
+			sync(true);
+		}
+	});
+	frames.observe(container, { childList: true });
+	system.addEventListener('change', () => sync());
+	window.addEventListener('message', (event) => {
+		if (
+			event.origin !== 'https://giscus.app' ||
+			event.source !== frame()?.contentWindow ||
+			!event.data?.giscus
+		)
+			return;
+		if (event.data.giscus.error) {
+			status.hidden = false;
+			status.textContent = '댓글을 불러오지 못했습니다. 잠시 후 페이지를 새로고침해 주세요.';
+		} else if (
+			event.data.giscus.discussion ||
+			Number.isFinite(event.data.giscus.resizeHeight)
+		) {
+			status.hidden = true;
+			sync();
+		}
+	});
+	const start = () => {
+		if (frame() || holder.querySelector('script[data-layall-giscus]')) return;
+		retry.hidden = true;
+		status.hidden = false;
+		status.textContent = '댓글·반응 불러오는 중…';
+		const script = document.createElement('script');
+		script.src = 'https://giscus.app/client.js';
+		script.async = true;
+		script.crossOrigin = 'anonymous';
+		const attributes = {
+			'data-layall-giscus': 'true',
+			'data-repo': config.repo,
+			'data-repo-id': config.repoId,
+			'data-category': config.category,
+			'data-category-id': config.categoryId,
+			'data-mapping': 'number',
+			'data-term': String(config.post.number),
+			'data-reactions-enabled': '1',
+			'data-emit-metadata': '1',
+			'data-input-position': 'top',
+			'data-theme': themeUrl(),
+			'data-lang': config.lang,
+		};
+		for (const [name, value] of Object.entries(attributes)) script.setAttribute(name, value);
+		script.addEventListener('error', () => {
+			script.remove();
+			status.hidden = false;
+			status.textContent =
+				'댓글 서비스를 연결하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.';
+			retry.hidden = false;
+		});
+		holder.append(script);
+	};
+	retry.addEventListener('click', start);
+	start();
+}
+const discussionBehavior = (options) => {
+	if (!options.article || !discussionFor(options.discussionPostId)) return '';
+	const post = posts.find((post) => post.postId === options.discussionPostId);
+	const config = {
+		...discussionSetup,
+		post: {
+			id: post.postId,
+			title: String(post.title || 'Untitled'),
+			...discussionFor(post.postId),
+		},
+		themes: giscusThemeUrls,
+		lang: String(site.locale || 'ko').startsWith('ko') ? 'ko' : 'en',
+	};
+	return `<script>(${mountDiscussion.toString()})(${js(config)})</script>`;
+};
+const discussionSection = (post) =>
+	!discussionsEnabled
+		? ''
+		: `<section class="discussion-thread" data-post-discussion="${esc(post.postId)}" aria-label="Comments And Reactions"><h2>Comments And Reactions</h2>${discussionFor(post.postId) ? '<p class="muted" data-discussion-status role="status">댓글·반응 불러오는 중…</p><button type="button" data-discussion-retry hidden>다시 시도</button><div class="giscus" id="comments"></div><noscript><p class="muted">댓글과 반응을 보려면 JavaScript를 켜 주세요.</p></noscript>' : '<p class="muted" role="status">댓글 연결이 준비되지 않았습니다. 블로그 소유자가 댓글 설정을 저장한 뒤 게시해 주세요.</p>'}</section>`;
+
+const snapshotCounts = (post) => {
+	const mapping = discussionFor(post.postId);
+	const snapshot = site.githubReactionSnapshot?.posts?.[post.postId];
+	if (
+		!mapping ||
+		snapshot?.discussionId !== mapping.nodeId ||
+		!reactions.every(
+			([key]) => Number.isSafeInteger(snapshot.counts?.[key]) && snapshot.counts[key] >= 0
+		)
+	)
+		return null;
+	return snapshot.counts;
+};
+const reactionOverview = () => {
+	if (!discussionsEnabled) return '';
+	const capturedAt = site.githubReactionSnapshot?.capturedAt;
+	const complete =
+		Number.isSafeInteger(capturedAt) &&
+		capturedAt > 0 &&
+		Number.isFinite(new Date(capturedAt).getTime()) &&
+		posts.every(snapshotCounts);
+	if (!complete)
+		return '<section class="home-reaction"><h2>Reaction</h2><p class="muted" role="status">반응 집계가 준비되지 않았습니다. 블로그를 업데이트해 주세요.</p></section>';
+	const tabs = reactions
+		.map(
+			([key, emoji, label], index) =>
+				`<button type="button" data-reaction-kind="${key}" aria-pressed="${index === 0}" aria-label="${label} 순위"><span aria-hidden="true">${emoji}</span></button>`
+		)
+		.join('');
+	const panels = reactions
+		.map(([key, emoji, label], index) => {
+			const ranked = posts
+				.map((post) => ({ post, count: snapshotCounts(post)[key] }))
+				.filter((entry) => entry.count > 0)
+				.sort(
+					(a, b) =>
+						b.count - a.count ||
+						(a.post.postId < b.post.postId ? -1 : a.post.postId > b.post.postId ? 1 : 0)
+				)
+				.slice(0, 5);
+			const list = ranked.length
+				? `<ol class="reaction-ranking">${ranked.map(({ post, count }) => `<li><a href="${esc(postUrl(post))}">${esc(post.title || 'Untitled')}</a><span class="reaction-ranking-count" aria-label="${label} ${count}"><span aria-hidden="true">${emoji}</span> ${count}</span></li>`).join('')}</ol>`
+				: `<p class="muted">아직 ${esc(label)} 반응이 있는 글이 없습니다.</p>`;
+			return `<div data-reaction-panel="${key}" aria-label="${label} Top 5"${index ? ' hidden' : ''}>${list}</div>`;
+		})
+		.join('');
+	return `<section class="home-reaction" data-reaction-ranking><h2>Reaction</h2><p class="muted reaction-caption">게시·업데이트 시 집계 · <time datetime="${new Date(capturedAt).toISOString()}">${new Date(capturedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC</time></p><div class="reaction-tabs" role="group" aria-label="반응별 순위">${tabs}</div>${panels}</section>`;
+};
+
 const behavior = `<script>(()=>{
 const root=document.documentElement;
 root.dataset.js='true';
@@ -1614,8 +2302,10 @@ const bindBlog=()=>{
  syncBlogHash();filter();
 };
 window.addEventListener('hashchange',()=>syncBlogHash());
-const bindPage=(query='')=>{bindDocs();bindSearch(query);bindBlog()};
-const activate=(next)=>{if(!layoutThemes.has(next)||!mount)return;const template=document.querySelector('template[data-theme-layout="'+next+'"]');if(!template)return;const query=document.querySelector('[data-search-input]')?.value||'';pageGeneration+=1;const fragment=template.content.cloneNode(true);fragment.querySelectorAll('[data-layout-id]').forEach(node=>{node.id=node.dataset.layoutId;node.removeAttribute('data-layout-id')});const retained=new Map([...document.querySelectorAll('[data-theme-piece]')].map(node=>[node.dataset.themePiece,node]));const used=new Set();fragment.querySelectorAll('[data-theme-slot]').forEach(target=>{const piece=retained.get(target.dataset.themeSlot);if(piece){used.add(target.dataset.themeSlot);target.replaceWith(piece)}});if(pool)pool.replaceChildren(...[...retained].filter(([name])=>!used.has(name)).map(([,node])=>node));root.dataset.theme=next;root.dataset.layallTheme=next;mount.replaceChildren(fragment);syncLayout();bindPage(query)};
+let selectedReaction='+1';
+const bindReactions=()=>{const section=document.querySelector('[data-reaction-ranking]');if(!section)return;const select=key=>{selectedReaction=key;section.querySelectorAll('[data-reaction-kind]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.reactionKind===key)));section.querySelectorAll('[data-reaction-panel]').forEach(panel=>panel.hidden=panel.dataset.reactionPanel!==key)};section.querySelectorAll('[data-reaction-kind]').forEach(button=>button.addEventListener('click',()=>select(button.dataset.reactionKind)));select(selectedReaction)};
+const bindPage=(query='')=>{bindDocs();bindSearch(query);bindBlog();bindReactions()};
+const activate=(next)=>{if(!layoutThemes.has(next)||!mount)return;const articleShell=mount.querySelector('[data-article-shell]');if(articleShell){root.dataset.theme=next;root.dataset.layallTheme=next;articleShell.className=next==='docs'?'docs-layout':'article-frame';articleShell.querySelector('[data-article-main]').className=next==='docs'?'docs-content':'article-shell theme-article-'+next;syncLayout();bindDocs();return}const template=document.querySelector('template[data-theme-layout="'+next+'"]');if(!template)return;const query=document.querySelector('[data-search-input]')?.value||'';pageGeneration+=1;const fragment=template.content.cloneNode(true);fragment.querySelectorAll('[data-layout-id]').forEach(node=>{node.id=node.dataset.layoutId;node.removeAttribute('data-layout-id')});const retained=new Map([...document.querySelectorAll('[data-theme-piece]')].map(node=>[node.dataset.themePiece,node]));const used=new Set();fragment.querySelectorAll('[data-theme-slot]').forEach(target=>{const piece=retained.get(target.dataset.themeSlot);if(piece){used.add(target.dataset.themeSlot);target.replaceWith(piece)}});if(pool)pool.replaceChildren(...[...retained].filter(([name])=>!used.has(name)).map(([,node])=>node));root.dataset.theme=next;root.dataset.layallTheme=next;mount.replaceChildren(fragment);syncLayout();bindPage(query)};
 const savedColor=readStored('layall-color-mode');if(colorModes.has(savedColor))root.dataset.colorMode=savedColor;syncColor();
 document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{const mode=button.dataset.color;if(!colorModes.has(mode))return;root.dataset.colorMode=mode;writeStored('layall-color-mode',mode);syncColor()}));
 document.querySelectorAll('[data-layout-theme]').forEach(select=>select.addEventListener('change',()=>{const next=select.value;if(!layoutThemes.has(next)){syncLayout();return}activate(next);writeStored(layoutKey,next)}));
@@ -1746,7 +2436,7 @@ const shell = (title, body, options = {}) => {
 	const postToc = options.postToc
 		? `<div class="header-actions"><button class="post-toc-toggle" type="button" data-post-toc-toggle aria-expanded="false" aria-controls="post-table-of-contents">TOC</button><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button></div><aside class="post-toc-panel" id="post-table-of-contents" data-post-toc-panel data-open="false" aria-hidden="true" tabindex="-1"><div class="post-toc-head"><strong>On This Page</strong><button class="post-toc-close" type="button" data-post-toc-close aria-label="목차 닫기">×</button></div><nav aria-label="현재 글 목차">${options.postToc}</nav></aside>`
 		: '<button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button>';
-	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<div class="appearance-controls">${palettePicker}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></div></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer">${footerIdentity}</footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Post</a><a href="${href('/search/')}">Search</a></nav>${templates}${pwaRegistration}${behavior}${issueBehavior(options)}</body></html>`;
+	return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><style>${styles}</style></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<div class="appearance-controls">${palettePicker}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></div></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer">${footerIdentity}</footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Post</a><a href="${href('/search/')}">Search</a></nav>${templates}${pwaRegistration}${behavior}${discussionBehavior(options)}</body></html>`;
 };
 
 const compactList = (items, bookThumbnails = false) => {
@@ -1946,10 +2636,7 @@ const homeOverview = (selectedTheme) => {
 		selectedTheme === 'layall'
 			? `${stars}<div class="archive-ledger">${heatmap}${activity}</div>`
 			: `${stars}${heatmap}${activity}`;
-	const mostLiked = issueConfig
-		? '<section class="home-most-liked" data-most-liked style="grid-column:1/-1"><h2>Most Liked</h2><p class="muted" role="status">좋아요 불러오는 중…</p></section>'
-		: '';
-	return `<section id="overview" data-blog-panel="overview" class="blog-panel">${composition}${mostLiked}</section>`;
+	return `<section id="overview" data-blog-panel="overview" class="blog-panel">${composition}${reactionOverview()}</section>`;
 };
 const renderHome = (_items, selectedTheme = theme) => {
 	const tabs = homeTabs();
@@ -1974,17 +2661,22 @@ const toc = (headings) => {
 		: '<p class="muted">이 문서에는 세부 목차가 없습니다.</p>';
 };
 const articleContent = (post, rendered) =>
-	`<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${issueConfig?.posts.some((entry) => entry.id === post.postId) ? `<section data-post-issues="${esc(post.postId)}" aria-label="Comments And Likes"><h2>Comments And Likes</h2><p role="status">댓글·좋아요 불러오는 중…</p></section>` : ''}</article>`;
+	post.protectedEnvelope
+		? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post><h1>보호된 글</h1><p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script><script defer src="${esc(href('/protected-post.js'))}"></script></article>`
+		: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><p class="post-meta">${esc(metadata(post))}</p><h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
 const articleSlot = '<span data-theme-slot="article"></span>';
 const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
-const standardArticle = (selectedTheme) =>
-	`<main id="content" class="article-shell theme-article-${selectedTheme}">${articleSlot}</main>`;
-const docsArticle = () =>
-	`<div class="docs-layout">${docsNavigationSlot}<main id="content" class="docs-content">${articleSlot}</main></div>`;
+// The article and iframe stay connected while changing appearance. Moving an iframe
+// through a DocumentFragment reloads its browsing context and loses the visitor draft.
+const articleLayout = (selectedTheme) =>
+	`<div data-article-shell class="${selectedTheme === 'docs' ? 'docs-layout' : 'article-frame'}">${docsNavigationSlot}<main id="content" data-article-main class="${selectedTheme === 'docs' ? 'docs-content' : `article-shell theme-article-${selectedTheme}`}">${articleSlot}</main></div>`;
+
+const protectedClient = `const href = value => ${js(basePath)}+value;const esc = ${esc.toString()};const safeExternal = ${safeExternal.toString()};const isInternalHostname = ${isInternalHostname.toString()};const safeSocialImage = ${safeSocialImage.toString()};const safeContentHref = ${safeContentHref.toString()};const plainText = ${plainText.toString()};const slugify = ${slugify.toString()};const inlineMarkdown = ${inlineMarkdown.toString()};const tableCells = ${tableCells.toString()};const imageLine = ${imageLine.toString()};const finiteMapCoordinate = ${finiteMapCoordinate.toString()};const mapCoordinatePair = ${mapCoordinatePair.toString()};const naverCameraPair = ${naverCameraPair.toString()};const parseMapPlaceUrl = ${parseMapPlaceUrl.toString()};const naverPlaceOpenUrl = ${naverPlaceOpenUrl.toString()};const mapPlaceFromLine = ${mapPlaceFromLine.toString()};const mapPlaceTile = ${mapPlaceTile.toString()};const mapPlaceCardHtml = ${mapPlaceCardHtml.toString()};const renderMarkdown = ${renderMarkdown.toString()};${folderCrypto.toString()};${mountProtected.toString()};const e=document.querySelector("[data-protected-envelope]");if(e)mountProtected(JSON.parse(e.textContent),renderMarkdown);`;
+if (posts.some((post) => post.protectedEnvelope)) write('protected-post.js', protectedClient);
 
 for (const post of posts) {
 	const route = postInputs[post.postId].cacheableOutputs[0].path;
-	const cached = cachedPostHtml(post);
+	const cached = post.protectedEnvelope ? null : cachedPostHtml(post);
 	if (cached) {
 		cacheMetrics.hits += 1;
 		write(route, cached, post.postId);
@@ -1994,9 +2686,7 @@ for (const post of posts) {
 	const renderStarted = performance.now();
 	const renderCpuStarted = process.cpuUsage();
 	const rendered = renderMarkdown(post.body, assetsByPost.get(post.postId));
-	const variants = variantsOf((name) =>
-		name === 'docs' ? docsArticle() : standardArticle(name)
-	);
+	const variants = variantsOf(articleLayout);
 	const pieces = {
 		article: articleContent(post, rendered),
 		'docs-navigation': `<div class="docs-sidebar-wrap" data-theme-piece="docs-navigation"><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation(post)}</aside></div>`,
@@ -2004,7 +2694,7 @@ for (const post of posts) {
 	const html = shell(post.title || 'Untitled', variants[theme], {
 		kind: theme === 'docs' ? 'docs-article' : 'article',
 		article: true,
-		issuePostId: post.postId,
+		discussionPostId: post.protectedEnvelope ? null : post.postId,
 		description: excerpt(post.body, 160),
 		url: absolute(`/posts/${encodeURIComponent(post.permalink)}/`),
 		image: rendered.firstImage?.url,
@@ -2104,14 +2794,16 @@ write(
 	})
 );
 
-const search = posts.map((post) => ({
-	postId: post.postId,
-	title: String(post.title || 'Untitled'),
-	permalink: post.permalink,
-	body: plainText(post.body),
-	tags: Array.isArray(post.tags) ? post.tags.map(String) : [],
-	folder: post.folderId ? folderName(post.folderId) : '',
-}));
+const search = posts
+	.filter((post) => !post.protectedEnvelope)
+	.map((post) => ({
+		postId: post.postId,
+		title: String(post.title || 'Untitled'),
+		permalink: post.permalink,
+		body: plainText(post.body),
+		tags: Array.isArray(post.tags) ? post.tags.map(String) : [],
+		folder: post.folderId ? folderName(post.folderId) : '',
+	}));
 write('search.json', JSON.stringify(search));
 const searchPanel = `<p class="eyebrow">Archive Search</p><h1>Search</h1><form class="search-form" data-search-form role="search"><label class="skip-link" for="search-query">검색어</label><input id="search-query" data-search-input type="search" autocomplete="off" placeholder="제목, 내용, 태그 검색"><button type="submit">검색</button></form><p class="muted" data-search-status aria-live="polite"></p><ul class="post-list search-results" data-search-results></ul>`;
 const searchVariants = variantsOf((name) => {
@@ -2134,12 +2826,14 @@ if (site.feedEnabled !== false) {
 			.sort((a, b) => b - a)[0] ?? 0;
 	const feedUpdatedIso = new Date(feedUpdated).toISOString();
 	const rssItems = posts
+		.filter((post) => !post.protectedEnvelope)
 		.map(
 			(post) =>
 				`<item><title>${esc(post.title || 'Untitled')}</title><link>${esc(absolute(`/posts/${post.permalink}/`))}</link><guid>${esc(absolute(`/posts/${post.permalink}/`))}</guid><description>${esc(excerpt(post.body, 240))}</description></item>`
 		)
 		.join('');
 	const atomItems = posts
+		.filter((post) => !post.protectedEnvelope)
 		.map((post) => {
 			const postUpdated = new Date(post.sourceUpdatedAt ?? '').getTime();
 			const updated = new Date(Number.isFinite(postUpdated) ? postUpdated : 0).toISOString();
@@ -2176,6 +2870,17 @@ write(
 		kind: 'not-found',
 		variants: notFoundVariants,
 	})
+);
+// Inert public attachment downloads. The fragment never becomes HTML or script.
+write(
+	'download.html',
+	'<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>첨부파일 다운로드</title><p id="status">첨부파일을 준비합니다.</p><script src="' +
+		href('/download.js') +
+		'" defer></script></html>'
+);
+write(
+	'download.js',
+	`"use strict";(async()=>{let url;try{const path=decodeURIComponent(location.hash.slice(1));if(!/^assets\\/posts\\/[a-zA-Z0-9_-]+\\//.test(path)||!path.endsWith('.layall-download.json')||path.split('/').some(p=>!p||p==='.'||p==='..')||path.includes('\\\\'))throw Error();const response=await fetch(${js(basePath)}+'/'+path,{credentials:'omit',cache:'no-store'});if(!response.ok)throw Error();const p=await response.json();if(p.format!=='layall-download'||p.version!==1||typeof p.data!=='string'||typeof p.name!=='string')throw Error();const bytes=Uint8Array.from(atob(p.data),c=>c.charCodeAt(0));url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'}));const a=document.createElement('a');a.href=url;a.download=new TextDecoder().decode(Uint8Array.from(atob(p.name),c=>c.charCodeAt(0))).replace(/[\\/\\\\]/g,'_')||'attachment';a.textContent='첨부파일 다운로드';document.querySelector('#status').replaceChildren(a);}catch{document.querySelector('#status').textContent='첨부파일을 열 수 없습니다.';}addEventListener('pagehide',()=>{if(url)URL.revokeObjectURL(url);});})();`
 );
 write('assets-manifest.json', JSON.stringify({ files: assetClaims, profile: profileAsset }));
 write('__layall-deploy.json', JSON.stringify({ format: 'layall-deploy', sourceSha: sha }));
