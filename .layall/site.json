@@ -11,6 +11,25 @@
   ],
   "feedEnabled": true,
   "giscusEnabled": false,
+  "githubIssueMap": {
+    "post-23c354cda433bb63de6699862f0afa87": {
+      "authorId": 117904793,
+      "number": 1
+    },
+    "post-2a9fbed645c5a2bc3681d4a711c452a8": {
+      "authorId": 117904793,
+      "number": 2
+    },
+    "post-7f3dbd195859c67009bad241cfacd4a1": {
+      "authorId": 117904793,
+      "number": 3
+    },
+    "post-821f44b92e12b2852d6da5b4c2c319d2": {
+      "authorId": 117904793,
+      "number": 4
+    }
+  },
+  "githubIssuesEnabled": true,
   "locale": "ko-KR",
   "profileBio": "ai에게 뇌대리중인 인간의 인생 로그.",
   "profileImage": {
