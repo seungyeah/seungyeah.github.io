@@ -71,7 +71,7 @@
   },
   "githubIssuesEnabled": true,
   "githubReactionSnapshot": {
-    "capturedAt": 1792230416796,
+    "capturedAt": 1792241420695,
     "posts": {
       "post-23c354cda433bb63de6699862f0afa87": {
         "counts": {
@@ -92,7 +92,7 @@
           "-1": 0,
           "confused": 0,
           "eyes": 0,
-          "heart": 0,
+          "heart": 1,
           "hooray": 0,
           "laugh": 0,
           "rocket": 0

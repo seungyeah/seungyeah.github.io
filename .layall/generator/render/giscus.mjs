@@ -103,11 +103,46 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 			: '';
 	const layallTimeline =
 		name === 'layall'
-			? `.gsc-main{--layall-comment-inset:1.6rem}.gsc-header{padding-left:var(--layall-comment-inset)}.gsc-reactions{padding:.25rem 0 1.25rem var(--layall-comment-inset)}.gsc-reactions>div{margin:0}.gsc-timeline{gap:0;margin-top:.25rem}.gsc-comment{margin-left:.55rem;padding:0 0 1.2rem 1.05rem;border-left:1px solid var(--layall-rail)}.gsc-comment:before{left:-.3rem;top:.75rem;width:.55rem;height:.55rem;background:var(--color-accent-fg);box-shadow:0 0 0 4px var(--color-canvas-default)}.gsc-comment>div:first-child{border:0;border-radius:0;background:transparent;box-shadow:none}.gsc-comment-header{padding:0 0 .5rem;gap:.5rem}.gsc-comment-content{padding:.05rem 0 .7rem;line-height:1.7}.gsc-comment-footer{padding:.35rem 0 0;gap:.45rem;border-top:1px solid color-mix(in srgb,var(--color-border-default) 70%,transparent)}.gsc-replies{margin-top:.3rem;padding-left:.55rem;border-left:0}.gsc-replies .gsc-tl-line{display:none;background:transparent}.gsc-reply{padding:.55rem 0 .1rem}.gsc-reply-header{padding:0 0 .35rem}.gsc-reply-box{border:1px solid var(--color-border-default);border-radius:calc(var(--layall-radius) * .75);background:var(--color-canvas-default)}.gsc-social-reaction-summary-item{border-color:transparent;background:transparent}.gsc-direct-reaction-button.gsc-social-reaction-summary-item,.gsc-reactions-button.gsc-social-reaction-summary-item{border-radius:999px;min-width:2.55rem;min-height:2.4rem;padding:.25rem .45rem}.gsc-direct-reaction-button.gsc-social-reaction-summary-item:is(:hover,:focus-visible),.gsc-reactions-button.gsc-social-reaction-summary-item:is(:hover,:focus-visible){border-color:var(--color-border-default);background:var(--color-accent-subtle)}.gsc-comment-box{margin-left:var(--layall-comment-inset);box-shadow:none}.gsc-comment-box-tabs{border-radius:var(--layall-radius) var(--layall-radius) 0 0}.gsc-main textarea:is(:focus,:focus-visible){outline:0;box-shadow:none}@media(max-width:680px){.gsc-main{--layall-comment-inset:.85rem}.gsc-header{padding-left:var(--layall-comment-inset)}}`
+			? [
+					'.gsc-main{--layall-comment-inset:1.2rem;--layall-reaction-inset:.4rem;width:100%;max-width:100%;min-width:0;box-sizing:border-box}',
+					'.gsc-header{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding-left:var(--layall-comment-inset)}',
+					'.gsc-reactions{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:.6rem .4rem 1.5rem var(--layall-reaction-inset)}',
+					'.gsc-reactions>div{margin:0;min-width:0;max-width:100%}',
+					'.gsc-timeline{width:100%;max-width:100%;min-width:0;box-sizing:border-box;gap:0;margin-top:.25rem}',
+					'.gsc-comment{margin-left:.4rem;width:calc(100% - .4rem);max-width:calc(100% - .4rem);box-sizing:border-box;padding:0 0 1.2rem .8rem;border-left:1px solid var(--layall-rail)}',
+					'.gsc-comment:before{left:-.25rem;top:.75rem;width:.55rem;height:.55rem;background:var(--color-accent-fg);box-shadow:0 0 0 4px var(--color-canvas-default)}',
+					'.gsc-comment>div:first-child{border:0;border-radius:0;background:transparent;box-shadow:none}',
+					'.gsc-comment-header{padding:0 0 .5rem;gap:.5rem}',
+					'.gsc-comment-content{padding:.05rem 0 .7rem;line-height:1.7}',
+					'.gsc-comment-footer{padding:.35rem 0 0;gap:.45rem;border-top:1px solid color-mix(in srgb,var(--color-border-default) 70%,transparent)}',
+					'.gsc-replies{margin-top:.3rem;padding-left:.45rem;border-left:0;min-width:0;max-width:100%;box-sizing:border-box}',
+					'.gsc-replies .gsc-tl-line{display:none;background:transparent}',
+					'.gsc-reply{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:.55rem 0 .1rem}',
+					'.gsc-reply-header{display:flex;align-items:center;min-width:0;padding:0 0 .35rem}',
+					'.gsc-reply-content{display:block;min-width:0;padding:.05rem 0 .7rem;line-height:1.7}',
+					'.gsc-reply-footer{padding:.35rem 0 0;gap:.45rem}',
+					'.gsc-reply-box{width:100%;max-width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--color-border-default);border-radius:calc(var(--layall-radius) * .75);background:var(--color-canvas-default)}',
+					'.gsc-comment-box{margin-left:var(--layall-comment-inset);width:calc(100% - var(--layall-comment-inset));max-width:calc(100% - var(--layall-comment-inset));min-width:0;box-sizing:border-box;box-shadow:none}',
+					'.gsc-comment-box-tabs{border-radius:var(--layall-radius) var(--layall-radius) 0 0}',
+					'.gsc-main textarea:is(:focus,:focus-visible){outline:0;box-shadow:none}',
+					'.gsc-reactions-popover{box-sizing:border-box;max-width:calc(100vw - 1rem);min-width:0;padding:.65rem .9rem}',
+					'.gsc-reactions-popover .gsc-emoji-button{box-sizing:border-box;width:3rem;min-width:3rem;height:3rem;min-height:3rem;padding:.6rem;font-size:1.5rem;line-height:1}',
+					'.gsc-reactions-popover .gsc-emoji-button :is(img,svg){width:1.75rem;height:1.75rem}',
+					'@media(max-width:680px){.gsc-main{--layall-comment-inset:.75rem;--layall-reaction-inset:.15rem}.gsc-header{padding-left:var(--layall-comment-inset)}}',
+				].join('')
 			: '';
 	const layallTimelineMobile =
 		name === 'layall'
-			? `.gsc-comment{margin-left:.2rem;padding-left:.65rem}.gsc-comment-header{padding:0 0 .5rem}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}.gsc-reply{padding-left:0;padding-right:0}`
+			? [
+					'.gsc-comment{margin-left:.15rem;width:calc(100% - .15rem);max-width:calc(100% - .15rem);padding-left:.6rem}',
+					'.gsc-comment:before{left:-.05rem}',
+					'.gsc-reactions{padding-left:var(--layall-reaction-inset);padding-right:.25rem}',
+					'.gsc-comment-header{padding:0 0 .5rem}',
+					'.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}',
+					'.gsc-replies{padding-left:.3rem}',
+					'.gsc-reply{padding-left:0;padding-right:0}',
+				]
+					.join('')
 			: '';
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
 ${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
