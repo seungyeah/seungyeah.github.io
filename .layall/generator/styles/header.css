@@ -1,0 +1,200 @@
+.site-header {
+	position: sticky;
+	z-index: 30;
+	top: 0;
+	border-bottom: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+	background: color-mix(in srgb, var(--paper) 88%, transparent);
+	backdrop-filter: blur(18px);
+}
+.header-inner {
+	position: relative;
+	width: min(calc(100% - 2rem), var(--content));
+	min-height: 68px;
+	margin: auto;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+.brand {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	text-decoration: none;
+}
+.nav-toggle,
+.post-toc-toggle {
+	display: none;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--surface);
+	padding: 0.42rem 0.8rem;
+	color: var(--ink);
+	cursor: pointer;
+}
+.nav-toggle {
+	margin-left: auto;
+}
+.header-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+}
+.header-actions .nav-toggle {
+	margin-left: 0;
+}
+.post-toc-toggle {
+	position: relative;
+	display: block;
+	animation: toc-arrive 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.post-toc-toggle:hover,
+.post-toc-toggle[aria-expanded='true'],
+.nav-toggle:hover,
+.nav-toggle[aria-expanded='true'] {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.post-toc-panel {
+	position: absolute;
+	z-index: 50;
+	top: calc(100% + 0.65rem);
+	right: 4.75rem;
+	width: min(22rem, calc(100vw - 2rem));
+	max-height: min(70vh, 34rem);
+	overflow: auto;
+	padding: 1rem;
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-0.55rem) scale(0.98);
+	transform-origin: top right;
+	transition:
+		opacity 0.16s ease,
+		transform 0.16s ease,
+		visibility 0s linear 0.16s;
+}
+.post-toc-panel[data-open='true'] {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: none;
+	transition-delay: 0s;
+}
+.post-toc-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.55rem;
+}
+.post-toc-head strong {
+	font-size: calc(0.78rem * var(--font-scale));
+	letter-spacing: 0.1em;
+	color: var(--muted);
+}
+.post-toc-close {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--surface-2);
+	color: var(--ink);
+	cursor: pointer;
+}
+.post-toc-panel ol {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.post-toc-panel a {
+	display: block;
+	padding: 0.4rem 0.55rem;
+	border-radius: 8px;
+	text-decoration: none;
+	font-size: calc(0.88rem * var(--font-scale));
+	color: var(--muted);
+}
+.post-toc-panel a:hover,
+.post-toc-panel a:focus-visible,
+.post-toc-panel a[aria-current='location'] {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.post-toc-panel .toc-level-3 a {
+	padding-left: 1.25rem;
+}
+.post-toc-panel .toc-level-4 a {
+	padding-left: 2rem;
+}
+@keyframes toc-arrive {
+	from {
+		opacity: 0;
+		transform: translateX(0.55rem) scale(0.94);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+body[data-post-page='true'] .site-header .nav-toggle {
+	display: block;
+}
+body[data-post-page='true'] .site-nav {
+	position: absolute;
+	top: calc(100% + 0.65rem);
+	right: 0;
+	display: none;
+	width: min(28rem, calc(100vw - 2rem));
+	max-height: calc(100vh - 6rem);
+	overflow: auto;
+	flex-direction: column;
+	align-items: stretch;
+	padding: 1rem;
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	background: var(--surface);
+	box-shadow: var(--shadow);
+}
+body[data-post-page='true'] .site-nav[data-open='true'] {
+	display: flex;
+}
+.site-nav {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 1.1rem;
+}
+.site-nav a {
+	text-decoration: none;
+	font-size: calc(0.9rem * var(--font-scale));
+	font-weight: 650;
+}
+.color-controls {
+	display: flex;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	padding: 3px;
+}
+.color-controls button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+}
+.color-controls button:hover,
+.color-controls button[aria-pressed='true'] {
+	background: var(--accent-soft);
+	color: var(--accent);
+}

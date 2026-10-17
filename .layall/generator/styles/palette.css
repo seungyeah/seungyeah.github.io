@@ -1,0 +1,85 @@
+/* @palette:dark */
+@media (prefers-color-scheme: dark) {
+	/* @palette:system */
+}
+.palette-dot {
+	display: inline-block;
+	flex: none;
+	width: 0.65rem;
+	height: 0.65rem;
+	border-radius: 50%;
+	background: var(--palette-primary);
+	border: 1px solid color-mix(in srgb, var(--ink) 15%, transparent);
+}
+html[data-color-mode='dark'] .palette-dot {
+	background: var(--palette-dark);
+}
+@media (prefers-color-scheme: dark) {
+	html[data-color-mode='system'] .palette-dot {
+		background: var(--palette-dark);
+	}
+}
+.palette-picker {
+	position: relative;
+	min-width: 0;
+	max-width: 100%;
+	flex: 0 1 auto;
+}
+.palette-picker summary {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-height: 36px;
+	min-width: 0;
+	padding: 0.25rem 0.5rem;
+	cursor: pointer;
+	list-style: none;
+	font-size: calc(0.85rem * var(--font-scale));
+}
+.palette-picker summary::-webkit-details-marker {
+	display: none;
+}
+.palette-picker summary::after {
+	content: '⌄';
+	margin-left: 0.25rem;
+}
+.palette-options {
+	position: fixed;
+	z-index: 60;
+	top: 0;
+	left: 0;
+	width: 10rem;
+	max-width: calc(100vw - 3rem);
+	max-height: calc(100vh - 1rem);
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: 0.3rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--surface);
+	box-shadow: var(--shadow);
+}
+.palette-options button {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	min-height: 40px;
+	width: 100%;
+	min-width: 0;
+	border: 0;
+	border-radius: 4px;
+	padding: 0.45rem 0.65rem;
+	background: transparent;
+	color: var(--ink);
+	cursor: pointer;
+	text-align: left;
+}
+.palette-options button[aria-checked='true'] {
+	background: var(--surface-2);
+	font-weight: 700;
+}
+.palette-picker summary:focus-visible,
+.palette-options button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}

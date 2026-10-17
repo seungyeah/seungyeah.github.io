@@ -121,6 +121,73 @@ jobs:
               return value
           
           
+          PACKAGE_MANIFEST = ".layall/generator/package-manifest.json"
+          PACKAGE_FORMAT = "layall-generator-package"
+          
+          
+          def package_identity(entries):
+              data = PACKAGE_FORMAT + "-v1\n" + "".join("{}\0{}\0{}\n".format(entry["path"], entry["size"], entry["sha256"]) for entry in entries)
+              return hashlib.sha256(data.encode("utf-8")).hexdigest()
+          
+          
+          def local_source(name):
+              path_name(name)
+              current = "."
+              for segment in name.split("/"):
+                  current = os.path.join(current, segment)
+                  require(not stat.S_ISLNK(os.lstat(current).st_mode))
+              limit = 4 * MIB if name == ".layall/generator/fonts/omyu-pretty.woff2" else 2 * MIB
+              before = os.lstat(current)
+              require(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= limit)
+              descriptor = os.open(current, os.O_RDONLY | os.O_NOFOLLOW)
+              with os.fdopen(descriptor, "rb") as source:
+                  opened = os.fstat(source.fileno())
+                  require((opened.st_dev, opened.st_ino, opened.st_size) == (before.st_dev, before.st_ino, before.st_size))
+                  data = source.read(limit + 1)
+                  after = os.fstat(source.fileno())
+              require(len(data) == opened.st_size and (after.st_size, after.st_mtime_ns, after.st_ctime_ns) == (opened.st_size, opened.st_mtime_ns, opened.st_ctime_ns))
+              return data
+          
+          
+          def local_package():
+              raw = local_source(PACKAGE_MANIFEST)
+              require(len(raw) <= 128 * 1024)
+              manifest = parse_json(raw)
+              require(isinstance(manifest, dict) and set(manifest) == {"format", "version", "sha256", "entries"})
+              require(manifest["format"] == PACKAGE_FORMAT and type(manifest["version"]) is int and manifest["version"] == 1)
+              entries = manifest["entries"]
+              require(isinstance(entries, list) and 2 <= len(entries) <= 256)
+              require(raw == (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+              previous = ""
+              code = {PACKAGE_MANIFEST: raw}
+              total = 0
+              for entry in entries:
+                  require(isinstance(entry, dict) and set(entry) == {"path", "size", "sha256"})
+                  name = entry["path"]
+                  require(isinstance(name, str) and re.fullmatch(r"(?:build\.mjs|generator/[a-z0-9][a-z0-9/-]*\.(?:mjs|js|json|css|woff2|png))", name))
+                  require("//" not in name and name != "generator/package-manifest.json" and name > previous)
+                  previous = name
+                  require(type(entry["size"]) is int and entry["size"] > 0)
+                  digest(entry["sha256"])
+                  data = local_source(".layall/" + name)
+                  require(len(data) == entry["size"] and hashlib.sha256(data).hexdigest() == entry["sha256"])
+                  code[".layall/" + name] = data
+                  total += len(data)
+              require(total <= 16 * MIB and ".layall/build.mjs" in code)
+              require(manifest["sha256"] == package_identity(entries))
+              for base, directories, files in os.walk(".layall/generator", followlinks=False):
+                  require(not os.path.islink(base))
+                  require(all(not os.path.islink(os.path.join(base, name)) for name in directories))
+                  for name in files:
+                      full = os.path.join(base, name)
+                      require(full in code and not os.path.islink(full))
+              return code, manifest["sha256"]
+          
+          
+          def git_blob_sha(data):
+              return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
+          
+          
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self, request, file, code, message, headers, new_url):
                   return None
@@ -148,11 +215,8 @@ jobs:
                   require(self.branch and len(self.branch) <= 512)
                   require(COMMIT.fullmatch(os.environ["GITHUB_SHA"]))
                   self.prefix = "https://api.github.com/repos/" + self.repo
-                  self.code = {
-                      name: self.local_source(name)
-                      for name in (".layall/build.mjs", ".github/workflows/pages.yml")
-                  }
-                  self.generator_sha = hashlib.sha256(self.code[".layall/build.mjs"]).hexdigest()
+                  self.code, self.generator_sha = local_package()
+                  self.code[".github/workflows/pages.yml"] = local_source(".github/workflows/pages.yml")
           
               def remaining(self):
                   remaining = TIME_LIMIT - (time.monotonic() - self.started)
@@ -243,17 +307,6 @@ jobs:
                   require(changed_bytes * 10 <= total)
                   self.policy = "eligible"
           
-              def local_source(self, name):
-                  current = "."
-                  for segment in name.split("/"):
-                      current = os.path.join(current, segment)
-                      require(not stat.S_ISLNK(os.lstat(current).st_mode))
-                  require(stat.S_ISREG(os.lstat(current).st_mode))
-                  with open(current, "rb") as source:
-                      data = source.read(2 * MIB + 1)
-                  require(len(data) <= 2 * MIB)
-                  return data
-          
               def open(self, url, authenticated=False):
                   parsed = urllib.parse.urlsplit(url)
                   require(parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password)
@@ -323,16 +376,43 @@ jobs:
                   return run
           
               def producer(self, run):
+                  # Bind one complete immutable tree to the validated workflow run. Compare
+                  # every known blob identity; avoid base64 transport of the large font.
+                  commit = self.api("/git/commits/" + run["head_sha"], MIB)
+                  require(isinstance(commit, dict) and commit.get("sha") == run["head_sha"])
+                  tree_sha = commit.get("tree", {}).get("sha")
+                  require(isinstance(tree_sha, str) and COMMIT.fullmatch(tree_sha))
+                  tree = self.api("/git/trees/" + tree_sha + "?recursive=1", 3 * MIB)
+                  require(isinstance(tree, dict) and tree.get("sha") == tree_sha and tree.get("truncated") is False)
+                  entries = tree.get("tree")
+                  require(isinstance(entries, list) and len(entries) <= ENTRY_LIMIT)
+                  seen = {}
+                  for entry in entries:
+                      require(isinstance(entry, dict))
+                      name = path_name(entry.get("path"))
+                      require(name not in seen)
+                      seen[name] = entry
+                      if name == ".layall/generator":
+                          require(entry.get("type") == "tree" and entry.get("mode") == "040000")
+                      if name.startswith(".layall/generator/") and entry.get("type") != "tree":
+                          require(name in self.code)
+                      if name.startswith(".layall/generator/") and entry.get("type") == "tree":
+                          require(entry.get("mode") == "040000")
+                  root = seen.get(".layall/generator", {})
+                  require(root.get("type") == "tree" and root.get("mode") == "040000")
                   for name, expected in self.code.items():
-                      suffix = "/contents/" + name + "?" + urllib.parse.urlencode({"ref": run["head_sha"]})
-                      value = self.api(suffix, 3 * MIB)
-                      require(isinstance(value, dict) and value.get("type") == "file" and value.get("path") == name)
-                      require(value.get("encoding") == "base64" and value.get("size") == len(expected))
+                      entry = seen.get(name, {})
+                      require(entry.get("type") == "blob" and entry.get("mode") == "100644")
+                      require(entry.get("size") == len(expected) and entry.get("sha") == git_blob_sha(expected))
+                  # Exact small trust anchors; ordinary package blobs stay bound through
+                  # the complete immutable tree and SHA-256-verifying trusted launcher.
+                  for name in (PACKAGE_MANIFEST, ".layall/build.mjs", ".github/workflows/pages.yml"):
+                      expected = self.code[name]
+                      value = self.api("/git/blobs/" + git_blob_sha(expected), MIB)
+                      require(isinstance(value, dict) and value.get("encoding") == "base64" and value.get("sha") == git_blob_sha(expected))
                       require(isinstance(value.get("content"), str))
                       actual = base64.b64decode(value["content"].replace("\n", ""), validate=True)
-                      require(actual == expected)
-                      blob_sha = hashlib.sha1(b"blob " + str(len(actual)).encode("ascii") + b"\0" + actual).hexdigest()
-                      require(value.get("sha") == blob_sha)
+                      require(actual == expected and value.get("size") == len(actual))
           
               def artifact(self, run):
                   listing = self.api("/actions/runs/" + str(run["id"]) + "/artifacts?per_page=100")

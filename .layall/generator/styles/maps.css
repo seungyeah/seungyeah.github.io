@@ -1,0 +1,78 @@
+a.map-place-card,
+a.map-place-card:hover {
+	color: var(--ink);
+	text-decoration: none;
+}
+.map-place-card {
+	display: flex;
+	min-height: 7.5rem;
+	margin: 1.25rem 0;
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	background: var(--surface);
+	box-shadow: none;
+}
+.map-place-card:hover {
+	border-color: var(--accent);
+	box-shadow: none;
+}
+.map-place-map {
+	position: relative;
+	width: 7.5rem;
+	flex: none;
+	overflow: hidden;
+	background: var(--surface-2);
+}
+.map-place-map img {
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	margin: 0;
+	object-fit: cover;
+	border-radius: 0;
+}
+.map-place-pin {
+	position: absolute;
+	width: 0.9rem;
+	height: 0.9rem;
+	border: 2px solid #fff;
+	border-radius: 999px;
+	background: #dc2626;
+	box-shadow: none;
+	transform: translate(-50%, -100%);
+}
+.map-place-credit {
+	position: absolute;
+	left: 0.25rem;
+	bottom: 0.12rem;
+	color: #fff;
+	font-size: calc(0.62rem * var(--font-scale));
+	line-height: 1;
+	text-shadow: 0 1px 1px rgba(0, 0, 0, 0.75);
+}
+.map-place-body {
+	min-width: 0;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	gap: 0.12rem;
+	padding: 0.9rem 1rem;
+}
+.map-place-name {
+	font-weight: 750;
+	letter-spacing: -0.02em;
+	line-height: 1.35;
+}
+.map-place-meta {
+	color: var(--muted);
+	font-size: calc(0.82rem * var(--font-scale));
+	font-weight: 650;
+}
+.map-place-coords {
+	color: var(--muted);
+	font-size: calc(0.78rem * var(--font-scale));
+	font-variant-numeric: tabular-nums;
+}
+

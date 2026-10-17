@@ -1,0 +1,142 @@
+.home-blog {
+	display: grid;
+	grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+	gap: 2.5rem;
+}
+.home-blog .home-introduction {
+	padding: 1.2rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+}
+.home-minimal {
+	padding-top: 4rem;
+}
+:is(.home-blog, .home-docs, .home-minimal) .home-profile {
+	display: grid;
+	grid-template-columns: fit-content(38%) minmax(0, 1fr);
+	gap: clamp(0.75rem, 3vw, 1.5rem);
+	align-items: center;
+	text-align: left;
+}
+.home-minimal .home-profile {
+	margin: 0 0 2.5rem;
+}
+:is(.home-blog, .home-docs, .home-minimal) .profile-photo {
+	--profile-photo-height: 96px;
+	margin: 0;
+}
+:is(.home-blog, .home-docs, .home-minimal) .profile-links {
+	justify-content: flex-start;
+}
+.home-minimal .blog-tabs {
+	justify-content: center;
+}
+.home-minimal .home-introduction {
+	font: calc(1.2rem * var(--font-scale))/1.8 var(--font-ui);
+	margin: 1rem 0 3rem;
+}
+.home-minimal .home-stars .post-row {
+	padding: 1rem 0;
+}
+.home-minimal .blog-panel > section {
+	margin-bottom: 3rem;
+}
+.home-minimal .book-spine {
+	background: var(--surface);
+	height: 13rem;
+}
+.home-layall .home-profile {
+	display: grid;
+	grid-template-columns: fit-content(45%) minmax(0, 1fr);
+	gap: 2rem;
+	align-items: center;
+	margin: 0 0 2rem;
+}
+.home-layall .profile-photo {
+	--profile-photo-height: 128px;
+	margin-bottom: 0;
+}
+.home-layall .profile-copy h1 {
+	font-size: calc(2rem * var(--font-scale));
+}
+.home-layall .home-stars {
+	padding: 1.5rem;
+	border-radius: 12px;
+	background: var(--surface);
+}
+.home-layall .archive-ledger {
+	display: grid;
+	grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+	gap: 2rem;
+}
+.home-portfolio .home-profile {
+	display: grid;
+	grid-template-columns: minmax(140px, 0.65fr) minmax(0, 1.35fr);
+	gap: 2.5rem;
+	align-items: center;
+	padding: 1rem 0 3rem;
+}
+.home-portfolio .profile-copy h1 {
+	font: 650 calc(clamp(2.4rem, 5vw, 4rem) * var(--font-scale))/1.1 var(--font-ui);
+}
+.home-portfolio .profile-photo {
+	border-radius: 3px;
+}
+.home-portfolio .home-introduction {
+	font-size: calc(1.2rem * var(--font-scale));
+	max-width: 46rem;
+}
+.home-projects {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1.5rem;
+}
+.home-projects .showcase-card:nth-child(n) {
+	grid-column: auto;
+	min-height: 0;
+	border: 0;
+	border-radius: 4px;
+	padding: 0;
+	background: transparent;
+	box-shadow: none;
+}
+.home-projects .showcase-card-content {
+	padding: 1rem 0;
+}
+.home-projects .post-cover {
+	border-radius: 4px;
+	aspect-ratio: 3/2;
+}
+.home-docs {
+	max-width: 1180px;
+}
+.knowledge-layout {
+	display: grid;
+	grid-template-columns: 190px minmax(0, 1fr);
+	gap: 2.5rem;
+	margin-top: 1.5rem;
+}
+.home-docs .profile-photo {
+	border-radius: 8px;
+}
+.home-docs .profile-copy h1 {
+	font: 650 calc(1.2rem * var(--font-scale))/1.4 var(--font-ui);
+}
+.home-docs .blog-tabs > a {
+	border-radius: 0;
+}
+.home-docs .home-introduction {
+	border-left: 2px solid var(--line);
+	padding-left: 1rem;
+}
+.home-docs .home-stars .post-row {
+	display: block;
+	padding: 0.7rem 0;
+}
+.home-docs .home-stars .post-list span {
+	display: block;
+	font-size: calc(0.75rem * var(--font-scale));
+}
+.home-docs .book-spine > span {
+	font-family: var(--font-ui);
+}

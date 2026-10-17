@@ -1,0 +1,170 @@
+.home {
+	padding: 3rem 0;
+	min-width: 0;
+}
+.home-main,
+.home section,
+.home-profile,
+.profile-copy,
+.knowledge-layout,
+.archive-ledger {
+	min-width: 0;
+	max-width: 100%;
+}
+.home-profile {
+	overflow-wrap: anywhere;
+}
+.profile-portrait {
+	min-width: 0;
+}
+.profile-copy:only-child {
+	grid-column: 1/-1;
+}
+.profile-photo {
+	margin: 0 auto 1rem;
+}
+.profile-copy h1 {
+	font: 650 calc(1.7rem * var(--font-scale))/1.2 var(--font-ui);
+	margin: 0.3rem 0 0.8rem;
+}
+.profile-bio {
+	white-space: pre-line;
+	color: var(--muted);
+	margin: 0.5rem 0 1rem;
+}
+.profile-links {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 1rem;
+	min-width: 0;
+	max-width: 100%;
+	font-size: calc(0.88rem * var(--font-scale));
+}
+.profile-links a {
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+.blog-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	border-bottom: 1px solid var(--line);
+	min-width: 0;
+	max-width: 100%;
+}
+.blog-tabs > a {
+	min-width: 0;
+	min-height: 48px;
+	white-space: nowrap;
+	padding: 0.6rem 1rem;
+	text-decoration: none;
+	border-bottom: 2px solid transparent;
+}
+.blog-tabs > a[aria-selected='true'] {
+	border-bottom-color: var(--accent);
+	font-weight: 700;
+}
+.blog-panel {
+	padding-top: 1.75rem;
+	scroll-margin-top: 6rem;
+}
+.blog-panel:focus,
+.book-contents:focus {
+	outline: none;
+}
+.books-back {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr) 44px;
+	align-items: center;
+	min-height: 44px;
+	text-align: center;
+	text-decoration: none;
+}
+.books-back svg {
+	justify-self: center;
+}
+.books-back span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.blog-panel h2 {
+	font-size: calc(1.1rem * var(--font-scale));
+	line-height: 1.4;
+	margin: 0 0 1rem;
+}
+.home-introduction {
+	margin-bottom: 2.5rem;
+	font-size: inherit;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.home-introduction p {
+	margin: 0;
+}
+.home-introduction :is(h1, h2, h3, h4, h5, h6) {
+	scroll-margin-top: 6rem;
+	margin: 1.5em 0 0.25em;
+	line-height: 1.25;
+	letter-spacing: -0.025em;
+}
+.home-introduction :is(h1, h2, h3, h4, h5, h6) + :not(h1, h2, h3, h4, h5, h6, hr),
+.home-introduction :is(h1, h2, h3, h4, h5, h6) + br + :not(h1, h2, h3, h4, h5, h6, hr) {
+	margin-top: 0;
+}
+.home-introduction :is(h1, h2, h3, h4, h5, h6) + br {
+	display: none;
+}
+.home-introduction :is(.article-table, table, thead, tbody, tfoot, tr, th, td, colgroup, col) {
+	background: transparent !important;
+}
+.home-introduction h1 {
+	font-size: 1.8em;
+}
+.home-introduction h2 {
+	font-size: 1.5em;
+}
+.home-introduction h3 {
+	font-size: 1.25em;
+}
+.home-introduction h4 {
+	font-size: 1.1em;
+}
+.home-introduction :is(h5, h6) {
+	font-size: 1em;
+}
+.home-introduction :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor {
+	opacity: 1;
+}
+.home-introduction :is(ul, ol) {
+	padding-left: 1.5em;
+}
+.home-introduction > :first-child {
+	margin-top: 0;
+}
+.home-introduction > :last-child {
+	margin-bottom: 0;
+}
+.home-stars,
+.home-heatmap,
+.home-activity {
+	margin-bottom: 2.5rem;
+}
+.home-stars .blog-grid {
+	margin: 0;
+}
+.blog-card {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.blog-card h2 {
+	font: 650 calc(1.1rem * var(--font-scale))/1.4 var(--font-ui);
+}
+.blog-card p {
+	color: var(--muted);
+	font-size: calc(0.9rem * var(--font-scale));
+}
+.blog-card .post-cover {
+	aspect-ratio: 2/1;
+}

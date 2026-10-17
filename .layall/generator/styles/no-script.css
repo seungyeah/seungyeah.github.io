@@ -1,0 +1,11 @@
+/* Loaded only by <noscript>; pending deferred scripts are not a no-JS page. */
+html:not([data-js='true']) .site-nav {
+	display: flex;
+	position: static;
+	flex-wrap: wrap;
+	width: auto;
+	box-shadow: none;
+}
+html:not([data-js='true']) .header-inner {
+	flex-wrap: wrap;
+}

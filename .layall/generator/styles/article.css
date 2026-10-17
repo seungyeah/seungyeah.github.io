@@ -1,0 +1,216 @@
+main {
+	width: min(calc(100% - 2rem), var(--content));
+	margin: auto;
+}
+.site-footer {
+	width: min(calc(100% - 2rem), var(--content));
+	margin: 5rem auto 0;
+	padding: 2rem 0 3rem;
+	border-top: 1px solid var(--line);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	text-align: center;
+	color: var(--muted);
+	font-size: calc(0.9rem * var(--font-scale));
+}
+.eyebrow {
+	letter-spacing: 0.14em;
+	font-size: calc(0.72rem * var(--font-scale));
+	font-weight: 800;
+	color: var(--accent);
+}
+.lead {
+	font-size: calc(clamp(1.05rem, 2vw, 1.28rem) * var(--font-scale));
+	color: var(--muted);
+}
+.muted,
+.post-meta {
+	color: var(--muted);
+	font-size: calc(0.88rem * var(--font-scale));
+}
+.tag {
+	display: inline-block;
+	margin: 0.25rem 0.25rem 0 0;
+	font-size: calc(0.8rem * var(--font-scale));
+	text-decoration: none;
+	color: var(--muted);
+}
+.empty {
+	margin: 4rem 0;
+	padding: 3rem;
+	border: 1px dashed var(--line);
+	border-radius: var(--radius);
+	text-align: center;
+	color: var(--muted);
+}
+.post-cover {
+	width: 100%;
+	aspect-ratio: 16/9;
+	object-fit: cover;
+	border-radius: calc(var(--radius) - 5px);
+	background: var(--surface-2);
+}
+.page-heading {
+	margin: 4.5rem 0 2.5rem;
+}
+.page-heading h1 {
+	margin: 0.2rem 0;
+	font: 700 calc(clamp(2.2rem, 6vw, 4.8rem) * var(--font-scale))/1.02 var(--font-ui);
+	letter-spacing: -0.055em;
+}
+.page-heading p {
+	max-width: 48rem;
+}
+.post-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.post-list li {
+	border-top: 1px solid var(--line);
+}
+.post-list > li > a,
+.post-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 1rem;
+	padding: 1.2rem 0;
+	text-decoration: none;
+}
+.post-list strong {
+	font-size: calc(1.08rem * var(--font-scale));
+}
+.post-list span {
+	color: var(--muted);
+	font-size: calc(0.85rem * var(--font-scale));
+}
+.pagination {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem;
+	margin: 2.5rem 0;
+}
+.pagination a {
+	display: grid;
+	place-items: center;
+	width: 38px;
+	height: 38px;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	text-decoration: none;
+}
+.pagination a[aria-current='page'] {
+	background: var(--ink);
+	color: var(--paper);
+	border-color: var(--ink);
+}
+.article-shell {
+	max-width: 760px;
+	padding-top: 4rem;
+}
+.article {
+	min-width: 0;
+}
+.article-header {
+	margin-bottom: 2.5rem;
+}
+.article-meta {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 1rem;
+	flex-wrap: nowrap;
+}
+.article-meta > span {
+	flex: 1;
+	min-width: 0;
+}
+.article-meta > a {
+	flex: 0 1 auto;
+	max-width: 45%;
+	min-width: 0;
+	margin-left: auto;
+	text-align: right;
+	overflow-wrap: anywhere;
+}
+.article-header h1 {
+	margin: 0.4rem 0 1rem;
+	font: 700 calc(clamp(2.3rem, 6vw, 4.8rem) * var(--font-scale))/1.03 var(--font-ui);
+	letter-spacing: -0.05em;
+}
+.article-body {
+	font-size: calc(1.05rem * var(--font-scale));
+}
+.article-body p {
+	margin: 0 0 0.5rem;
+}
+.article-body h2,
+.article-body h3,
+.article-body h4 {
+	scroll-margin-top: 6rem;
+	margin: 2.5rem 0 0.75rem;
+	line-height: 1.25;
+	letter-spacing: -0.025em;
+}
+.article-body h2 {
+	font-size: calc(1.8rem * var(--font-scale));
+}
+.article-body h3 {
+	font-size: calc(1.35rem * var(--font-scale));
+}
+.heading-anchor {
+	margin-left: 0.45rem;
+	text-decoration: none;
+	opacity: 0;
+}
+.article-body :is(h2, h3, h4):hover .heading-anchor,
+.heading-anchor:focus {
+	opacity: 1;
+}
+.article-body pre {
+	overflow: auto;
+	margin: 1.5rem 0;
+	padding: 1.2rem;
+	border: 1px solid var(--line);
+	border-radius: 15px;
+	background: #171816;
+	color: #f4f1ea;
+	font:
+		calc(14px * var(--font-scale))/1.65 ui-monospace,
+		SFMono-Regular,
+		Menlo,
+		monospace;
+}
+.article-body code {
+	padding: 0.13em 0.36em;
+	border-radius: 6px;
+	background: var(--surface-2);
+	font:
+		85% ui-monospace,
+		SFMono-Regular,
+		Menlo,
+		monospace;
+}
+.article-body pre code {
+	padding: 0;
+	background: transparent;
+	font: inherit;
+}
+.article-body blockquote {
+	margin: 1.5rem 0;
+	padding: 0.2rem 1.25rem;
+	border-left: 3px solid var(--accent);
+	color: var(--muted);
+}
+.article-body hr {
+	border: 0;
+	border-top: 1px solid var(--line);
+	margin: 2.4rem 0;
+}
+.article-body a {
+	overflow-wrap: anywhere;
+}
