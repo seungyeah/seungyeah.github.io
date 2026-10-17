@@ -11,7 +11,7 @@ import { emitPages } from './render/routes.mjs';
 import { esc, js } from './render/text.mjs';
 
 // Importing development modules performs no IO. Only this explicit entry point
-// creates a fresh output tree. resources are embedded by the release bundler.
+// creates a fresh output tree. resources are read from the verified package by runtime.mjs.
 export function generate({ out, sha, generatorSha256, resources }) {
 	if (!out || !sha || !/^[a-f0-9]{64}$/.test(generatorSha256 ?? ''))
 		throw new Error('output, source SHA and generator identity required');

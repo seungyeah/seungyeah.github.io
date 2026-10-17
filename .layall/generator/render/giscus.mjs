@@ -98,8 +98,8 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 	];
 	const surface = name === 'layall' ? giscusSurface2 : tokens.surface;
 	const editorSurface =
-		name === 'layall' && mode === 'light'
-			? '.gsc-comment-box{--color-canvas-default:#fff;--color-canvas-subtle:#fff;background:#fff}.gsc-comment-box-tabs,.gsc-comment-box-textarea,.gsc-comment-box-preview,.gsc-comment-box-md-preview{background:#fff}'
+		name === 'layall'
+			? `.gsc-comment-box-main,.gsc-comment-box-textarea,.gsc-comment-box-preview,.gsc-comment-box-md-preview{background:${tokens.surface}}`
 			: '';
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
 ${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { siteCss } from '../render/themes.mjs';
+import { siteCss } from '../render/site-styles.mjs';
 
 export const contentPath = (name, extension, bytes) =>
 	`assets/static/${name}-${createHash('sha256').update(bytes).digest('hex')}.${extension}`;

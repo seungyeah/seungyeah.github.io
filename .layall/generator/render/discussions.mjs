@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
+import { giscusCss } from './giscus.mjs';
 import { esc, js } from './text.mjs';
 import { themeOrder } from './theme-data.mjs';
-import { giscusCss } from './themes.mjs';
 
 export function createDiscussions({
 	site,

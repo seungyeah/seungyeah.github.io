@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { readSiteStyles } from './styles/read.mjs';
+import { readSiteStyles } from './styles/index.mjs';
 const read = (name, encoding) => fs.readFileSync(new URL(name, import.meta.url), encoding);
 export const resources = {
 	styles: readSiteStyles(),

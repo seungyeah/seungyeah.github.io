@@ -1,5 +1,7 @@
+import fs from 'node:fs';
+
 // Order is the existing cascade. No separators or layers are inserted.
-export const siteStyles = [
+const siteStyles = [
 	'foundation.css',
 	'header.css',
 	'article.css',
@@ -14,3 +16,6 @@ export const siteStyles = [
 	'palette.css',
 	'heatmap.css',
 ];
+
+export const readSiteStyles = () =>
+	siteStyles.map((name) => fs.readFileSync(new URL(name, import.meta.url), 'utf8')).join('');

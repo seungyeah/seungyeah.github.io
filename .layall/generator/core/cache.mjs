@@ -1,7 +1,5 @@
 import { planRenderInputs } from './cache-identity.mjs';
 import { createCacheReader } from './cache-reader.mjs';
-export { planRenderInputs } from './cache-identity.mjs';
-export { verifiedCachedHtml } from './cache-reader.mjs';
 
 export function createRenderCache({
 	posts,
