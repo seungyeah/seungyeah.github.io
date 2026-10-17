@@ -9,6 +9,18 @@ const fillTemplate = (values) =>
 
 export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 	const tokens = themeTokens(name, mode);
+	const giscusSurface =
+		name === 'layall'
+			? `color-mix(in srgb,${tokens.muted} 14%,${tokens.surface})`
+			: tokens.surface;
+	const giscusSurface2 =
+		name === 'layall'
+			? `color-mix(in srgb,${tokens.muted} 22%,${tokens.surface})`
+			: tokens['surface-2'];
+	const giscusAccentSoft =
+		name === 'layall'
+			? `color-mix(in srgb,${tokens.muted} 18%,${tokens.surface})`
+			: tokens['accent-soft'];
 	const font =
 		name === 'layall'
 			? '"Omyu Pretty",ui-sans-serif,system-ui,sans-serif'
@@ -25,11 +37,11 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 	);
 	assign(
 		'canvas-default canvas-overlay bg-canvas bg-primary bg-overlay input-bg segmented-control-button-bg',
-		tokens.surface
+		giscusSurface
 	);
 	assign(
 		'canvas-inset canvas-subtle bg-canvas-inset bg-secondary bg-tertiary btn-bg btn-selected-bg input-contrast-bg hidden-text-expander-bg segmented-control-bg',
-		tokens['surface-2']
+		giscusSurface2
 	);
 	assign(
 		'border-default border-muted border-primary border-secondary border-tertiary input-border label-border btn-border btn-primary-border btn-primary-disabled-border segmented-control-button-selected-border',
@@ -44,12 +56,12 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 		assign('btn-primary-bg btn-primary-hover-bg btn-primary-selected-bg', tokens.muted);
 	assign(
 		'accent-subtle accent-muted neutral-muted bg-info social-reaction-bg-hover social-reaction-bg-reacted-hover btn-hover-bg btn-active-bg btn-primary-disabled-bg action-list-item-default-hover-bg',
-		tokens['accent-soft']
+		giscusAccentSoft
 	);
 	assign('btn-primary-text', mode === 'dark' ? tokens.paper : '#ffffff');
 	assign('btn-primary-disabled-text', tokens.muted);
-	assign('scale-gray-1', tokens['surface-2']);
-	assign('scale-blue-1', tokens['accent-soft']);
+	assign('scale-gray-1', giscusSurface2);
+	assign('scale-blue-1', giscusAccentSoft);
 	assign(
 		'btn-shadow btn-inset-shadow btn-primary-shadow btn-primary-inset-shadow btn-primary-selected-shadow primer-shadow-inset',
 		'none'
@@ -84,10 +96,7 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 	const radius = { layall: '12px', blog: '8px', minimal: '0px', portfolio: '20px', docs: '6px' }[
 		name
 	];
-	const surface =
-		name === 'layall'
-			? `color-mix(in srgb,${tokens['accent-soft']} 35%,${tokens.surface})`
-			: tokens.surface;
+	const surface = name === 'layall' ? giscusSurface2 : tokens.surface;
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
 ${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
 :root{color-scheme:${mode};font-size:16px;--layall-type-scale:${name === 'layall' ? 1.125 : 1};--font-family-default:${font};--font-family-sans:${font};--font-family-monospace:${name === 'layall' ? font : 'ui-monospace,SFMono-Regular,Consolas,monospace'};${Object.entries(

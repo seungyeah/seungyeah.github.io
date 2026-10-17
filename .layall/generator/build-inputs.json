@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 07da06a8e703738993e18ba340c256260731cd58b6e0b10a0210a1142284fa6f",
+  "sourceStamp": "// layall-generator-source-sha256: 074e15f92e185ea7e7a2fec88f908364b31bb0da0ea40c1043ea511904556fe0",
   "inputs": [
     {
       "path": "package.json",
@@ -142,7 +142,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/article.mjs",
-      "sha256": "7d41d008b269580f97cf770e9b2f1da512d5f9c0ade353de4a198d80c4076198"
+      "sha256": "571bc9d42454e28b56124b6b92d00f8066dcf7ab443a5cb74fad45185523027c"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/discussions.mjs",
@@ -154,7 +154,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/giscus.mjs",
-      "sha256": "63b46bf42e0531682998d9923c1e1065c503f82125cc15d5e6e6ad9684c904aa"
+      "sha256": "9d8d92c3681852064c21d750986b41361c68c9f3e68555856b8e1054e553e527"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home-data.mjs",
@@ -194,7 +194,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/theme-data.mjs",
-      "sha256": "59e204344f7e8575a1c4f5b2f2a5cce18395b7e94db3a2acd504a2d0275823fe"
+      "sha256": "1e640910ca27e155abee67f6268807d50a63102c64b55e6e83ebcc6f995625f4"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/themes.mjs",

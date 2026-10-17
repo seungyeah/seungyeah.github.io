@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "4a0e6fd2e46d5303ffd42bfc54babc81815e149b11bec192fc9767397ad35f10",
+  "sha256": "2a82d8fad960dda42d15a69da0f89e364a3ec056fdb6ba098c889c7ceafeb451",
   "entries": [
     {
       "path": "build.mjs",
@@ -26,7 +26,7 @@
     {
       "path": "generator/build-inputs.json",
       "size": 12953,
-      "sha256": "703df6820e2fe56acc9b7b9348415c03f11829176d4da6da073e67cf8d50a61c"
+      "sha256": "5705a818f71395405a1cbfcfc7e28abb8c6342b543afee149c65edadd9b1e484"
     },
     {
       "path": "generator/client/appearance.mjs",
@@ -191,7 +191,7 @@
     {
       "path": "generator/render/article.mjs",
       "size": 2196,
-      "sha256": "7d41d008b269580f97cf770e9b2f1da512d5f9c0ade353de4a198d80c4076198"
+      "sha256": "571bc9d42454e28b56124b6b92d00f8066dcf7ab443a5cb74fad45185523027c"
     },
     {
       "path": "generator/render/discussions.mjs",
@@ -205,8 +205,8 @@
     },
     {
       "path": "generator/render/giscus.mjs",
-      "size": 5803,
-      "sha256": "63b46bf42e0531682998d9923c1e1065c503f82125cc15d5e6e6ad9684c904aa"
+      "size": 6121,
+      "sha256": "9d8d92c3681852064c21d750986b41361c68c9f3e68555856b8e1054e553e527"
     },
     {
       "path": "generator/render/home-data.mjs",
@@ -256,7 +256,7 @@
     {
       "path": "generator/render/theme-data.mjs",
       "size": 2669,
-      "sha256": "59e204344f7e8575a1c4f5b2f2a5cce18395b7e94db3a2acd504a2d0275823fe"
+      "sha256": "1e640910ca27e155abee67f6268807d50a63102c64b55e6e83ebcc6f995625f4"
     },
     {
       "path": "generator/render/themes.mjs",

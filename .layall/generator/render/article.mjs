@@ -16,8 +16,8 @@ export function createArticleRenderer({
 	};
 	const articleContent = (post, rendered) =>
 		post.protectedEnvelope
-			? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}">${articleMetadata(post)}<div data-protected-post><h1>보호된 글</h1><p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/' + staticAssets.protected))}"></script></article>`
-			: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header">${articleMetadata(post)}<h1>${esc(post.title || 'Untitled')}</h1>${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
+			? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post><h1>보호된 글</h1>${articleMetadata(post)}<p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/' + staticAssets.protected))}"></script></article>`
+			: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><h1>${esc(post.title || 'Untitled')}</h1>${articleMetadata(post)}${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
 	const articleSlot = '<span data-theme-slot="article"></span>';
 	const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
 	// The article and iframe stay connected while changing appearance. Moving an iframe

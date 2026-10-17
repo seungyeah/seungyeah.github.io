@@ -2,7 +2,7 @@ export const themeOrder = ['layall', 'blog', 'minimal', 'portfolio', 'docs'];
 export const themeNames = new Set(themeOrder);
 // Stable storage/layout IDs; only the visitor-facing palette names change.
 export const palettes = {
-	layall: { name: '청록', primary: '#386c78', dark: '#8dd2de' },
+	layall: { name: '청록', primary: '#566b72', dark: '#aec4c8' },
 	blog: { name: '초록', primary: '#286a47', dark: '#8dcca4' },
 	minimal: { name: '차콜', primary: '#20201e', dark: '#d8d8d2' },
 	portfolio: { name: '올리브', primary: '#556846', dark: '#b3c69d' },
@@ -46,7 +46,7 @@ export const tokenSets = {
 		ink: '#354146',
 		muted: '#566b72',
 		line: '#d9e4e2',
-		accent: '#386c78',
+		accent: '#566b72',
 		'accent-soft': '#dff2f6',
 		shadow: '0 22px 58px rgba(69,88,93,.13)',
 		radius: '20px',
@@ -103,7 +103,7 @@ export const tokenSets = {
 		ink: '#edf6f5',
 		muted: '#aec4c8',
 		line: '#38535c',
-		accent: '#8dd2de',
+		accent: '#aec4c8',
 		'accent-soft': '#294b55',
 		shadow: '0 22px 58px rgba(0,0,0,.28)',
 	},
