@@ -14,10 +14,12 @@ export function createArticleRenderer({
 			? `<ol>${visible.map((heading) => `<li class="toc-level-${heading.level}"><a href="#${esc(heading.id)}">${esc(heading.label)}</a></li>`).join('')}</ol>`
 			: '<p class="muted">이 문서에는 세부 목차가 없습니다.</p>';
 	};
-	const articleContent = (post, rendered) =>
-		post.protectedEnvelope
-			? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post><h1>보호된 글</h1>${articleMetadata(post)}<p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/' + staticAssets.protected))}"></script></article>`
-			: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header"><h1>${esc(post.title || 'Untitled')}</h1>${articleMetadata(post)}${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
+	const articleContent = (post, rendered) => {
+		const { folder, dates } = articleMetadata(post);
+		return post.protectedEnvelope
+			? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post>${folder}<h1>보호된 글</h1>${dates}<p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/' + staticAssets.protected))}"></script></article>`
+			: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header">${folder}<h1>${esc(post.title || 'Untitled')}</h1>${dates}${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
+	};
 	const articleSlot = '<span data-theme-slot="article"></span>';
 	const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';
 	// The article and iframe stay connected while changing appearance. Moving an iframe

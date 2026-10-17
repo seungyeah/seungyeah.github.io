@@ -82,7 +82,10 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		const folder = folders.get(folderId);
 		const bookId = folder ? `book-folder-${folderId}` : 'book-unfiled';
 		const folderLabel = folder ? String(folder.name ?? folderId) : '분류 없는 글';
-		return `<div class="post-meta article-meta"><span>${esc(date)}</span><a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(folderLabel)}</a></div>`;
+		return {
+			folder: `<div class="post-meta article-meta"><a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(folderLabel)}</a></div>`,
+			dates: `<div class="post-meta article-date">${esc(date)}</div>`,
+		};
 	};
 	const tagsFor = (post) =>
 		(Array.isArray(post.tags) ? post.tags : [])

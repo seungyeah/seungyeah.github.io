@@ -97,6 +97,10 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 		name
 	];
 	const surface = name === 'layall' ? giscusSurface2 : tokens.surface;
+	const editorSurface =
+		name === 'layall' && mode === 'light'
+			? '.gsc-comment-box{--color-canvas-default:#fff;--color-canvas-subtle:#fff;background:#fff}.gsc-comment-box-tabs,.gsc-comment-box-textarea,.gsc-comment-box-preview,.gsc-comment-box-md-preview{background:#fff}'
+			: '';
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
 ${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
 :root{color-scheme:${mode};font-size:16px;--layall-type-scale:${name === 'layall' ? 1.125 : 1};--font-family-default:${font};--font-family-sans:${font};--font-family-monospace:${name === 'layall' ? font : 'ui-monospace,SFMono-Regular,Consolas,monospace'};${Object.entries(
@@ -108,6 +112,7 @@ ${fillTemplate({
 	__RAIL__: tokens.line,
 	__RADIUS__: radius,
 	__SURFACE__: surface,
+	__EDITOR_SURFACE__: editorSurface,
 	__MINIMAL__:
 		name === 'minimal'
 			? '.gsc-comment>div:first-child{border-width:0;background:transparent}.gsc-comment-header{padding-left:0;padding-right:0}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}'
