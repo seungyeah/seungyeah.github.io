@@ -101,6 +101,14 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 		name === 'layall'
 			? `.gsc-comment-box-main,.gsc-comment-box-textarea,.gsc-comment-box-preview,.gsc-comment-box-md-preview{background:${tokens.surface}}`
 			: '';
+	const layallTimeline =
+		name === 'layall'
+			? `.gsc-main{--layall-comment-inset:1.6rem}.gsc-header{padding-left:var(--layall-comment-inset)}.gsc-reactions{padding:.25rem 0 1.25rem var(--layall-comment-inset)}.gsc-reactions>div{margin:0}.gsc-timeline{gap:0;margin-top:.25rem}.gsc-comment{margin-left:.55rem;padding:0 0 1.2rem 1.05rem;border-left:1px solid var(--layall-rail)}.gsc-comment:before{left:-.3rem;top:.75rem;width:.55rem;height:.55rem;background:var(--color-accent-fg);box-shadow:0 0 0 4px var(--color-canvas-default)}.gsc-comment>div:first-child{border:0;border-radius:0;background:transparent;box-shadow:none}.gsc-comment-header{padding:0 0 .5rem;gap:.5rem}.gsc-comment-content{padding:.05rem 0 .7rem;line-height:1.7}.gsc-comment-footer{padding:.35rem 0 0;gap:.45rem;border-top:1px solid color-mix(in srgb,var(--color-border-default) 70%,transparent)}.gsc-replies{margin-top:.3rem;padding-left:.55rem;border-left:0}.gsc-replies .gsc-tl-line{display:none;background:transparent}.gsc-reply{padding:.55rem 0 .1rem}.gsc-reply-header{padding:0 0 .35rem}.gsc-reply-box{border:1px solid var(--color-border-default);border-radius:calc(var(--layall-radius) * .75);background:var(--color-canvas-default)}.gsc-social-reaction-summary-item{border-color:transparent;background:transparent}.gsc-direct-reaction-button.gsc-social-reaction-summary-item,.gsc-reactions-button.gsc-social-reaction-summary-item{border-radius:999px;min-width:2.55rem;min-height:2.4rem;padding:.25rem .45rem}.gsc-direct-reaction-button.gsc-social-reaction-summary-item:is(:hover,:focus-visible),.gsc-reactions-button.gsc-social-reaction-summary-item:is(:hover,:focus-visible){border-color:var(--color-border-default);background:var(--color-accent-subtle)}.gsc-comment-box{margin-left:var(--layall-comment-inset);box-shadow:none}.gsc-comment-box-tabs{border-radius:var(--layall-radius) var(--layall-radius) 0 0}.gsc-main textarea:is(:focus,:focus-visible){outline:0;box-shadow:none}@media(max-width:680px){.gsc-main{--layall-comment-inset:.85rem}.gsc-header{padding-left:var(--layall-comment-inset)}}`
+			: '';
+	const layallTimelineMobile =
+		name === 'layall'
+			? `.gsc-comment{margin-left:.2rem;padding-left:.65rem}.gsc-comment-header{padding:0 0 .5rem}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}.gsc-reply{padding-left:0;padding-right:0}`
+			: '';
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
 ${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
 :root{color-scheme:${mode};font-size:16px;--layall-type-scale:${name === 'layall' ? 1.125 : 1};--font-family-default:${font};--font-family-sans:${font};--font-family-monospace:${name === 'layall' ? font : 'ui-monospace,SFMono-Regular,Consolas,monospace'};${Object.entries(
@@ -113,6 +121,8 @@ ${fillTemplate({
 	__RADIUS__: radius,
 	__SURFACE__: surface,
 	__EDITOR_SURFACE__: editorSurface,
+	__LAYALL_TIMELINE__: layallTimeline,
+	__LAYALL_TIMELINE_MOBILE__: layallTimelineMobile,
 	__MINIMAL__:
 		name === 'minimal'
 			? '.gsc-comment>div:first-child{border-width:0;background:transparent}.gsc-comment-header{padding-left:0;padding-right:0}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}'

@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 56a4454288bcba5a78a3ccdced44723ceff347fe0f76a507405eec8d03e71073",
+  "sourceStamp": "// layall-generator-source-sha256: 4dec8a2ac9551749fcfa52848ee26e2040e362ecd1954960721980236875c830",
   "inputs": [
     {
       "path": "package.json",
@@ -154,7 +154,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/giscus.mjs",
-      "sha256": "ac5d456ad08e7cf74805c6320f55056c96840c66abd536e7f4b3bae74eca627a"
+      "sha256": "56ebcb74063534841fe919ba43150c63fe9d7b6150e932de5b4f938f419e82fc"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home-data.mjs",
@@ -222,7 +222,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/giscus.css",
-      "sha256": "019c9aa668832b74ce50e7793d246d1f68a8e9c32a771e5e437e335659eb2867"
+      "sha256": "f5daed9c4cb8473b01abd57ad87663b5de4c70532fb1e670ef8bdb40f2f293d6"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/header.css",
