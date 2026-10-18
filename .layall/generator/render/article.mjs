@@ -1,4 +1,3 @@
-import { noteToc } from './note-toc.mjs';
 import { esc, js } from './text.mjs';
 export function createArticleRenderer({
 	articleMetadata,
@@ -16,16 +15,10 @@ export function createArticleRenderer({
 			: '<p class="muted">이 문서에는 세부 목차가 없습니다.</p>';
 	};
 	const articleContent = (post, rendered) => {
-		const { folder, dates, listUrl } = articleMetadata(post);
-		const postTocBar = noteToc(rendered.headings);
-		const prevBtn = `<a class="page-nav-link page-nav-prev" data-nav-prev hidden href="#" title="이전 글"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg><span class="page-nav-title" data-nav-prev-title></span></a><span class="page-nav-disabled" data-nav-prev-empty><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg><span>이전 글</span></span>`;
-		const nextBtn = `<a class="page-nav-link page-nav-next" data-nav-next hidden href="#" title="다음 글"><span class="page-nav-title" data-nav-next-title></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></a><span class="page-nav-disabled" data-nav-next-empty><span>다음 글</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>`;
-		const listBtn = `<a class="page-nav-list-btn" href="${esc(listUrl || href('/#posts'))}" title="페이지 목록 확인" aria-label="페이지 목록 확인"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>페이지 목록</span></a>`;
-		const bottomNav = `<nav class="article-bottom-nav" aria-label="글 탐색">${prevBtn}${listBtn}${nextBtn}</nav>`;
-
+		const { folder, dates } = articleMetadata(post);
 		return post.protectedEnvelope
-			? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post>${folder}<h1>보호된 글</h1>${dates}<p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/' + staticAssets.protected))}"></script>${bottomNav}</article>`
-			: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header">${folder}<h1>${esc(post.title || 'Untitled')}</h1>${dates}${tagsFor(post)}</header>${postTocBar}<div class="article-body">${rendered.html}</div>${bottomNav}${discussionSection(post)}</article>`;
+			? `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><div data-protected-post>${folder}<h1>보호된 글</h1>${dates}<p>비밀번호를 입력하려면 JavaScript를 켜세요.</p></div><script type="application/json" data-protected-envelope>${js(post.protectedEnvelope)}</script>${discussionsEnabled ? `<script type="application/json" data-protected-discussion>${js(protectedDiscussionConfig(post))}</script>` : ''}<script defer src="${esc(href('/' + staticAssets.protected))}"></script></article>`
+			: `<article class="article" data-theme-piece="article" data-post-id="${esc(post.postId)}"><header class="article-header">${folder}<h1>${esc(post.title || 'Untitled')}</h1>${dates}${tagsFor(post)}</header><div class="article-body">${rendered.html}</div>${discussionSection(post)}</article>`;
 	};
 	const articleSlot = '<span data-theme-slot="article"></span>';
 	const docsNavigationSlot = '<span data-theme-slot="docs-navigation"></span>';

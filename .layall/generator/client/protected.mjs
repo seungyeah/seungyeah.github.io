@@ -1,7 +1,5 @@
 import { folderCrypto } from '../core/protection.mjs';
-import { noteToc } from '../render/note-toc.mjs';
 import { mountProtectedDiscussion } from './discussions.mjs';
-import { mountNoteToc } from './note-navigation.mjs';
 
 export function mountProtected(
 	envelope,
@@ -11,13 +9,9 @@ export function mountProtected(
 	const { document, window, URL, Blob, BroadcastChannel } = platform;
 	const host = document.querySelector('[data-protected-post]');
 	if (!host) return;
-	const publicMetadata = ['.article-meta', '.article-date'].map((selector) =>
-		host.querySelector(selector)?.cloneNode(true)
-	);
 	const urls = [];
 	let generation = 0,
-		disposeComments,
-		disposeToc;
+		disposeComments;
 	const name = core.scope(core.namespace(envelope));
 	const channel =
 		typeof BroadcastChannel === 'function'
@@ -25,8 +19,6 @@ export function mountProtected(
 			: null;
 	const clear = () => {
 		generation++;
-		disposeToc?.();
-		disposeToc = undefined;
 		disposeComments?.();
 		disposeComments = undefined;
 		urls.splice(0).forEach((url) => URL.revokeObjectURL(url));
@@ -119,28 +111,11 @@ export function mountProtected(
 					: '잠금 해제 정보를 지웠습니다.'
 			);
 		};
-		const header = document.createElement('header');
-		header.className = 'note-protected-header';
-		header.append(
-			...[
-				publicMetadata[0]?.cloneNode(true),
-				text('h1', String(source.title || '제목 없는 글')),
-				publicMetadata[1]?.cloneNode(true),
-			].filter(Boolean)
-		);
-		host.append(relock, status, header);
+		host.append(relock, status, text('h1', String(source.title || '제목 없는 글')));
 		const content = document.createElement('div');
 		content.className = 'article-body';
-		const rendered = renderMarkdown(source.body, assets);
-		content.innerHTML = rendered.html;
-		const tocMarkup = noteToc(rendered.headings);
-		if (tocMarkup) {
-			const template = document.createElement('template');
-			template.innerHTML = tocMarkup;
-			host.append(template.content);
-		}
+		content.innerHTML = renderMarkdown(source.body, assets).html;
 		host.append(content);
-		if (tocMarkup) disposeToc = mountNoteToc(host, platform).dispose;
 		for (const [field, label] of [
 			['tags', '태그'],
 			['summaries', '요약'],

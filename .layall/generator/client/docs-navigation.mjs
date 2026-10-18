@@ -39,7 +39,7 @@ export function createDocsNavigation({ config, root, mount }) {
 						!Array.isArray(data.tree)
 					)
 						throw new Error('Invalid navigation');
-					return data;
+					return data.tree;
 				})
 				.catch((error) => {
 					docsRequest = null;
@@ -105,7 +105,7 @@ export function createDocsNavigation({ config, root, mount }) {
 		try {
 			const entries = await requestDocs(nav.dataset.docsResource);
 			if (disposed || !nav.isConnected || !mount.contains(nav)) return;
-			tree.replaceChildren(docsTree(entries.tree));
+			tree.replaceChildren(docsTree(entries));
 			loadedDocs.add(nav);
 			status.textContent = '';
 		} catch {
@@ -123,8 +123,6 @@ export function createDocsNavigation({ config, root, mount }) {
 	};
 	return {
 		bind: bindDocs,
-		loadEntries: async () => (await requestDocs(docsResource)).tree,
-		loadBooks: async () => (await requestDocs(docsResource)).books,
 		dispose() {
 			disposed = true;
 			activeController?.abort();

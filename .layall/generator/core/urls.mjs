@@ -8,11 +8,7 @@ export function createUrls(site, repository = process.env.GITHUB_REPOSITORY ?? '
 	try {
 		if (configuredBase) {
 			const configuredUrl = new URL(configuredBase);
-			if (
-				(configuredUrl.protocol === 'https:' || configuredUrl.protocol === 'http:') &&
-				!configuredUrl.username &&
-				!configuredUrl.password
-			) {
+			if (configuredUrl.protocol === 'https:' || configuredUrl.protocol === 'http:') {
 				basePath = configuredUrl.pathname.replace(/\/{2,}/g, '/').replace(/\/+$/, '');
 				configuredPublicBase = `${configuredUrl.origin}${basePath}`;
 			}
@@ -22,7 +18,5 @@ export function createUrls(site, repository = process.env.GITHUB_REPOSITORY ?? '
 	const publicBase = configuredPublicBase || fallbackBase;
 	const href = (value) => `${basePath}${value}` || '/';
 	const absolute = (value) => (publicBase ? `${publicBase}${value}` : href(value));
-	// Canonicals require a known public origin; local previews must not emit relative ones.
-	const canonical = (value) => (publicBase ? absolute(value) : null);
-	return { owner, repo, basePath, publicBase, href, absolute, canonical };
+	return { owner, repo, basePath, publicBase, href, absolute };
 }

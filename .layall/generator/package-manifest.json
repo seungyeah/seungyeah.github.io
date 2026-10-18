@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "f2c50b8c943741526d21e1b566c9a97e8d1fd4567db2b4ffb7406e09ca4a3dc2",
+  "sha256": "a1830155427b4035e6f24c0a8fb61a3caa622811d2a3b96abd4812e49b1e9093",
   "entries": [
     {
       "path": "build.mjs",
@@ -20,13 +20,13 @@
     },
     {
       "path": "generator/browser/site.js",
-      "size": 46716,
-      "sha256": "5e5c8c6e45fb9208ee8686be66f3aa42838f8358ef2fe9f20b0d369fe518cb17"
+      "size": 39611,
+      "sha256": "88188a020215b5acfa0f7a4fc2d08386bc8bdbb259e10ee61f4c12cdeae3ef96"
     },
     {
       "path": "generator/build-inputs.json",
       "size": 12621,
-      "sha256": "f1baef411d3a32de59c5b65f2de4a971ddc4dd8c99201e3f7e136f313e831c4d"
+      "sha256": "7dfbd2a220c7a3ff28167e80bff8578ca0b97adf09126f8e3e4d24787058d338"
     },
     {
       "path": "generator/client/appearance.mjs",
@@ -50,8 +50,8 @@
     },
     {
       "path": "generator/client/docs-navigation.mjs",
-      "size": 4236,
-      "sha256": "138a8bf001b7b5d40b229568a7e9d6a0bac624eddcebe70107049749e7e9d1cb"
+      "size": 4188,
+      "sha256": "826b7c39abdbea6a3a424551cec828c8fc023715db5e11d0322aaea6b33b8bb5"
     },
     {
       "path": "generator/client/download-entry.mjs",
@@ -75,8 +75,8 @@
     },
     {
       "path": "generator/client/navigation.mjs",
-      "size": 9126,
-      "sha256": "45ea12f511907b8d5ad9df095f4404257227d9a8b4acfbd99763f70a2f3024af"
+      "size": 3046,
+      "sha256": "8a4eadedc8e51d987d4bd99149eb969e07fd58f1d0324d32ca9688f2f2e64b1b"
     },
     {
       "path": "generator/client/palette.mjs",
@@ -110,8 +110,8 @@
     },
     {
       "path": "generator/client/site.mjs",
-      "size": 1639,
-      "sha256": "12229760525c684ebd9779340679681b20aefe8e90e9306ffaf4992b66b47a7a"
+      "size": 1489,
+      "sha256": "2b0a453eb3cafbcb623296d2b039ec51c8a494b3f61fa8dbdd38373b5e0de5be"
     },
     {
       "path": "generator/client/theme-controller.mjs",
@@ -160,13 +160,13 @@
     },
     {
       "path": "generator/core/urls.mjs",
-      "size": 1286,
-      "sha256": "16c254194d5d248ce4e6af5c30364d17315c9d4a575939b011837365df39bd84"
+      "size": 1043,
+      "sha256": "a0fd97c9df8012b237e99c09b3029af195c058a9baeb84bc3ace7cc3804427a5"
     },
     {
       "path": "generator/fonts/omyu-pretty.woff2",
-      "size": 174256,
-      "sha256": "fa7978657a751d76706452e5342d7042bb2323eebadaf8f54948018552b097c5"
+      "size": 3564844,
+      "sha256": "ed6b9f6ebd9bd3d43c1e1fac47f943bcc3b646b5a9c15d38b9f03d5f5d9c8c2a"
     },
     {
       "path": "generator/icons/layall-192.png",
@@ -190,8 +190,8 @@
     },
     {
       "path": "generator/render/article.mjs",
-      "size": 5401,
-      "sha256": "f70feba216e8295c9e2b71bcd80131170afa8e8e5b7990d2f24f96ffade28c6b"
+      "size": 2246,
+      "sha256": "444445cab0d2d5609c2bb6e926f44561f3baf871fa0c43905d9f7c8511060fd2"
     },
     {
       "path": "generator/render/discussions.mjs",
@@ -200,8 +200,8 @@
     },
     {
       "path": "generator/render/feeds.mjs",
-      "size": 2876,
-      "sha256": "509e6afa793eb996d838c5590be4aba6b5cde59c7d440ad74279df14028f8184"
+      "size": 2453,
+      "sha256": "b4a5b7430258e5ddf1d24a35dc43494f5a040a949d9a1aeba13aeb38ba574e06"
     },
     {
       "path": "generator/render/giscus.mjs",
@@ -225,8 +225,8 @@
     },
     {
       "path": "generator/render/pages.mjs",
-      "size": 10061,
-      "sha256": "2ae8c53488ca4ea71fa547f3ac5372ee6d6e152bc3a2b3f41fed56c5c9563f4d"
+      "size": 9989,
+      "sha256": "fab8ca79666758e37b5579b9ecf61a261f371e2bc5ebf9a01d83bd99a286e180"
     },
     {
       "path": "generator/render/pwa.mjs",
@@ -235,18 +235,18 @@
     },
     {
       "path": "generator/render/routes.mjs",
-      "size": 9016,
-      "sha256": "78a4a13101329c17608d3b490cccf43737b50e0d3b4ace9e49c0d043f42fbbb9"
+      "size": 8528,
+      "sha256": "181fe17721bd6d46bf57402ee44118158658483830400268777618d75a43ce39"
     },
     {
       "path": "generator/render/shell.mjs",
-      "size": 8202,
-      "sha256": "a8a39931b6c306f3cc1c02b12630321ae931d1892e0d39782156581be7011b5d"
+      "size": 6366,
+      "sha256": "cd16c2956e04b83698547e8b9095c10982d747b27706370e23c4e9cebc99ac85"
     },
     {
       "path": "generator/render/site-styles.mjs",
-      "size": 1185,
-      "sha256": "e7cf2ddd2f55957f670b8b0f68655e7a927966f492815ccbd22d35f34cc3c081"
+      "size": 1182,
+      "sha256": "20be3925f7145740b1e6d642611ea89a5a953db231a103042540cd3a817fc1b3"
     },
     {
       "path": "generator/render/text.mjs",
@@ -255,8 +255,8 @@
     },
     {
       "path": "generator/render/theme-data.mjs",
-      "size": 2709,
-      "sha256": "d0c796b4ce6d809efe3f441cfc1feef46cc0facd98d32de57bf59f58815ac3db"
+      "size": 2669,
+      "sha256": "1e640910ca27e155abee67f6268807d50a63102c64b55e6e83ebcc6f995625f4"
     },
     {
       "path": "generator/render/tokens.mjs",
@@ -285,8 +285,8 @@
     },
     {
       "path": "generator/styles/foundation.css",
-      "size": 3247,
-      "sha256": "1adc399d29cb1e0ab10569546448318eeaa18b1dd8cccef97c2aeaadbdb517e0"
+      "size": 2943,
+      "sha256": "2e4210c2fb8a8fe7baad9a8ecaba65ffd38c9c76afb3ed14cc5a7dd113e2ae8a"
     },
     {
       "path": "generator/styles/giscus.css",
@@ -330,8 +330,8 @@
     },
     {
       "path": "generator/styles/layouts.css",
-      "size": 12673,
-      "sha256": "76440a0ceafbb535c1d213347008bc3f16a389e8dc2e3cbc503a671879747dad"
+      "size": 5750,
+      "sha256": "dbc146b320960ee567228667ce85d9d5daebcd611f73ed120c403fb52ef3a539"
     },
     {
       "path": "generator/styles/maps.css",

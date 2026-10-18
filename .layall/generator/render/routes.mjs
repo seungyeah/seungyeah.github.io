@@ -1,7 +1,7 @@
 import { esc, excerpt, plainText, tagSegment } from './text.mjs';
 
 export function emitPages({ sources, assets, pages, cache, renderMarkdown, write }) {
-	const { site, posts, folders, postsByFolder, unfiledPosts, href, canonical, formatDate } =
+	const { site, posts, folders, postsByFolder, unfiledPosts, href, absolute, formatDate } =
 		sources;
 	const { assetsByPost } = assets;
 	const {
@@ -34,33 +34,24 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 		cacheMetrics.misses += 1;
 		const renderStarted = performance.now();
 		const renderCpuStarted = process.cpuUsage();
-		const rendered = renderMarkdown(
-			post.protectedEnvelope ? '' : post.body,
-			assetsByPost.get(post.postId)
-		);
+		const rendered = renderMarkdown(post.body, assetsByPost.get(post.postId));
 		const variants = variantsOf(articleLayout);
 		const pieces = {
 			article: articleContent(post, rendered),
 			'docs-navigation': `<div class="docs-sidebar-wrap" data-theme-piece="docs-navigation"><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation(post)}</aside></div>`,
 		};
-		const html = shell(
-			post.protectedEnvelope ? '보호된 글' : post.title || 'Untitled',
-			variants[theme],
-			{
-				kind: theme === 'docs' ? 'docs-article' : 'article',
-				article: !post.protectedEnvelope,
-				noindex: Boolean(post.protectedEnvelope),
-				publicationDates: post.protectedEnvelope ? null : post.publicationDates,
-				discussionPostId: post.protectedEnvelope ? null : post.postId,
-				description: post.protectedEnvelope ? '' : excerpt(post.body, 160),
-				url: canonical(`/posts/${encodeURIComponent(post.permalink)}/`),
-				image: rendered.firstImage?.url,
-				imageAlt: rendered.firstImage?.alt,
-				variants,
-				pieces,
-				postToc: toc(rendered.headings),
-			}
-		);
+		const html = shell(post.title || 'Untitled', variants[theme], {
+			kind: theme === 'docs' ? 'docs-article' : 'article',
+			article: true,
+			discussionPostId: post.protectedEnvelope ? null : post.postId,
+			description: excerpt(post.body, 160),
+			url: absolute(`/posts/${encodeURIComponent(post.permalink)}/`),
+			image: rendered.firstImage?.url,
+			imageAlt: rendered.firstImage?.alt,
+			variants,
+			pieces,
+			postToc: toc(rendered.headings),
+		});
 		cacheMetrics.renderWallMs += performance.now() - renderStarted;
 		cacheMetrics.renderCpuMs += cpuMs(renderCpuStarted);
 		write(route, html, post.postId);
@@ -109,8 +100,6 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 				file,
 				shell(title, variants[theme], {
 					kind: prefix === '' ? 'home' : kind,
-					home: prefix === '' && index === 0,
-					url: canonical(`/${file.replace(/index\.html$/, '')}`),
 					variants,
 				})
 			);
@@ -151,7 +140,6 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 		'docs/index.html',
 		shell('Docs', docsIndexVariants[theme], {
 			kind: 'docs-index',
-			url: canonical('/docs/'),
 			variants: docsIndexVariants,
 		})
 	);
@@ -182,12 +170,7 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 	});
 	write(
 		'search/index.html',
-		shell('Search', searchVariants[theme], {
-			kind: 'search',
-			noindex: true,
-			url: canonical('/search/'),
-			variants: searchVariants,
-		})
+		shell('Search', searchVariants[theme], { kind: 'search', variants: searchVariants })
 	);
 
 	const notFoundVariants = variantsOf(
@@ -198,7 +181,6 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 		'404.html',
 		shell('Not found', notFoundVariants[theme], {
 			kind: 'not-found',
-			noindex: true,
 			variants: notFoundVariants,
 		})
 	);
