@@ -1,4 +1,5 @@
 import { listeners } from './lifecycle.mjs';
+import { mountReadingBar } from './reading-bar.mjs';
 
 // Re-evaluate every heading's current position; an intersection-only cursor can
 // retain a later heading when scrolling backwards through a long section.
@@ -24,6 +25,8 @@ export function mountNoteToc(scope, { document, window }) {
 	const header = document.querySelector('.site-header');
 	const root = document.documentElement;
 	const events = listeners();
+	const readingBar = mountReadingBar(strip, toggle, { document, window });
+	let suspended = false;
 	let frame = 0,
 		disposed = false,
 		hashTarget;
@@ -49,18 +52,11 @@ export function mountNoteToc(scope, { document, window }) {
 		if (restore || hadFocus) toggle.focus({ preventScroll: true });
 	};
 	const refresh = () => {
-		if (disposed || frame) return;
+		if (disposed || suspended || frame) return;
 		frame = window.requestAnimationFrame(() => {
 			frame = 0;
-			if (disposed) return;
-			if (root.dataset.theme !== 'layall') {
-				hashTarget = undefined;
-				close();
-				return;
-			}
-			const headerHeight = header?.getBoundingClientRect().height ?? 0;
-			const offset = headerHeight + toggle.getBoundingClientRect().height + 16;
-			scope.style.setProperty('--note-header-height', `${headerHeight}px`);
+			if (disposed || suspended) return;
+			const offset = readingBar.refresh();
 			scope.style.setProperty('--note-heading-offset', `${offset}px`);
 			const scroller = document.scrollingElement || root;
 			const maxScroll = scroller.scrollHeight - scroller.clientHeight;
@@ -114,13 +110,26 @@ export function mountNoteToc(scope, { document, window }) {
 	events.on(window, 'scroll', refresh, { passive: true });
 	events.on(window, 'resize', refresh);
 	events.on(window, 'hashchange', fromHash);
-	events.on(window, 'pageshow', refresh);
+	events.on(window, 'pagehide', () => {
+		suspended = true;
+		close();
+		readingBar.reset();
+	});
+	events.on(window, 'pageshow', () => {
+		suspended = false;
+		refresh();
+	});
 	events.on(body, 'load', refresh, true);
 	const observer =
 		typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(refresh) : null;
-	[header, toggle, body].filter(Boolean).forEach((node) => observer?.observe(node));
+	[header, toggle, body, scope].filter(Boolean).forEach((node) => observer?.observe(node));
 	const appearance =
-		typeof window.MutationObserver === 'function' ? new window.MutationObserver(refresh) : null;
+		typeof window.MutationObserver === 'function'
+			? new window.MutationObserver(() => {
+					close();
+					refresh();
+				})
+			: null;
 	appearance?.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
 	document.fonts?.ready.then(refresh);
 	fromHash();
@@ -133,7 +142,7 @@ export function mountNoteToc(scope, { document, window }) {
 			appearance?.disconnect();
 			if (frame) window.cancelAnimationFrame(frame);
 			close();
-			scope.style.removeProperty('--note-header-height');
+			readingBar.dispose();
 			scope.style.removeProperty('--note-heading-offset');
 		},
 	};
@@ -177,7 +186,7 @@ export function bookNeighbors(books, current, postPrefix, origin) {
 	return index < 0 ? null : { prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
 }
 
-export function mountNoteNavigation({ root, config, loadBooks }) {
+export function mountNoteNavigation({ config, loadBooks }) {
 	const article = document.querySelector('[data-theme-piece="article"]');
 	const toc =
 		article && !article.querySelector('[data-protected-post]')
@@ -189,7 +198,7 @@ export function mountNoteNavigation({ root, config, loadBooks }) {
 		loaded = false;
 	const refresh = () => {
 		toc?.refresh();
-		if (disposed || !bottom || root.dataset.theme !== 'layall' || loading || loaded) return;
+		if (disposed || !bottom || loading || loaded) return;
 		loading = true;
 		loadBooks()
 			.then((books) => {
@@ -205,8 +214,11 @@ export function mountNoteNavigation({ root, config, loadBooks }) {
 					const entry = neighbors[direction];
 					const link = bottom.querySelector(`[data-nav-${direction}]`);
 					if (!entry || !link) {
-						bottom.querySelector(`[data-nav-${direction}-empty] span`).textContent =
-							direction === 'prev' ? '이전 글 없음' : '다음 글 없음';
+						const empty = bottom.querySelector(`[data-nav-${direction}-empty]`);
+						empty.setAttribute(
+							'aria-label',
+							direction === 'prev' ? '이전글 없음' : '다음글 없음'
+						);
 						continue;
 					}
 					link.href = entry.href;

@@ -39,7 +39,7 @@ export const tokenSets = {
 	layall: {
 		'font-scale': '1.125',
 		'font-ui':
-			'"Dovemayo_gothic","둘기마요_고딕","Omyu Pretty",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+			'"TmoneyRoundWindRegular","Tmoney RoundWind","티머니 둥근바람",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
 		paper: '#f6f4f0',
 		surface: '#fffdf8',
 		'surface-2': '#e8f7fb',

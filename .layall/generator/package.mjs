@@ -65,6 +65,29 @@ export function validateManifest(value) {
 		throw new Error('invalid generator package identity');
 	return value;
 }
+
+// Admission of the COMPLETE in-memory candidate, before any generated replacement.
+export function validatePackageCandidate(files) {
+	const raw = files.get(manifestPath);
+	if (!Buffer.isBuffer(raw) || raw.length > 128 * 1024)
+		throw new Error('invalid package manifest size');
+	const value = validateManifest(JSON.parse(raw));
+	if (!raw.equals(Buffer.from(JSON.stringify(value, null, 2) + '\n')))
+		throw new Error('noncanonical package manifest');
+	if (files.size !== value.entries.length + 1)
+		throw new Error('package candidate inventory mismatch');
+	for (const entry of value.entries) {
+		const bytes = files.get(entry.path);
+		if (
+			!Buffer.isBuffer(bytes) ||
+			bytes.length !== entry.size ||
+			digest(bytes) !== entry.sha256
+		)
+			throw new Error('package candidate bytes mismatch');
+	}
+	return value;
+}
+
 // Every component is checked before opening. Files are bounded, regular and not
 // links. The package namespace is closed: undeclared files never become imports.
 export function readPackageFile(root, name, limit = fileLimit(name)) {

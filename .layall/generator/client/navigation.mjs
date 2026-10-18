@@ -19,6 +19,10 @@ export function mountNavigation({ nav, navToggle, palettePickers }) {
 		tocToggle?.setAttribute('aria-expanded', 'false');
 		if (restore || hadFocus) tocToggle?.focus({ preventScroll: true });
 	};
+	events.on(window, 'layall:reading', () => {
+		closeNav();
+		closeToc();
+	});
 	events.on(navToggle, 'click', () => {
 		if (nav?.dataset.open === 'true') closeNav();
 		else if (nav) {

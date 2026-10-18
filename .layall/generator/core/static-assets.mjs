@@ -21,6 +21,22 @@ export function emitStaticAssets({ resources, write, href }) {
 	// Emit the protected runtime unconditionally: deleting the last protected post
 	// must not change a surviving public article's shared resource identity.
 	const protectedClient = emit('protected', 'js', resources.protected);
+	const diagram = emit('diagram', 'js', resources.diagram);
+	const diagramRoot = `assets/static/mermaid-${createHash('sha256').update(resources.diagramGraph).digest('hex')}`;
+	write(diagramRoot + '/graph.json', resources.diagramGraph);
+	for (const [name, bytes] of resources.diagramModules) write(diagramRoot + '/' + name, bytes);
+	write(diagramRoot + '/license.json', resources.diagramLicense);
 	const download = emit('download', 'js', resources.download);
-	return { font, icon192, icon512, css, noScriptCss, site, protected: protectedClient, download };
+	return {
+		font,
+		icon192,
+		icon512,
+		css,
+		noScriptCss,
+		site,
+		protected: protectedClient,
+		download,
+		diagram,
+		diagramGraph: diagramRoot + '/graph.json',
+	};
 }

@@ -31,6 +31,7 @@ export function mountProtected(
 		disposeComments = undefined;
 		urls.splice(0).forEach((url) => URL.revokeObjectURL(url));
 		host.replaceChildren();
+		window.dispatchEvent?.(new (window.Event || Event)('layall:article-content'));
 		document.title = '보호된 글';
 	};
 	const text = (tag, value) => {
@@ -164,6 +165,7 @@ export function mountProtected(
 			host.append(link, document.createElement('br'));
 		}
 		const comments = document.querySelector('[data-protected-discussion]');
+		window.dispatchEvent?.(new (window.Event || Event)('layall:article-content'));
 		if (comments)
 			disposeComments = mountProtectedDiscussion(JSON.parse(comments.textContent), host);
 	};

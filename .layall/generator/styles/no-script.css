@@ -10,13 +10,21 @@ html:not([data-js='true']) .header-inner {
 	flex-wrap: wrap;
 }
 
-/* A native list remains usable when the compact disclosure cannot initialize. */
-html[data-theme='layall'] .note-toc-dropdown[hidden] {
-	display: block !important;
+/* The real no-JS page has no measured inset: let its expanded site menu scroll
+   away, then pin the bounded native heading list to the reading edge. */
+body[data-post-page='true'] .site-header {
+	position: static;
 }
-html[data-theme='layall'] .note-toc-toggle-bar {
+.note-toc-dropdown[hidden] {
+	display: block !important;
+	position: static;
+}
+.note-toc-toggle-bar {
 	display: none;
 }
-html[data-theme='layall'] .note-toc-strip {
-	position: static;
+.note-toc-strip {
+	top: 0;
+}
+.article-body :is(h1, h2, h3, h4, h5, h6)[id] {
+	scroll-margin-top: calc(min(40dvh, 24rem) + 1rem);
 }

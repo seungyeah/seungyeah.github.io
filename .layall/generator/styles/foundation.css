@@ -1,19 +1,19 @@
 @font-face {
-	font-family: 'Dovemayo_gothic';
+	font-family: 'TmoneyRoundWindRegular';
 	src: url(__FONT_URL__) format('woff2');
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
 }
 @font-face {
-	font-family: '둘기마요_고딕';
+	font-family: 'Tmoney RoundWind';
 	src: url(__FONT_URL__) format('woff2');
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Omyu Pretty';
+	font-family: '티머니 둥근바람';
 	src: url(__FONT_URL__) format('woff2');
 	font-style: normal;
 	font-weight: 400;

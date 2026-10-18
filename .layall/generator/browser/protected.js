@@ -250,7 +250,7 @@
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         if (fence) {
-          if (/^\s*```/.test(line)) {
+          if (new RegExp(`^[ 	]{0,3}${fence.marker}{${fence.length},}[ 	]*$`).test(line)) {
             html.push(
               `<pre><code${fence.language ? ` data-language="${esc(fence.language)}"` : ""}>${esc(fence.lines.join("\n"))}</code></pre>`
             );
@@ -258,10 +258,15 @@
           } else fence.lines.push(line);
           continue;
         }
-        const fenceMatch = line.match(/^\s*```([^\s`]*)/);
+        const fenceMatch = line.match(/^[ \t]{0,3}(`{3,}|~{3,}|'{3,})[ \t]*([^\s`~']*)/);
         if (fenceMatch) {
           flushAll();
-          fence = { language: fenceMatch[1], lines: [] };
+          fence = {
+            marker: fenceMatch[1][0],
+            length: fenceMatch[1].length,
+            language: fenceMatch[2],
+            lines: []
+          };
           continue;
         }
         const imageCount = imageLine(line);
@@ -285,7 +290,7 @@
           index += 1;
           while (index + 1 < lines.length) {
             const cells = tableCells(lines[index + 1]);
-            if (!cells || imageLine(lines[index + 1]) || /^(?:#{1,6}\s|\s*```)/.test(lines[index + 1]))
+            if (!cells || imageLine(lines[index + 1]) || /^(?:#{1,6}\s|[ \t]{0,3}(?:`{3,}|~{3,}|'{3,}))/.test(lines[index + 1]))
               break;
             rows.push(cells);
             index += 1;
@@ -648,7 +653,7 @@
   function noteToc(headings = []) {
     const visibleHeadings = headings?.filter((h) => h.level >= 1 && h.level <= 6) ?? [];
     const firstHeadingLabel = visibleHeadings[0]?.label ?? "목차";
-    return visibleHeadings.length ? `<div class="note-toc-strip" data-note-toc-strip><button type="button" class="note-toc-toggle-bar" data-note-toc-toggle aria-expanded="false" aria-label="목차 열기" aria-controls="note-toc-list"><span class="note-toc-current"><span class="note-toc-active-marker" data-note-toc-marker>§</span><span class="note-toc-active-label" data-note-toc-label>${esc(firstHeadingLabel)}</span></span><span class="note-toc-badge">${visibleHeadings.length} 항목</span><span class="note-toc-caret" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button><nav class="note-toc-dropdown" id="note-toc-list" data-note-toc-dropdown hidden aria-label="글 목차"><ol class="note-toc-list">${visibleHeadings.map((h, i) => `<li class="note-toc-item toc-level-${h.level}" data-toc-target="${esc(h.id)}" data-toc-idx="${i}"><a href="#${esc(h.id)}" class="note-toc-link"><span class="note-toc-item-marker">${h.level <= 2 ? "§" : "•"}</span><span class="note-toc-item-title">${esc(h.label)}</span></a></li>`).join("")}</ol></nav></div>` : "";
+    return visibleHeadings.length ? `<div class="note-toc-strip" data-note-toc-strip><div class="note-toc-bar"><button type="button" class="note-toc-toggle-bar" data-note-toc-toggle aria-expanded="false" aria-label="목차 열기" aria-controls="note-toc-list"><span class="note-toc-current"><span class="note-toc-active-marker" data-note-toc-marker>§</span><span class="note-toc-active-label" data-note-toc-label>${esc(firstHeadingLabel)}</span></span><span class="note-toc-caret" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button><nav class="note-toc-dropdown" id="note-toc-list" data-note-toc-dropdown hidden aria-label="글 목차"><ol class="note-toc-list">${visibleHeadings.map((h, i) => `<li class="note-toc-item toc-level-${h.level}" data-toc-target="${esc(h.id)}" data-toc-idx="${i}"><a href="#${esc(h.id)}" class="note-toc-link"><span class="note-toc-item-marker">${h.level <= 2 ? "§" : "•"}</span><span class="note-toc-item-title">${esc(h.label)}</span></a></li>`).join("")}</ol></nav></div></div>` : "";
   }
 
   // client/discussions.mjs
@@ -785,6 +790,65 @@
     };
   }
 
+  // client/reading-bar.mjs
+  function readingBarPosition(anchorTop, headerHeight) {
+    return { pinned: anchorTop <= 0, headerShift: Math.min(0, anchorTop - headerHeight) };
+  }
+  function mountReadingBar(strip, toggle, { document: document2, window: window2 }) {
+    const header = document2.querySelector(".site-header");
+    const original = header && {
+      inert: header.inert,
+      aria: header.getAttribute("aria-hidden")
+    };
+    let pinned = false;
+    strip.dataset.readingReady = "true";
+    const restoreHeader = () => {
+      if (!header) return;
+      delete header.dataset.readingHidden;
+      header.style.removeProperty("--reading-header-shift");
+      header.inert = original.inert;
+      if (original.aria === null) header.removeAttribute("aria-hidden");
+      else header.setAttribute("aria-hidden", original.aria);
+    };
+    return {
+      refresh() {
+        const height = toggle.getBoundingClientRect().height;
+        const position = readingBarPosition(
+          strip.getBoundingClientRect().top,
+          header?.getBoundingClientRect().height || 0
+        );
+        strip.style.setProperty("--reading-bar-height", `${height}px`);
+        strip.dataset.pinned = String(position.pinned);
+        if (header) {
+          header.style.setProperty("--reading-header-shift", `${position.headerShift}px`);
+          if (position.pinned && !pinned) {
+            const moveFocus = header.contains(document2.activeElement) || document2.activeElement?.closest?.("[data-palette-options]");
+            window2.dispatchEvent(new window2.Event("layall:reading"));
+            if (moveFocus) toggle.focus({ preventScroll: true });
+            header.inert = true;
+            header.setAttribute("aria-hidden", "true");
+            header.dataset.readingHidden = "true";
+          } else if (!position.pinned && pinned) {
+            restoreHeader();
+            header.style.setProperty("--reading-header-shift", `${position.headerShift}px`);
+          }
+        }
+        pinned = position.pinned;
+        return height + 16;
+      },
+      reset() {
+        pinned = false;
+        delete strip.dataset.pinned;
+        restoreHeader();
+      },
+      dispose() {
+        this.reset();
+        delete strip.dataset.readingReady;
+        strip.style.removeProperty("--reading-bar-height");
+      }
+    };
+  }
+
   // client/note-navigation.mjs
   function readingHeading(headings, offset) {
     let current = headings[0];
@@ -809,6 +873,8 @@
     const header = document2.querySelector(".site-header");
     const root = document2.documentElement;
     const events = listeners();
+    const readingBar = mountReadingBar(strip, toggle, { document: document2, window: window2 });
+    let suspended = false;
     let frame = 0, disposed = false, hashTarget;
     const select = (heading) => {
       if (!heading) return;
@@ -832,18 +898,11 @@
       if (restore || hadFocus) toggle.focus({ preventScroll: true });
     };
     const refresh = () => {
-      if (disposed || frame) return;
+      if (disposed || suspended || frame) return;
       frame = window2.requestAnimationFrame(() => {
         frame = 0;
-        if (disposed) return;
-        if (root.dataset.theme !== "layall") {
-          hashTarget = void 0;
-          close();
-          return;
-        }
-        const headerHeight = header?.getBoundingClientRect().height ?? 0;
-        const offset = headerHeight + toggle.getBoundingClientRect().height + 16;
-        scope.style.setProperty("--note-header-height", `${headerHeight}px`);
+        if (disposed || suspended) return;
+        const offset = readingBar.refresh();
         scope.style.setProperty("--note-heading-offset", `${offset}px`);
         const scroller = document2.scrollingElement || root;
         const maxScroll = scroller.scrollHeight - scroller.clientHeight;
@@ -896,11 +955,22 @@
     events.on(window2, "scroll", refresh, { passive: true });
     events.on(window2, "resize", refresh);
     events.on(window2, "hashchange", fromHash);
-    events.on(window2, "pageshow", refresh);
+    events.on(window2, "pagehide", () => {
+      suspended = true;
+      close();
+      readingBar.reset();
+    });
+    events.on(window2, "pageshow", () => {
+      suspended = false;
+      refresh();
+    });
     events.on(body, "load", refresh, true);
     const observer = typeof window2.ResizeObserver === "function" ? new window2.ResizeObserver(refresh) : null;
-    [header, toggle, body].filter(Boolean).forEach((node) => observer?.observe(node));
-    const appearance = typeof window2.MutationObserver === "function" ? new window2.MutationObserver(refresh) : null;
+    [header, toggle, body, scope].filter(Boolean).forEach((node) => observer?.observe(node));
+    const appearance = typeof window2.MutationObserver === "function" ? new window2.MutationObserver(() => {
+      close();
+      refresh();
+    }) : null;
     appearance?.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
     document2.fonts?.ready.then(refresh);
     fromHash();
@@ -913,7 +983,7 @@
         appearance?.disconnect();
         if (frame) window2.cancelAnimationFrame(frame);
         close();
-        scope.style.removeProperty("--note-header-height");
+        readingBar.dispose();
         scope.style.removeProperty("--note-heading-offset");
       }
     };
@@ -939,6 +1009,7 @@
       disposeComments = void 0;
       urls.splice(0).forEach((url) => URL2.revokeObjectURL(url));
       host.replaceChildren();
+      window2.dispatchEvent?.(new (window2.Event || Event)("layall:article-content"));
       document2.title = "보호된 글";
     };
     const text = (tag, value) => {
@@ -1064,6 +1135,7 @@
         host.append(link, document2.createElement("br"));
       }
       const comments = document2.querySelector("[data-protected-discussion]");
+      window2.dispatchEvent?.(new (window2.Event || Event)("layall:article-content"));
       if (comments)
         disposeComments = mountProtectedDiscussion(JSON.parse(comments.textContent), host);
     };

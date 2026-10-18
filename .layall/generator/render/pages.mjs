@@ -182,6 +182,10 @@ export function createPages({ sources, assets, staticAssets, write }) {
 	};
 
 	const clientConfig = {
+		diagram: {
+			script: href('/' + staticAssets.diagram),
+			graph: href('/' + staticAssets.diagramGraph),
+		},
 		basePath,
 		themeOrder,
 		theme,

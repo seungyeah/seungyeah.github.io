@@ -1,3 +1,4 @@
+import { mountArticleCode } from './article-code.mjs';
 import { createBlogHome } from './blog-home.mjs';
 import { createDocsNavigation } from './docs-navigation.mjs';
 import { createHomeWidgets } from './home-widgets.mjs';
@@ -41,10 +42,16 @@ export function mountSite(config) {
 		navToggle,
 		palettePickers: palettes.pickers,
 	});
-	noteNavigation = mountNoteNavigation({ root, config, loadBooks: docs.loadBooks });
+	noteNavigation = mountNoteNavigation({ config, loadBooks: docs.loadBooks });
 	themes.restore();
+	const code = mountArticleCode(
+		document.querySelector('[data-theme-piece="article"]'),
+		{ document, window },
+		config.diagram
+	);
 	return {
 		dispose() {
+			code.dispose();
 			palettes.dispose();
 			navigation.dispose();
 			noteNavigation.dispose();
