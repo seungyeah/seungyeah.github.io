@@ -76,7 +76,7 @@
   },
   "githubIssuesEnabled": true,
   "githubReactionSnapshot": {
-    "capturedAt": 1792309979291,
+    "capturedAt": 1792333722802,
     "posts": {
       "post-23c354cda433bb63de6699862f0afa87": {
         "counts": {
@@ -112,7 +112,7 @@
           "eyes": 0,
           "heart": 0,
           "hooray": 0,
-          "laugh": 0,
+          "laugh": 1,
           "rocket": 0
         },
         "discussionId": "D_kwDOUROzx84AqL7z"

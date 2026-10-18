@@ -408,6 +408,7 @@
     };
     return {
       bind: bindDocs,
+      loadEntries: () => requestDocs(docsResource),
       dispose() {
         disposed = true;
         activeController?.abort();
@@ -476,7 +477,7 @@
   }
 
   // client/navigation.mjs
-  function mountNavigation({ nav, navToggle, palettePickers }) {
+  function mountNavigation({ config: config2 = {}, root, nav, navToggle, palettePickers, loadDocsTree }) {
     const events = listeners();
     const tocToggle = document.querySelector("[data-post-toc-toggle]");
     const tocPanel = document.querySelector("[data-post-toc-panel]");
@@ -526,7 +527,157 @@
         }
       })
     );
+    const noteTocStrip = document.querySelector("[data-note-toc-strip]");
+    const noteTocToggle = document.querySelector("[data-note-toc-toggle]");
+    const noteTocDropdown = document.querySelector("[data-note-toc-dropdown]");
+    const noteTocMarker = document.querySelector("[data-note-toc-marker]");
+    const noteTocLabel = document.querySelector("[data-note-toc-label]");
+    const closeNoteToc = () => {
+      if (!noteTocDropdown || noteTocDropdown.hidden) return;
+      noteTocDropdown.hidden = true;
+      noteTocToggle?.setAttribute("aria-expanded", "false");
+    };
+    if (noteTocToggle && noteTocDropdown) {
+      events.on(noteTocToggle, "click", (event) => {
+        event.stopPropagation();
+        const open = noteTocDropdown.hidden;
+        noteTocDropdown.hidden = !open;
+        noteTocToggle.setAttribute("aria-expanded", String(open));
+        if (open) {
+          const activeOrFirst = noteTocDropdown.querySelector(".note-toc-item.active a") || noteTocDropdown.querySelector("a");
+          activeOrFirst?.focus();
+        }
+      });
+    }
+    noteTocDropdown?.querySelectorAll('a[href^="#"]').forEach(
+      (link) => events.on(link, "click", () => {
+        closeNoteToc();
+        const heading = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+        if (heading) {
+          heading.setAttribute("tabindex", "-1");
+          heading.focus({ preventScroll: true });
+        }
+      })
+    );
+    if (noteTocStrip && noteTocLabel) {
+      const headingEls = [
+        ...document.querySelectorAll(".article-body h2, .article-body h3, .article-body h4")
+      ];
+      if (headingEls.length > 0) {
+        let scrollTicking = false;
+        const onScroll = () => {
+          if (scrollTicking) return;
+          scrollTicking = true;
+          window.requestAnimationFrame(() => {
+            scrollTicking = false;
+            const scrollOffset = 140;
+            let currentHeading = headingEls[0];
+            for (let i = 0; i < headingEls.length; i++) {
+              if (headingEls[i].getBoundingClientRect().top <= scrollOffset) {
+                currentHeading = headingEls[i];
+              } else {
+                break;
+              }
+            }
+            if (currentHeading) {
+              const cleanText = currentHeading.textContent.replace(/#\s*$/, "").trim();
+              if (noteTocLabel.textContent !== cleanText) {
+                noteTocLabel.textContent = cleanText;
+              }
+              if (noteTocMarker) {
+                noteTocMarker.textContent = currentHeading.tagName === "H2" ? "§" : "•";
+              }
+              if (noteTocDropdown) {
+                const currentId = currentHeading.id;
+                noteTocDropdown.querySelectorAll(".note-toc-item").forEach((item) => {
+                  const active = item.dataset.tocTarget === currentId;
+                  item.classList.toggle("active", active);
+                  const a = item.querySelector("a");
+                  if (active) a?.setAttribute("aria-current", "location");
+                  else a?.removeAttribute("aria-current");
+                });
+              }
+            }
+          });
+        };
+        events.on(window, "scroll", onScroll, { passive: true });
+        onScroll();
+      }
+    }
+    const bindArticleNav = () => {
+      const bottomNav = document.querySelector(".article-bottom-nav");
+      const activeTheme = root ? root.dataset.theme : document.documentElement.dataset.theme;
+      if (!bottomNav || activeTheme !== "layall" || bottomNav.dataset.bound === "true") return;
+      bottomNav.dataset.bound = "true";
+      const treePromise = loadDocsTree ? loadDocsTree() : config2?.docsResource ? fetch(config2.docsResource).then((res) => res.ok ? res.json() : null).then((data) => data?.tree) : Promise.resolve(null);
+      treePromise.then((tree) => {
+        if (!tree || !Array.isArray(tree)) return;
+        const rawPath = location.pathname.endsWith("/index.html") ? location.pathname.slice(0, -10) : location.pathname;
+        const normPath = rawPath.endsWith("/") ? rawPath : rawPath + "/";
+        let siblings = null;
+        const findInNodes = (nodes) => {
+          for (const node of nodes) {
+            if (node.children) {
+              const directPosts = node.children.filter((child) => typeof child.href === "string");
+              if (directPosts.some((p) => {
+                const pNorm = p.href.endsWith("/") ? p.href : p.href + "/";
+                return pNorm === normPath || normPath.endsWith(pNorm);
+              })) {
+                siblings = directPosts;
+                return true;
+              }
+              if (findInNodes(node.children)) return true;
+            }
+          }
+          return false;
+        };
+        findInNodes(tree);
+        if (!siblings || siblings.length <= 1) {
+          const all = [];
+          const collect = (nodes) => {
+            for (const n of nodes) {
+              if (typeof n.href === "string") all.push(n);
+              if (Array.isArray(n.children)) collect(n.children);
+            }
+          };
+          collect(tree);
+          siblings = all;
+        }
+        const idx = siblings.findIndex((p) => {
+          const pNorm = p.href.endsWith("/") ? p.href : p.href + "/";
+          return pNorm === normPath || normPath.endsWith(pNorm);
+        });
+        if (idx !== -1) {
+          const prev = idx > 0 ? siblings[idx - 1] : null;
+          const next = idx < siblings.length - 1 ? siblings[idx + 1] : null;
+          const prevLink = bottomNav.querySelector("[data-nav-prev]");
+          const prevTitle = bottomNav.querySelector("[data-nav-prev-title]");
+          const prevEmpty = bottomNav.querySelector("[data-nav-prev-empty]");
+          const nextLink = bottomNav.querySelector("[data-nav-next]");
+          const nextTitle = bottomNav.querySelector("[data-nav-next-title]");
+          const nextEmpty = bottomNav.querySelector("[data-nav-next-empty]");
+          if (prev && prevLink && prevTitle) {
+            prevLink.href = prev.href;
+            prevTitle.textContent = prev.label;
+            prevLink.title = `이전 글: ${prev.label}`;
+            prevLink.hidden = false;
+            if (prevEmpty) prevEmpty.hidden = true;
+          }
+          if (next && nextLink && nextTitle) {
+            nextLink.href = next.href;
+            nextTitle.textContent = next.label;
+            nextLink.title = `다음 글: ${next.label}`;
+            nextLink.hidden = false;
+            if (nextEmpty) nextEmpty.hidden = true;
+          }
+        }
+      }).catch(() => {
+      });
+    };
+    bindArticleNav();
     events.on(document, "click", (event) => {
+      if (noteTocDropdown && !noteTocDropdown.hidden && !noteTocStrip?.contains(event.target))
+        closeNoteToc();
       if (tocPanel?.dataset.open === "true" && !tocPanel.contains(event.target) && !tocToggle?.contains(event.target))
         closeToc();
       if (nav?.dataset.open === "true" && !nav.contains(event.target) && !navToggle?.contains(event.target) && !palettePickers.some((picker) => picker.contains(event.target)))
@@ -534,6 +685,7 @@
     });
     events.on(document, "keydown", (event) => {
       if (event.key === "Escape") {
+        closeNoteToc();
         const tocWasOpen = tocPanel?.dataset.open === "true";
         const navWasOpen = nav?.dataset.open === "true";
         closeToc(tocWasOpen);
@@ -548,10 +700,12 @@
       }
     });
     return {
+      bindArticleNav,
       dispose() {
         events.dispose();
         closeNav();
         closeToc();
+        closeNoteToc();
       }
     };
   }
@@ -939,23 +1093,35 @@
     const search = createSearch(config2);
     const blog = createBlogHome({ mount });
     const widgets = createHomeWidgets({ mount });
+    const nav = document.querySelector("[data-nav]");
+    const navToggle = document.querySelector("[data-nav-toggle]");
+    let navigation;
     const themes = createThemeController({
       config: config2,
       root,
       mount,
       beforeReplace: search.invalidate,
-      onArticleAppearance: docs.bind,
+      onArticleAppearance() {
+        docs.bind();
+        navigation?.bindArticleNav();
+      },
       onPageMounted(query = "") {
         docs.bind();
         search.bind(query);
         blog.bind();
         widgets.bind();
+        navigation?.bindArticleNav();
       }
     });
-    const nav = document.querySelector("[data-nav]");
-    const navToggle = document.querySelector("[data-nav-toggle]");
     const palettes = mountPalettes({ root, nav, current: themes.current, onSelect: themes.select });
-    const navigation = mountNavigation({ nav, navToggle, palettePickers: palettes.pickers });
+    navigation = mountNavigation({
+      config: config2,
+      root,
+      nav,
+      navToggle,
+      palettePickers: palettes.pickers,
+      loadDocsTree: docs.loadEntries
+    });
     themes.restore();
     return {
       dispose() {

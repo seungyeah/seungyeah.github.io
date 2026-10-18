@@ -5,7 +5,7 @@ export function siteCss(source, fontUrl) {
 		Object.entries(tokens)
 			.map(([key, value]) => `--${key}:${value};`)
 			.join('');
-	let css = source.replace('__FONT_URL__', JSON.stringify(fontUrl));
+	let css = source.replaceAll('__FONT_URL__', JSON.stringify(fontUrl));
 	for (const [name, tokens] of Object.entries(tokenSets))
 		css = css.replaceAll(`/* @tokens:${name} */`, declarations(tokens));
 	css = css.replace(

@@ -84,7 +84,9 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		const folderLabel = folder ? String(folder.name ?? folderId) : '분류 없는 글';
 		return {
 			folder: `<div class="post-meta article-meta"><a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(folderLabel)}</a></div>`,
-			dates: `<div class="post-meta article-date">${esc(date)}</div>`,
+			dates: `<div class="post-meta article-date"><span class="article-date-default">${esc(date)}</span>${dates ? `<span class="article-date-note"><span title="블로그 최초 게시일">생성 <time datetime="${esc(dates.publishedAt)}">${esc(koreanDate(dates.publishedAt))}</time></span><span>수정 <time datetime="${esc(dates.updatedAt)}">${esc(koreanDate(dates.updatedAt))}</time></span></span>` : ''}</div>`,
+			listUrl: href(`/#${bookId}`),
+			listLabel: folderLabel,
 		};
 	};
 	const tagsFor = (post) =>
@@ -144,6 +146,20 @@ export function createPages({ sources, assets, staticAssets, write }) {
 			format: 'layall-docs-navigation',
 			version: 1,
 			tree: docsTreeEntries,
+			// Same groups/order as the public home book lists. Do not flatten folders or
+			// expose decrypted titles, source timestamps or private source page order.
+			books: [...[...folders].map(([id]) => postsByFolder.get(id) ?? []), unfiledPosts]
+				.filter((items) => items.length)
+				.map((items) =>
+					orderBookPosts(items).map((post) => ({
+						label: post.protectedEnvelope
+							? '보호된 글'
+							: String(post.title || 'Untitled'),
+						href: href(
+							`/posts/${encodeURIComponent(post.protectedEnvelope ? post.postId : post.permalink)}/`
+						),
+					}))
+				),
 		})
 	);
 
@@ -184,6 +200,7 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		siteDescription,
 		author,
 		href,
+		absolute,
 		staticAssets,
 		pwaHead,
 		clientConfig,
