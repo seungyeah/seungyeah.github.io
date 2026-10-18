@@ -644,6 +644,13 @@
     };
   }
 
+  // render/note-toc.mjs
+  function noteToc(headings = []) {
+    const visibleHeadings = headings?.filter((h) => h.level >= 1 && h.level <= 6) ?? [];
+    const firstHeadingLabel = visibleHeadings[0]?.label ?? "목차";
+    return visibleHeadings.length ? `<div class="note-toc-strip" data-note-toc-strip><button type="button" class="note-toc-toggle-bar" data-note-toc-toggle aria-expanded="false" aria-label="목차 열기" aria-controls="note-toc-list"><span class="note-toc-current"><span class="note-toc-active-marker" data-note-toc-marker>§</span><span class="note-toc-active-label" data-note-toc-label>${esc(firstHeadingLabel)}</span></span><span class="note-toc-badge">${visibleHeadings.length} 항목</span><span class="note-toc-caret" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button><nav class="note-toc-dropdown" id="note-toc-list" data-note-toc-dropdown hidden aria-label="글 목차"><ol class="note-toc-list">${visibleHeadings.map((h, i) => `<li class="note-toc-item toc-level-${h.level}" data-toc-target="${esc(h.id)}" data-toc-idx="${i}"><a href="#${esc(h.id)}" class="note-toc-link"><span class="note-toc-item-marker">${h.level <= 2 ? "§" : "•"}</span><span class="note-toc-item-title">${esc(h.label)}</span></a></li>`).join("")}</ol></nav></div>` : "";
+  }
+
   // client/discussions.mjs
   function mountProtectedDiscussion(config2, host) {
     const section = document.createElement("section");
@@ -763,17 +770,171 @@
     };
   }
 
+  // client/lifecycle.mjs
+  function listeners() {
+    const cleanup = [];
+    return {
+      on(target, type, handler, options) {
+        if (!target) return;
+        target.addEventListener(type, handler, options);
+        cleanup.push(() => target.removeEventListener(type, handler, options));
+      },
+      dispose() {
+        cleanup.splice(0).forEach((remove) => remove());
+      }
+    };
+  }
+
+  // client/note-navigation.mjs
+  function readingHeading(headings, offset) {
+    let current = headings[0];
+    for (const heading of headings) {
+      if (heading.getBoundingClientRect().top > offset) break;
+      current = heading;
+    }
+    return current;
+  }
+  function mountNoteToc(scope, { document: document2, window: window2 }) {
+    const strip = scope.querySelector("[data-note-toc-strip]");
+    if (!strip) return { refresh() {
+    }, dispose() {
+    } };
+    const toggle = strip.querySelector("[data-note-toc-toggle]");
+    const dropdown = strip.querySelector("[data-note-toc-dropdown]");
+    const marker = strip.querySelector("[data-note-toc-marker]");
+    const label = strip.querySelector("[data-note-toc-label]");
+    const items = [...dropdown.querySelectorAll("[data-toc-target]")];
+    const body = scope.querySelector(".article-body");
+    const headings = [...body.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]")];
+    const header = document2.querySelector(".site-header");
+    const root = document2.documentElement;
+    const events = listeners();
+    let frame = 0, disposed = false, hashTarget;
+    const select = (heading) => {
+      if (!heading) return;
+      for (const item of items) {
+        const active = item.dataset.tocTarget === heading.id;
+        item.classList.toggle("active", active);
+        const link = item.querySelector("a");
+        if (active) {
+          link.setAttribute("aria-current", "location");
+          label.textContent = item.querySelector(".note-toc-item-title").textContent;
+          marker.textContent = /^H[12]$/.test(heading.tagName) ? "§" : "•";
+        } else link.removeAttribute("aria-current");
+      }
+    };
+    const close = (restore = false) => {
+      if (dropdown.hidden) return;
+      const hadFocus = dropdown.contains(document2.activeElement);
+      dropdown.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "목차 열기");
+      if (restore || hadFocus) toggle.focus({ preventScroll: true });
+    };
+    const refresh = () => {
+      if (disposed || frame) return;
+      frame = window2.requestAnimationFrame(() => {
+        frame = 0;
+        if (disposed) return;
+        if (root.dataset.theme !== "layall") {
+          hashTarget = void 0;
+          close();
+          return;
+        }
+        const headerHeight = header?.getBoundingClientRect().height ?? 0;
+        const offset = headerHeight + toggle.getBoundingClientRect().height + 16;
+        scope.style.setProperty("--note-header-height", `${headerHeight}px`);
+        scope.style.setProperty("--note-heading-offset", `${offset}px`);
+        const scroller = document2.scrollingElement || root;
+        const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+        const atBottom = maxScroll > 0 && scroller.scrollTop > 0 && maxScroll - scroller.scrollTop <= 2;
+        select(
+          hashTarget || (atBottom ? headings.at(-1) : readingHeading(headings, offset + 1))
+        );
+        hashTarget = void 0;
+      });
+    };
+    const fromHash = () => {
+      try {
+        const id = decodeURIComponent(window2.location.hash.slice(1));
+        hashTarget = headings.find((heading) => heading.id === id);
+      } catch {
+        hashTarget = void 0;
+      }
+      refresh();
+    };
+    events.on(toggle, "click", () => {
+      const open = dropdown.hidden;
+      if (!open) return close(true);
+      dropdown.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.setAttribute("aria-label", "목차 닫기");
+      (dropdown.querySelector('[aria-current="location"]') || dropdown.querySelector("a"))?.focus(
+        { preventScroll: true }
+      );
+    });
+    for (const item of items)
+      events.on(item.querySelector("a"), "click", () => {
+        close();
+        const heading = headings.find((entry) => entry.id === item.dataset.tocTarget);
+        if (heading) {
+          heading.setAttribute("tabindex", "-1");
+          heading.focus({ preventScroll: true });
+          hashTarget = heading;
+          refresh();
+        }
+      });
+    events.on(document2, "click", (event) => {
+      if (!strip.contains(event.target)) close();
+    });
+    events.on(document2, "keydown", (event) => {
+      if (event.key === "Escape" && !dropdown.hidden) {
+        event.preventDefault();
+        close(true);
+      }
+    });
+    events.on(window2, "scroll", refresh, { passive: true });
+    events.on(window2, "resize", refresh);
+    events.on(window2, "hashchange", fromHash);
+    events.on(window2, "pageshow", refresh);
+    events.on(body, "load", refresh, true);
+    const observer = typeof window2.ResizeObserver === "function" ? new window2.ResizeObserver(refresh) : null;
+    [header, toggle, body].filter(Boolean).forEach((node) => observer?.observe(node));
+    const appearance = typeof window2.MutationObserver === "function" ? new window2.MutationObserver(refresh) : null;
+    appearance?.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    document2.fonts?.ready.then(refresh);
+    fromHash();
+    return {
+      refresh,
+      dispose() {
+        disposed = true;
+        events.dispose();
+        observer?.disconnect();
+        appearance?.disconnect();
+        if (frame) window2.cancelAnimationFrame(frame);
+        close();
+        scope.style.removeProperty("--note-header-height");
+        scope.style.removeProperty("--note-heading-offset");
+      }
+    };
+  }
+
   // client/protected.mjs
   function mountProtected(envelope2, renderMarkdown, { platform = globalThis, core = folderCrypto(platform) } = {}) {
     const { document: document2, window: window2, URL: URL2, Blob, BroadcastChannel } = platform;
     const host = document2.querySelector("[data-protected-post]");
     if (!host) return;
+    const publicMetadata = [".article-meta", ".article-date"].map(
+      (selector) => host.querySelector(selector)?.cloneNode(true)
+    );
     const urls = [];
-    let generation = 0, disposeComments;
+    let generation = 0, disposeComments, disposeToc;
     const name = core.scope(core.namespace(envelope2));
     const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("layall-folder-locks-v1") : null;
     const clear = () => {
       generation++;
+      disposeToc?.();
+      disposeToc = void 0;
       disposeComments?.();
       disposeComments = void 0;
       urls.splice(0).forEach((url) => URL2.revokeObjectURL(url));
@@ -858,11 +1019,28 @@
           failed ? "저장된 키를 지우지 못했습니다. 브라우저의 사이트 데이터를 삭제하세요." : "잠금 해제 정보를 지웠습니다."
         );
       };
-      host.append(relock, status, text("h1", String(source.title || "제목 없는 글")));
+      const header = document2.createElement("header");
+      header.className = "note-protected-header";
+      header.append(
+        ...[
+          publicMetadata[0]?.cloneNode(true),
+          text("h1", String(source.title || "제목 없는 글")),
+          publicMetadata[1]?.cloneNode(true)
+        ].filter(Boolean)
+      );
+      host.append(relock, status, header);
       const content = document2.createElement("div");
       content.className = "article-body";
-      content.innerHTML = renderMarkdown(source.body, assets).html;
+      const rendered = renderMarkdown(source.body, assets);
+      content.innerHTML = rendered.html;
+      const tocMarkup = noteToc(rendered.headings);
+      if (tocMarkup) {
+        const template = document2.createElement("template");
+        template.innerHTML = tocMarkup;
+        host.append(template.content);
+      }
       host.append(content);
+      if (tocMarkup) disposeToc = mountNoteToc(host, platform).dispose;
       for (const [field, label] of [
         ["tags", "태그"],
         ["summaries", "요약"],

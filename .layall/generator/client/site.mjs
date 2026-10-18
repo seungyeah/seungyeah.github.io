@@ -2,6 +2,7 @@ import { createBlogHome } from './blog-home.mjs';
 import { createDocsNavigation } from './docs-navigation.mjs';
 import { createHomeWidgets } from './home-widgets.mjs';
 import { mountNavigation } from './navigation.mjs';
+import { mountNoteNavigation } from './note-navigation.mjs';
 import { mountPalettes } from './palette.mjs';
 import { createSearch } from './search.mjs';
 import { createThemeController } from './theme-controller.mjs';
@@ -14,28 +15,39 @@ export function mountSite(config) {
 	const search = createSearch(config);
 	const blog = createBlogHome({ mount });
 	const widgets = createHomeWidgets({ mount });
+	const nav = document.querySelector('[data-nav]');
+	const navToggle = document.querySelector('[data-nav-toggle]');
+	let noteNavigation;
 	const themes = createThemeController({
 		config,
 		root,
 		mount,
 		beforeReplace: search.invalidate,
-		onArticleAppearance: docs.bind,
+		onArticleAppearance() {
+			docs.bind();
+			noteNavigation?.refresh();
+		},
 		onPageMounted(query = '') {
 			docs.bind();
 			search.bind(query);
 			blog.bind();
 			widgets.bind();
+			noteNavigation?.refresh();
 		},
 	});
-	const nav = document.querySelector('[data-nav]');
-	const navToggle = document.querySelector('[data-nav-toggle]');
 	const palettes = mountPalettes({ root, nav, current: themes.current, onSelect: themes.select });
-	const navigation = mountNavigation({ nav, navToggle, palettePickers: palettes.pickers });
+	const navigation = mountNavigation({
+		nav,
+		navToggle,
+		palettePickers: palettes.pickers,
+	});
+	noteNavigation = mountNoteNavigation({ root, config, loadBooks: docs.loadBooks });
 	themes.restore();
 	return {
 		dispose() {
 			palettes.dispose();
 			navigation.dispose();
+			noteNavigation.dispose();
 			themes.dispose();
 			blog.dispose();
 			docs.dispose();

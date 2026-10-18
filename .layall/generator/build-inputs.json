@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: ac618c141923c2cdac37648638eb8ec4ddb3c096618ba97f10d9b27c44532912",
+  "sourceStamp": "// layall-generator-source-sha256: 9fe5efbd9cf9547d27573bbf521a8adf68d05ea8d3fb6c8e3ce9bedbcc8c57dd",
   "inputs": [
     {
       "path": "package.json",
@@ -30,7 +30,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/docs-navigation.mjs",
-      "sha256": "826b7c39abdbea6a3a424551cec828c8fc023715db5e11d0322aaea6b33b8bb5"
+      "sha256": "8eee16bdb76cb9af5dcc65351ad0eeb54605e81e12ac53be8e9e90b46ffba9b1"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/download-entry.mjs",
@@ -53,6 +53,10 @@
       "sha256": "8a4eadedc8e51d987d4bd99149eb969e07fd58f1d0324d32ca9688f2f2e64b1b"
     },
     {
+      "path": "src-tauri/src/github_blog/generator/client/note-navigation.mjs",
+      "sha256": "cee9ed491093111566693a42b15afbe5788b4eac1bd0dd60daafd63e250a3333"
+    },
+    {
       "path": "src-tauri/src/github_blog/generator/client/palette.mjs",
       "sha256": "5ee21a6f8b4790e542163e73cbb1ac2c06bce89607310cf3c8ea2a8d2b9da076"
     },
@@ -62,7 +66,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/protected.mjs",
-      "sha256": "81952a7c6edc722180e27c92c98f1dcc59be01e16a53740b25faf373b58cd9e4"
+      "sha256": "ce3e17a86ac0cead3008a227ae1a1f5f1a4f9b8f7c65a20e674d4848db3dc09e"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/pwa.mjs",
@@ -78,7 +82,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/site.mjs",
-      "sha256": "2b0a453eb3cafbcb623296d2b039ec51c8a494b3f61fa8dbdd38373b5e0de5be"
+      "sha256": "b6e71a046daa0e97620f180a82581ed38f79b9fe75f0e9b0835bf65e9029069a"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/theme-controller.mjs",
@@ -118,11 +122,11 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/core/urls.mjs",
-      "sha256": "a0fd97c9df8012b237e99c09b3029af195c058a9baeb84bc3ace7cc3804427a5"
+      "sha256": "16c254194d5d248ce4e6af5c30364d17315c9d4a575939b011837365df39bd84"
     },
     {
       "path": "src-tauri/src/github_blog/generator/fonts/omyu-pretty.woff2",
-      "sha256": "ed6b9f6ebd9bd3d43c1e1fac47f943bcc3b646b5a9c15d38b9f03d5f5d9c8c2a"
+      "sha256": "fa7978657a751d76706452e5342d7042bb2323eebadaf8f54948018552b097c5"
     },
     {
       "path": "src-tauri/src/github_blog/generator/icons/layall-192.png",
@@ -142,7 +146,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/article.mjs",
-      "sha256": "444445cab0d2d5609c2bb6e926f44561f3baf871fa0c43905d9f7c8511060fd2"
+      "sha256": "b054c272c458c677f7fdbafea02ba8a267beb3d380324fa029a04fa6e048ec7e"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/discussions.mjs",
@@ -150,7 +154,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/feeds.mjs",
-      "sha256": "b4a5b7430258e5ddf1d24a35dc43494f5a040a949d9a1aeba13aeb38ba574e06"
+      "sha256": "509e6afa793eb996d838c5590be4aba6b5cde59c7d440ad74279df14028f8184"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/giscus.mjs",
@@ -169,8 +173,12 @@
       "sha256": "b9ae2a292d956ec8f051c0878b95e65e7caa51f5c40c017065e0155f83153e7a"
     },
     {
+      "path": "src-tauri/src/github_blog/generator/render/note-toc.mjs",
+      "sha256": "94c5eba37bd451b66b3ad61d7647e1abec90bd89f4d135fdbfea43ddef458f58"
+    },
+    {
       "path": "src-tauri/src/github_blog/generator/render/pages.mjs",
-      "sha256": "fab8ca79666758e37b5579b9ecf61a261f371e2bc5ebf9a01d83bd99a286e180"
+      "sha256": "e098ea1b155a2109e56b32a18f5dbf9b1b91b8d9172971cfeac9a86be7248d7c"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/pwa.mjs",
@@ -178,15 +186,15 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/routes.mjs",
-      "sha256": "181fe17721bd6d46bf57402ee44118158658483830400268777618d75a43ce39"
+      "sha256": "78a4a13101329c17608d3b490cccf43737b50e0d3b4ace9e49c0d043f42fbbb9"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/shell.mjs",
-      "sha256": "cd16c2956e04b83698547e8b9095c10982d747b27706370e23c4e9cebc99ac85"
+      "sha256": "a8a39931b6c306f3cc1c02b12630321ae931d1892e0d39782156581be7011b5d"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/site-styles.mjs",
-      "sha256": "20be3925f7145740b1e6d642611ea89a5a953db231a103042540cd3a817fc1b3"
+      "sha256": "e7cf2ddd2f55957f670b8b0f68655e7a927966f492815ccbd22d35f34cc3c081"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/text.mjs",
@@ -194,7 +202,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/theme-data.mjs",
-      "sha256": "1e640910ca27e155abee67f6268807d50a63102c64b55e6e83ebcc6f995625f4"
+      "sha256": "d0c796b4ce6d809efe3f441cfc1feef46cc0facd98d32de57bf59f58815ac3db"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/tokens.mjs",
@@ -218,7 +226,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/foundation.css",
-      "sha256": "2e4210c2fb8a8fe7baad9a8ecaba65ffd38c9c76afb3ed14cc5a7dd113e2ae8a"
+      "sha256": "1adc399d29cb1e0ab10569546448318eeaa18b1dd8cccef97c2aeaadbdb517e0"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/giscus.css",
@@ -254,7 +262,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/layouts.css",
-      "sha256": "dbc146b320960ee567228667ce85d9d5daebcd611f73ed120c403fb52ef3a539"
+      "sha256": "634cbc97640d630af41c405592d7aa8b31378164cb720a3afac2fbb939da4844"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/maps.css",
@@ -262,7 +270,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/no-script.css",
-      "sha256": "71f424d1045b4691a050ac3d3540e268559d34a56d454affae5173e35bd6804f"
+      "sha256": "e245daaf334a4dfa3c20877e59714889cf1cf25edb13c2a760592f389feca16a"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/palette.css",
@@ -282,7 +290,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/compare.mjs",
-      "sha256": "c9ff79ef75b0b8854c01e88e158889780478243132ff352e4c815a5928eef505"
+      "sha256": "1d2a658718f22751d637e0dce11f69d28e832845d714322d321c53ef15899d3e"
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/identity.mjs",
@@ -290,7 +298,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/integration.mjs",
-      "sha256": "705e309895c01647bee15d7758c397e8e5353190eb28f7eb134e9c928864d301"
+      "sha256": "ba04e12a3db713a41a8ef8f684539d55ab7a997d852d3291b2458ed10332403f"
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/static-check.mjs",
@@ -298,7 +306,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/status.mjs",
-      "sha256": "0739e1432de45635a7de858f6f52f28a28280004ac9cd313367a8a2c647e7b7e"
+      "sha256": "d5dc40ad132380f9dc6a1b2cd9ab6cc589e3c44354aae60b924c39e32ba018ac"
     }
   ]
 }
