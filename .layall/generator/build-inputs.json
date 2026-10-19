@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: b5a841813e55517a476eea7957ae549d235624f8fa56388f1cec5e65061ca8ae",
+  "sourceStamp": "// layall-generator-source-sha256: 0168400d376e8b341adf71f155bfef2b64763edff06ece87d8c25d79fed14a1e",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -2002,7 +2002,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/article-code.mjs",
-      "sha256": "10c37c4ba3d38270d3c09bfd149b36bd2136a32020e4539de97141c9533b8454"
+      "sha256": "bf6ae02de87ba94c278a1da7d1497b901be88279fc937c609a44d6ca0fc80ef7"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/blog-home.mjs",
@@ -2030,7 +2030,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/diagram-renderer.mjs",
-      "sha256": "1a0d3b8bdbf8bbde8272e61713737720bf183ca2cc6b620395a7cc14d1d278dc"
+      "sha256": "327df5e34f8d8cc69a4d368b7f7d3d94f36705234c36f0836c1e17a7c7792cfb"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/discussions.mjs",
@@ -2038,7 +2038,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/docs-navigation.mjs",
-      "sha256": "8d491a478bb426074e21e7e5e54d788c9f583492b0c2be13c86fa963f0c0ed26"
+      "sha256": "60dc7d255ca843db93c2594ab16253ee1deef8a18bfad1fb0a5a4c2979995ed8"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/download-entry.mjs",
@@ -2050,7 +2050,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/home-widgets.mjs",
-      "sha256": "96e4f5aa338c5404fdf81d81c4bd7287a85cd5994a53eb434869f640f521bd44"
+      "sha256": "6d291ec1e1bf38e59ba7128d810ee110f182dfa44f32bf7054538def93b9bb36"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/lifecycle.mjs",
@@ -2058,7 +2058,11 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/mermaid-frame.mjs",
-      "sha256": "83c82267e52bd5e941e5a9ed568302c87d760894a2ba43574d431bf21d4cda6e"
+      "sha256": "fc59ac86406b067e8e27ded6cc5e80844c666acc9a739fbdb808a68cd49728e5"
+    },
+    {
+      "path": "src-tauri/src/github_blog/generator/client/navigation-data.mjs",
+      "sha256": "ea9d65b244d1c354825a68dc4dd211a178506c29ca1e639dab9b97a62a499de5"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/navigation.mjs",
@@ -2066,7 +2070,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/note-navigation.mjs",
-      "sha256": "8286a78e1e1a18ff31193bb56a84ce12a2874aaabd8cf73e909b6cee86ed3b86"
+      "sha256": "351e88f6cc362f591ba64708cb7a3c81c45260b035f0409a07aa5850c858c49f"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/page-list.mjs",
@@ -2082,7 +2086,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/protected.mjs",
-      "sha256": "c5a5a3b65c74f868ba055e1d1b3eecc18f5208ccd65a9e6b1afae30431981437"
+      "sha256": "8e8480715aa1f8d6653148cd2135021e0cb86b6c68d9c6060473fe10ef65d282"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/pwa.mjs",
@@ -2094,7 +2098,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/search.mjs",
-      "sha256": "1785aab0a8a6d31ab82b5d107f62be93495b32c78dac750b331e9896b37f5ff4"
+      "sha256": "429a49f59b37e2befa3bc13fcc87ea6236561465db286ad710d947484f22a436"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/site-entry.mjs",
@@ -2102,11 +2106,11 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/site.mjs",
-      "sha256": "82c9b0a1fb830f16c1bafb7f1f31e3be57f826db375324b4d33238d245303c56"
+      "sha256": "2628bfc50104c583732326b3b9d33c369466b9f4b94ccf3a92701f842c4d75b2"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/theme-controller.mjs",
-      "sha256": "7852080d7bdfddc7e5c3a737415a763563c82850041d5f960daae34058f23a93"
+      "sha256": "3ae0510355744a69bf532ea87943ba71b734c03431ceafda4088265ab1058e63"
     },
     {
       "path": "src-tauri/src/github_blog/generator/core/assets.mjs",
@@ -2186,15 +2190,19 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home-data.mjs",
-      "sha256": "65824d4490897a761f45896c63d91f22fa77a84719aa01a4e565d74aba7509ff"
+      "sha256": "d5ecb89b5723ec6a78ec51646e345a1e2f32dda0b461d7516cbdbeaf47908fd5"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home.mjs",
       "sha256": "edf0f67d12ad6a4ce6cbc8439cf02f1e7402ebfdd43a23e4d3f48f1bfb453745"
     },
     {
+      "path": "src-tauri/src/github_blog/generator/render/markdown-fences.mjs",
+      "sha256": "7b73be98f06268db2cbc6127431a118cb681749a6728d7b718291757b2a53371"
+    },
+    {
       "path": "src-tauri/src/github_blog/generator/render/markdown.mjs",
-      "sha256": "65305ccd956632f1dda586246b52c7e40dd4d2c8471196c158519233187f0468"
+      "sha256": "898a256c2981fed24bd49b26622d19d9bd70350e91d19ab69bf6a20fbf5c0465"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/note-toc.mjs",
@@ -2246,7 +2254,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/code.css",
-      "sha256": "f204d8fc35e2d59409104bded31ed7e5435875b4fdd0427b65c7c51acbe91e0f"
+      "sha256": "dfb21065e5e7cabba31ed045a170797a010ad17bd04ea106691b735901aa97fa"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/foundation.css",
@@ -2310,7 +2318,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/ablation-compare.mjs",
-      "sha256": "98034d84ba5ae2d59f071274fc78bcb670670c2c98c98560c63b46f9e2160109"
+      "sha256": "72c4eb149be387e4f5e8aef5d89010c24f5a62b7bf12c3cc624411e5fee39aaf"
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/bootstrap.mjs",
@@ -2334,7 +2342,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/integration.mjs",
-      "sha256": "dcaf6698f5ec93951b67d9f6876586de0d0a3c5fdb3ca67373214a77184397ff"
+      "sha256": "99679ff6b94c802fa397d5b4eee5e9fd04b1990943d7e01591e96ba46905aa6c"
     },
     {
       "path": "src-tauri/src/github_blog/generator/tools/renderer-graph.mjs",

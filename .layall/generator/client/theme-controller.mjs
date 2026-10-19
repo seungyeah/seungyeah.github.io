@@ -63,7 +63,7 @@ export function createThemeController({
 			node.parentElement?.setAttribute('data-palette', root.dataset.theme);
 		});
 	};
-	const activate = (next) => {
+	const activate = (next, preserveInput = true) => {
 		if (!layoutThemes.has(next) || !mount) return false;
 		if (root.dataset.theme === next) return true;
 		if (applyArticleAppearance(root, mount, next)) {
@@ -73,7 +73,9 @@ export function createThemeController({
 		}
 		const template = document.querySelector('template[data-theme-layout="' + next + '"]');
 		if (!template) return false;
-		const query = document.querySelector('[data-search-input]')?.value || '';
+		const query = preserveInput
+			? document.querySelector('[data-search-input]')?.value
+			: undefined;
 		const fragment = template.content.cloneNode(true);
 		fragment.querySelectorAll('[data-layout-id]').forEach((node) => {
 			node.id = node.dataset.layoutId;
@@ -142,7 +144,7 @@ export function createThemeController({
 			if (
 				layoutThemes.has(remembered) &&
 				remembered !== authorTheme &&
-				activate(remembered)
+				activate(remembered, false)
 			) {
 				// Article appearance retains DOM but still needs its initial mount.
 				if (mount?.querySelector('[data-article-shell]')) onPageMounted();

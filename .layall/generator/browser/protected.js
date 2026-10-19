@@ -1,5 +1,14 @@
 "use strict";
 (() => {
+  // render/markdown-fences.mjs
+  function openFence(line) {
+    const match = line.match(/^[ \t]{0,3}(`{3,}|~{3,}|'{3,})[ \t]*([^\s`~']*)/);
+    return match ? { marker: match[1][0], length: match[1].length, language: match[2] } : null;
+  }
+  function closesFence(line, fence) {
+    return new RegExp(`^[ 	]{0,3}${fence.marker}{${fence.length},}[ 	]*$`).test(line);
+  }
+
   // render/text.mjs
   var esc = (value) => String(value ?? "").replace(
     /[&<>\"]/g,
@@ -250,7 +259,7 @@
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         if (fence) {
-          if (new RegExp(`^[ 	]{0,3}${fence.marker}{${fence.length},}[ 	]*$`).test(line)) {
+          if (closesFence(line, fence)) {
             html.push(
               `<pre><code${fence.language ? ` data-language="${esc(fence.language)}"` : ""}>${esc(fence.lines.join("\n"))}</code></pre>`
             );
@@ -258,13 +267,11 @@
           } else fence.lines.push(line);
           continue;
         }
-        const fenceMatch = line.match(/^[ \t]{0,3}(`{3,}|~{3,}|'{3,})[ \t]*([^\s`~']*)/);
+        const fenceMatch = openFence(line);
         if (fenceMatch) {
           flushAll();
           fence = {
-            marker: fenceMatch[1][0],
-            length: fenceMatch[1].length,
-            language: fenceMatch[2],
+            ...fenceMatch,
             lines: []
           };
           continue;
@@ -290,7 +297,7 @@
           index += 1;
           while (index + 1 < lines.length) {
             const cells = tableCells(lines[index + 1]);
-            if (!cells || imageLine(lines[index + 1]) || /^(?:#{1,6}\s|[ \t]{0,3}(?:`{3,}|~{3,}|'{3,}))/.test(lines[index + 1]))
+            if (!cells || imageLine(lines[index + 1]) || /^#{1,6}\s/.test(lines[index + 1]) || openFence(lines[index + 1]))
               break;
             rows.push(cells);
             index += 1;
@@ -1067,11 +1074,14 @@
   function mountProtected(envelope2, renderMarkdown, { platform = globalThis, core = folderCrypto(platform) } = {}) {
     const { document: document2, window: window2, URL: URL2, Blob, BroadcastChannel } = platform;
     const host = document2.querySelector("[data-protected-post]");
-    if (!host) return;
+    if (!host) return { dispose() {
+    } };
     const publicMetadata = [".article-meta", ".article-date"].map(
       (selector) => host.querySelector(selector)?.cloneNode(true)
     );
     const urls = [];
+    const events = listeners();
+    let disposed = false, suspended = false, pendingLocks = 0;
     let generation = 0, disposeComments, disposeToc;
     const name = core.scope(core.namespace(envelope2));
     const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("layall-folder-locks-v1") : null;
@@ -1092,6 +1102,7 @@
       return el;
     };
     const locked = (notice = "") => {
+      if (disposed || suspended) return;
       clear();
       host.append(
         text("h1", "보호된 글"),
@@ -1112,6 +1123,7 @@
       host.append(form, status);
       form.onsubmit = async (event) => {
         event.preventDefault();
+        if (disposed || suspended) return;
         const current = ++generation;
         button.disabled = true;
         let password = input.value;
@@ -1135,6 +1147,7 @@
       };
     };
     const show = (payload, notice = "") => {
+      if (disposed || suspended) return;
       clear();
       const source = payload.source, assets = /* @__PURE__ */ new Map();
       for (const a of Array.isArray(source.attachments) ? source.attachments : []) {
@@ -1152,14 +1165,23 @@
       const status = text("p", notice);
       status.setAttribute("role", "status");
       relock.onclick = async () => {
+        if (disposed || suspended) return;
         clear();
+        const current = generation;
+        pendingLocks++;
         let failed = false, revision;
         try {
           revision = await core.forget(envelope2);
         } catch {
           failed = true;
         }
-        channel?.postMessage({ scope: name, revision });
+        try {
+          channel?.postMessage({ scope: name, revision });
+        } finally {
+          pendingLocks--;
+          if (disposed && !pendingLocks) channel?.close();
+        }
+        if (current !== generation) return;
         locked(
           failed ? "저장된 키를 지우지 못했습니다. 브라우저의 사이트 데이터를 삭제하세요." : "잠금 해제 정보를 지웠습니다."
         );
@@ -1214,11 +1236,13 @@
         disposeComments = mountProtectedDiscussion(JSON.parse(comments.textContent), host);
     };
     channel && (channel.onmessage = (event) => {
-      if (event.data?.scope === name && core.notify(envelope2, event.data.revision)) {
+      if (!disposed && event.data?.scope === name && core.notify(envelope2, event.data.revision)) {
         locked("이 폴더를 다시 잠갔습니다.");
       }
     });
     const restore = async () => {
+      if (disposed) return;
+      suspended = false;
       locked();
       const current = generation;
       try {
@@ -1228,17 +1252,34 @@
         else if (result.storageFailed)
           locked("브라우저의 잠금 해제 저장소에 접근할 수 없습니다.");
       } catch {
-        locked("보호된 글을 열 수 없습니다.");
+        if (current === generation) locked("보호된 글을 열 수 없습니다.");
       }
     };
-    window2.addEventListener("pagehide", () => {
+    const controller = {
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        events.dispose();
+        if (channel) channel.onmessage = null;
+        if (!pendingLocks) channel?.close();
+        core.invalidate(envelope2);
+        clear();
+      }
+    };
+    events.on(window2, "pagehide", (event) => {
+      if (event?.persisted === false) {
+        controller.dispose();
+        return;
+      }
+      suspended = true;
       core.invalidate(envelope2);
       clear();
     });
-    window2.addEventListener("pageshow", (event) => {
+    events.on(window2, "pageshow", (event) => {
       if (event.persisted) void restore();
     });
     void restore();
+    return controller;
   }
 
   // client/protected-entry.mjs

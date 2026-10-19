@@ -23,7 +23,7 @@ export function createSearch(config) {
 				throw error;
 			}));
 	const events = listeners();
-	const bindSearch = (preservedQuery = '') => {
+	const bindSearch = (preservedQuery) => {
 		events.dispose();
 		const generation = ++pageGeneration;
 		const form = document.querySelector('[data-search-form]');
@@ -91,7 +91,7 @@ export function createSearch(config) {
 			event.preventDefault();
 			void run(true);
 		});
-		input.value = preservedQuery || new URL(location.href).searchParams.get('q') || '';
+		input.value = preservedQuery ?? new URL(location.href).searchParams.get('q') ?? '';
 		void run();
 	};
 	return {

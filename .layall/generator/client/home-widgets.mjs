@@ -1,7 +1,8 @@
 import { listeners } from './lifecycle.mjs';
 export function createHomeWidgets({ mount }) {
 	const events = listeners();
-	let selectedReaction = '+1';
+	let selectedReaction = '+1',
+		selectedYear;
 	const bindReactions = () => {
 		const section = document.querySelector('[data-reaction-ranking]');
 		if (!section) return;
@@ -36,6 +37,7 @@ export function createHomeWidgets({ mount }) {
 		const select = (year) => {
 			const panel = panels.find((node) => node.dataset.heatmapPanel === year);
 			if (!panel) return;
+			selectedYear = year;
 			summary.textContent = year;
 			summary.setAttribute('aria-controls', panel.id);
 			total.textContent = panel.dataset.heatmapTotal + '개 글';
@@ -50,9 +52,15 @@ export function createHomeWidgets({ mount }) {
 			events.on(option, 'click', () => select(option.dataset.heatmapYearOption))
 		);
 		events.on(picker, 'toggle', syncExpanded);
+		const available = options.filter((option) =>
+			panels.some((panel) => panel.dataset.heatmapPanel === option.dataset.heatmapYearOption)
+		);
 		select(
-			options.find((option) => option.getAttribute('aria-selected') === 'true')?.dataset
-				.heatmapYearOption || options[0].dataset.heatmapYearOption
+			available.find((option) => option.dataset.heatmapYearOption === selectedYear)?.dataset
+				.heatmapYearOption ??
+				available.find((option) => option.getAttribute('aria-selected') === 'true')?.dataset
+					.heatmapYearOption ??
+				available[0]?.dataset.heatmapYearOption
 		);
 	};
 	return {

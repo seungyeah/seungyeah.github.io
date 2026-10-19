@@ -128,24 +128,18 @@
       };
       host.innerHTML = svg;
       host.addEventListener("click", (event) => event.preventDefault());
-      const renderedSvg = host.querySelector?.("svg")?.outerHTML || "";
-      const measure = () => {
-        if (!renderedSvg)
-          return report(
-            "ready",
-            Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24))
-          );
-        return active() && window2.parent.postMessage(
-          {
-            kind: "layall:diagram",
-            token: input2.token,
-            state: "ready",
-            height: Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)),
-            svg: renderedSvg
-          },
-          "*"
-        );
-      };
+      const renderedSvg = host.querySelector?.("svg");
+      const size = svgNaturalSize(renderedSvg);
+      const measure = () => active() && window2.parent.postMessage(
+        {
+          kind: "layall:diagram",
+          token: input2.token,
+          state: "ready",
+          height: Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)),
+          size
+        },
+        "*"
+      );
       const observer = new window2.ResizeObserver(measure);
       observer.observe(host);
       measure();
@@ -188,6 +182,18 @@
     window2.addEventListener("pagehide", dispose);
     window2.parent.postMessage({ kind: "layall:diagram", token: input2.token, state: "load" }, "*");
     return { dispose };
+  }
+  function svgNaturalSize(svg) {
+    const viewBox = (svg?.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    const valid = (n) => Number.isFinite(n) && n > 0 && n <= 1e6;
+    if (viewBox.length === 4 && valid(viewBox[2]) && valid(viewBox[3]))
+      return { width: viewBox[2], height: viewBox[3] };
+    const length = (name) => {
+      const value = svg?.getAttribute(name) || "";
+      return value.includes("%") ? 0 : Number.parseFloat(value);
+    };
+    const width = length("width"), height = length("height");
+    return valid(width) && valid(height) ? { width, height } : { width: 800, height: 600 };
   }
 
   // client/diagram-entry.mjs

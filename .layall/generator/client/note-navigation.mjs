@@ -1,6 +1,8 @@
 import { listeners } from './lifecycle.mjs';
+import { bookNeighbors } from './navigation-data.mjs';
 import { mountPageList } from './page-list.mjs';
 import { mountReadingBar } from './reading-bar.mjs';
+export { bookNeighbors } from './navigation-data.mjs';
 
 // Re-evaluate every heading's current position; an intersection-only cursor can
 // retain a later heading when scrolling backwards through a long section.
@@ -167,46 +169,6 @@ export function mountNoteToc(scope, { document, window }) {
 			scope.style.removeProperty('--note-heading-offset');
 		},
 	};
-}
-
-// Match exact canonical post paths, never suffixes. Only same-origin public
-// permalinks and text labels from the validated navigation resource are accepted.
-export function bookNeighbors(books, current, postPrefix, origin) {
-	if (!Array.isArray(books)) throw new Error('Invalid book navigation');
-	const paths = new Set();
-	const groups = books.map((book) => {
-		if (!Array.isArray(book)) throw new Error('Invalid book navigation');
-		return book.map((entry) => {
-			if (
-				typeof entry?.label !== 'string' ||
-				typeof entry.href !== 'string' ||
-				paths.size >= 50000
-			)
-				throw new Error('Invalid book link');
-			const url = new URL(entry.href, origin);
-			const segment = url.pathname.slice(postPrefix.length);
-			if (
-				url.origin !== origin ||
-				!url.pathname.startsWith(postPrefix) ||
-				!/^[a-z0-9][a-z0-9-]{0,127}\/$/.test(segment) ||
-				url.search ||
-				url.hash ||
-				url.username ||
-				url.password ||
-				paths.has(url.pathname)
-			)
-				throw new Error('Invalid book link');
-			paths.add(url.pathname);
-			return { label: entry.label, href: url.pathname };
-		});
-	});
-	let pathname = current.endsWith('/index.html') ? current.slice(0, -10) : current;
-	if (!pathname.endsWith('/')) pathname += '/';
-	const group = groups.find((book) => book.some((entry) => entry.href === pathname));
-	const index = group?.findIndex((entry) => entry.href === pathname) ?? -1;
-	return index < 0
-		? null
-		: { entries: group, index, prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
 }
 
 export function mountNoteNavigation(

@@ -31,6 +31,7 @@ export function mountArticleCode(
 ) {
 	if (!scope) return { dispose() {} };
 	const entries = new Map(),
+		frames = new Map(),
 		events = listeners();
 	let highlightPromise;
 	const loadHighlight = () => {
@@ -59,7 +60,7 @@ export function mountArticleCode(
 	};
 	const enhanceCode = (entry) => {
 		if (
-			entry.diagram ||
+			entry.language === 'mermaid' ||
 			!entry.language ||
 			entry.source.length > 200000 ||
 			entry.highlighted ||
@@ -93,21 +94,50 @@ export function mountArticleCode(
 	let disposed = false,
 		suspended = false,
 		sequence = 0;
+	// Inline and fullscreen frames use the same authenticated loader and opaque renderer.
+	// Never move a live iframe between parents (that reloads its browsing context).
+	const mountFrame = (entry, container, fullscreen, ready, failed) => {
+		const scriptUrl = diagramURLs(diagramConfig, window.location.origin).script;
+		const frame = document.createElement('iframe');
+		const token = String(++sequence);
+		frame.className = 'article-diagram';
+		frame.title = 'Mermaid 다이어그램';
+		frame.setAttribute('sandbox', 'allow-scripts');
+		frame.setAttribute('referrerpolicy', 'no-referrer');
+		frame.setAttribute('tabindex', '-1');
+		frame.setAttribute('data-pending', 'true');
+		frame.srcdoc = diagramDocument({
+			scriptUrl,
+			origin: window.location.origin,
+			source: entry.source,
+			token,
+			colors: diagramTheme(root, scheme?.matches),
+			fullscreen,
+		});
+		const record = { entry, token, ready, failed, loading: false };
+		frames.set(frame, record);
+		record.timer = window.setTimeout(failed, 15000);
+		container.append(frame);
+		return {
+			frame,
+			dispose() {
+				window.clearTimeout(record.timer);
+				frames.delete(frame);
+				frame.srcdoc = '';
+				frame.remove();
+				if (!frames.size) loader.cancel();
+			},
+		};
+	};
 	const discardFrame = (entry) => {
-		window.clearTimeout(entry.timer);
 		if (entry.viewer) closeMermaidViewer(entry, { document, window }, false);
 		entry.diagramEvents.dispose();
-		if (entry.diagram) {
-			entry.diagram.remove();
-			entry.diagram = null;
-		}
-		if (entry.frame) {
-			entry.frame.srcdoc = '';
-			entry.frame.remove();
-			entry.frame = null;
-		}
-		entry.markup = '';
-		if (![...entries.values()].some((item) => item.frame)) loader.cancel();
+		entry.frameController?.dispose();
+		entry.frameController = null;
+		entry.frame = null;
+		entry.diagram?.remove();
+		entry.diagram = null;
+		entry.size = null;
 		entry.pre.hidden = false;
 		entry.button.hidden = true;
 	};
@@ -131,16 +161,7 @@ export function mountArticleCode(
 		entry.button.hidden = true;
 		if (!diagramConfig || !entry.source.trim() || entry.source.length > 100000) return;
 		try {
-			const scriptUrl = diagramURLs(diagramConfig, window.location.origin).script;
-			const frame = document.createElement('iframe');
 			const diagram = document.createElement('div');
-			entry.loading = false;
-			entry.token = String(++sequence);
-			frame.className = 'article-diagram';
-			frame.title = 'Mermaid 다이어그램';
-			frame.setAttribute('sandbox', 'allow-scripts');
-			frame.setAttribute('referrerpolicy', 'no-referrer');
-			frame.setAttribute('data-pending', 'true');
 			diagram.className = 'article-diagram-shell';
 			diagram.setAttribute('role', 'button');
 			diagram.setAttribute('tabindex', '0');
@@ -153,20 +174,32 @@ export function mountArticleCode(
 			};
 			entry.diagramEvents.on(diagram, 'click', entry.diagramClick);
 			entry.diagramEvents.on(diagram, 'keydown', entry.diagramKeydown);
-			frame.srcdoc = diagramDocument({
-				scriptUrl,
-				origin: window.location.origin,
-				source: entry.source,
-				token: entry.token,
-				colors: diagramTheme(root, scheme?.matches),
-			});
-			entry.frame = frame;
 			entry.diagram = diagram;
-			diagram.append(frame);
 			entry.block.append(diagram);
-			entry.timer = window.setTimeout(() => {
-				discardFrame(entry);
-			}, 15000);
+			entry.frameController = mountFrame(
+				entry,
+				diagram,
+				false,
+				(data) => {
+					entry.size = diagramSize(data.size);
+					entry.frame.style.height = Math.max(80, Math.min(4000, data.height)) + 'px';
+					const sourceVisible = entry.button.getAttribute('aria-pressed') === 'true';
+					entry.pre.hidden = !sourceVisible;
+					diagram.hidden = sourceVisible;
+					entry.frame.hidden = sourceVisible;
+					entry.button.hidden = false;
+				},
+				() => discardFrame(entry)
+			);
+			entry.frame = entry.frameController.frame;
+			entry.mountViewerFrame = (viewer) =>
+				mountFrame(
+					entry,
+					viewer.stage,
+					true,
+					(data) => viewer.resize(diagramSize(data.size)),
+					() => closeMermaidViewer(entry, { document, window }, true)
+				);
 		} catch {
 			/* Plain source stays readable if local runtime configuration is unavailable. */
 		}
@@ -207,10 +240,8 @@ export function mountArticleCode(
 				...kind,
 				frame: null,
 				diagram: null,
-				markup: '',
+				size: null,
 				viewer: null,
-				timer: 0,
-				token: '',
 				attributes: ['tabindex', 'aria-label'].map((name) => [
 					name,
 					pre.getAttribute(name),
@@ -241,53 +272,45 @@ export function mountArticleCode(
 	};
 	events.on(window, 'message', (event) => {
 		if (disposed || suspended || event.data?.kind !== 'layall:diagram') return;
-		for (const entry of entries.values()) {
+		for (const [frame, record] of frames) {
+			const { entry, token } = record;
 			if (
-				!entry.frame ||
-				event.source !== entry.frame.contentWindow ||
-				event.data.token !== entry.token ||
+				event.source !== frame.contentWindow ||
+				event.data.token !== token ||
 				!scope.contains(entry.code)
 			)
 				continue;
+			const current = () =>
+				!disposed &&
+				!suspended &&
+				frames.get(frame) === record &&
+				scope.contains(entry.code);
 			if (event.data.state === 'load') {
-				if (entry.loading) return;
-				entry.loading = true;
-				const frame = entry.frame,
-					token = entry.token;
+				if (record.loading) return;
+				record.loading = true;
 				void loader
 					.load()
 					.then((modules) => {
-						if (
-							!disposed &&
-							!suspended &&
-							entry.frame === frame &&
-							entry.token === token &&
-							scope.contains(entry.code)
-						)
+						if (current())
 							frame.contentWindow.postMessage(
 								{ kind: 'layall:diagram-modules', token, ...modules },
 								'*'
 							);
 					})
 					.catch(() => {
-						if (entry.frame === frame) discardFrame(entry);
+						if (current()) record.failed();
 					});
 				return;
 			}
 			if (event.data.state === 'error') {
-				discardFrame(entry);
+				record.failed();
 				return;
 			}
 			if (event.data.state !== 'ready' || !Number.isFinite(event.data.height)) return;
-			window.clearTimeout(entry.timer);
-			entry.markup = typeof event.data.svg === 'string' ? event.data.svg : '';
-			entry.frame.style.height = Math.max(80, Math.min(4000, event.data.height)) + 'px';
-			entry.frame.removeAttribute('data-pending');
-			const sourceVisible = entry.button.getAttribute('aria-pressed') === 'true';
-			entry.pre.hidden = !sourceVisible;
-			if (entry.diagram) entry.diagram.hidden = sourceVisible;
-			entry.frame.hidden = sourceVisible;
-			entry.button.hidden = false;
+			window.clearTimeout(record.timer);
+			frame.removeAttribute('data-pending');
+			record.ready(event.data); // Only finite geometry is consumed; never rendered markup.
+			return;
 		}
 	});
 	const appearance = () => {
@@ -327,9 +350,7 @@ export function mountArticleCode(
 }
 
 function openMermaidViewer(entry, { document, window }) {
-	if (entry.viewer || !entry.markup) return;
-	const prepared = createViewerSvg(document, window, entry.markup);
-	if (!prepared) return;
+	if (entry.viewer || !entry.size || !entry.frame) return;
 	const dialog = document.createElement('div');
 	const frame = document.createElement('div');
 	const stage = document.createElement('div');
@@ -349,7 +370,6 @@ function openMermaidViewer(entry, { document, window }) {
 	frame.setAttribute('aria-label', 'Mermaid chart gesture area');
 	stage.className = 'article-mermaid-viewer-stage';
 	tools.className = 'article-mermaid-viewer-tools';
-	stage.append(document.importNode(prepared.svg, true));
 	frame.append(stage);
 	tools.append(zoomOut, zoomIn, close);
 	dialog.append(frame, tools);
@@ -361,8 +381,8 @@ function openMermaidViewer(entry, { document, window }) {
 		zoomOut,
 		zoomIn,
 		close,
-		naturalWidth: prepared.width,
-		naturalHeight: prepared.height,
+		naturalWidth: entry.size.width,
+		naturalHeight: entry.size.height,
 		frameWidth: 0,
 		frameHeight: 0,
 		chartWidth: 1,
@@ -650,7 +670,18 @@ function openMermaidViewer(entry, { document, window }) {
 		viewerEvents.dispose();
 		resetGesture();
 	};
+	viewer.resize = (size) => {
+		viewer.naturalWidth = size.width;
+		viewer.naturalHeight = size.height;
+		applySize();
+	};
 	applySize();
+	try {
+		viewer.frameController = entry.mountViewerFrame(viewer);
+	} catch {
+		closeMermaidViewer(entry, { document, window }, true);
+		return;
+	}
 	queueMicrotask(() => {
 		if (entry.viewer === viewer) close.focus({ preventScroll: true });
 	});
@@ -660,6 +691,7 @@ function closeMermaidViewer(entry, { document }, restoreFocus = true) {
 	const viewer = entry.viewer;
 	if (!viewer) return;
 	viewer.cleanup?.();
+	viewer.frameController?.dispose();
 	entry.viewer = null;
 	viewer.dialog.remove();
 	if (document.body?.style) document.body.style.overflow = viewer.previousBodyOverflow;
@@ -708,98 +740,14 @@ function createViewerIcon(document, kind) {
 	return icon;
 }
 
-function createViewerSvg(document, window, markup) {
-	const Parser = window.DOMParser || globalThis.DOMParser;
-	if (typeof Parser !== 'function') return null;
-	let parsed;
-	try {
-		parsed = new Parser().parseFromString(markup, 'image/svg+xml');
-	} catch {
-		return null;
-	}
-	if (parsed.querySelector?.('parsererror')) return null;
-	const source = parsed.documentElement;
-	if (!source || String(source.tagName).toLowerCase() !== 'svg') return null;
-	const size = svgNaturalSize(source);
-	for (const element of source.querySelectorAll('script, iframe, object, embed'))
-		element.remove();
-	namespaceSvgIds(source);
-	const svg = document.importNode(source, true);
-	svg.setAttribute('width', '100%');
-	svg.setAttribute('height', '100%');
-	svg.style.display = 'block';
-	svg.style.maxWidth = 'none';
-	svg.style.maxHeight = 'none';
-	svg.style.width = '100%';
-	svg.style.height = '100%';
-	svg.style.overflow = 'visible';
-	return { svg, width: size.width, height: size.height };
-}
-
-function namespaceSvgIds(svg) {
-	const ids = new Map();
-	for (const element of [svg, ...svg.querySelectorAll('[id]')]) {
-		if (!element.id) continue;
-		const next = element.id + '-layall-mermaid-viewer';
-		ids.set(element.id, next);
-		element.setAttribute('id', next);
-	}
-	for (const style of svg.querySelectorAll('style'))
-		style.textContent = rewriteSvgIdReferences(style.textContent || '', ids);
-	for (const element of [svg, ...svg.querySelectorAll('*')]) {
-		for (const attr of [...element.attributes]) {
-			const name = attr.name.toLowerCase();
-			if (name.startsWith('on')) {
-				element.removeAttribute(attr.name);
-				continue;
-			}
-			if (
-				(name === 'href' || name === 'xlink:href') &&
-				attr.value.trim().toLowerCase().startsWith('javascript:')
-			) {
-				element.removeAttribute(attr.name);
-				continue;
-			}
-			if (!attr.value.includes('#')) continue;
-			const next = rewriteSvgIdReferences(attr.value, ids);
-			if (next !== attr.value) element.setAttribute(attr.name, next);
-		}
-	}
-}
-
-function rewriteSvgIdReferences(value, ids) {
-	if (!value || ids.size === 0) return value;
-	const alternatives = [...ids.keys()]
-		.sort((left, right) => right.length - left.length)
-		.map(escapeRegExp)
-		.join('|');
-	return value.replace(new RegExp('#(?:' + alternatives + ')(?![\\w-])', 'g'), (match) => {
-		const next = ids.get(match.slice(1));
-		return next ? '#' + next : match;
-	});
-}
-
-function escapeRegExp(value) {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function svgNaturalSize(svg) {
-	const viewBox = (svg.getAttribute('viewBox') || '')
-		.trim()
-		.split(/[\s,]+/)
-		.map(Number);
-	if (viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0)
-		return { width: viewBox[2], height: viewBox[3] };
-	const width = positiveLength(svg.getAttribute('width'));
-	const height = positiveLength(svg.getAttribute('height'));
-	if (width > 0 && height > 0) return { width, height };
-	return { width: 800, height: 600 };
-}
-
-function positiveLength(value) {
-	if (!value || value.includes('%')) return 0;
-	const parsed = Number.parseFloat(value);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+function diagramSize(size) {
+	return size &&
+		[size.width, size.height].every(
+			(value) =>
+				typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 1000000
+		)
+		? { width: size.width, height: size.height }
+		: { width: 800, height: 600 };
 }
 
 function fittedChartSize(width, height, availableWidth, availableHeight) {

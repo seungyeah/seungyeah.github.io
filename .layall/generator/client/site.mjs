@@ -36,7 +36,7 @@ export function mountSite(config, discussionConfig) {
 			docs.bind();
 			noteNavigation?.refresh();
 		},
-		onPageMounted(query = '') {
+		onPageMounted(query) {
 			docs.bind();
 			search.bind(query);
 			blog.bind();

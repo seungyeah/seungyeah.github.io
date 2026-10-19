@@ -1,3 +1,4 @@
+import { closesFence, openFence } from './markdown-fences.mjs';
 export function projectHomeData({
 	posts,
 	books: sourceBooks,
@@ -23,19 +24,20 @@ export function projectHomeData({
 				.map((asset) => [asset.id, { ...asset, image: true, publicUrl: asset.url }])
 		);
 		let first = null;
-		let fenced = false;
+		let fence = null;
 		for (const line of String(post.body ?? '')
 			.replace(/\r\n?/g, '\n')
 			.split('\n')) {
-			if (/^\s*```/.test(line)) {
-				fenced = !fenced;
+			if (fence) {
+				if (closesFence(line, fence)) fence = null;
 				continue;
 			}
-			if (!fenced)
-				inlineMarkdown(line, eligible, false, (image) => {
-					if (!first && candidates.some((asset) => asset.url === image.url))
-						first = image.url;
-				});
+			fence = openFence(line);
+			if (fence) continue;
+			inlineMarkdown(line, eligible, false, (image) => {
+				if (!first && candidates.some((asset) => asset.url === image.url))
+					first = image.url;
+			});
 			if (first) break;
 		}
 		bookImageByPost.set(post.postId, first || candidates[0].url);

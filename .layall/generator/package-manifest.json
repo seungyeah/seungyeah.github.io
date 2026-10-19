@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "d12ed05025a6537c473b018f6c267936b34bcb47250a83c6856b7149e66465e2",
+  "sha256": "45402cbf912082358f0a48b9227315b2524d310134886065e8630e60b27c1fd8",
   "entries": [
     {
       "path": "build.mjs",
@@ -10,8 +10,8 @@
     },
     {
       "path": "generator/browser/diagram.js",
-      "size": 7631,
-      "sha256": "98011b5731a542fccef4b87a43993badf749b750439eddac70f6a6ac9c208c45"
+      "size": 8075,
+      "sha256": "25634b7a13a8760a4f5dc3216bad27a92c5b706a3e02306f56be865ed3d01e43"
     },
     {
       "path": "generator/browser/download.js",
@@ -25,8 +25,8 @@
     },
     {
       "path": "generator/browser/protected.js",
-      "size": 51630,
-      "sha256": "7f04c8bef23f0652752f0f200781c0d2d7174fda838024dff1381d9fdd3dcba7"
+      "size": 52843,
+      "sha256": "388e7a04797381909555be92e45c486a243c761c07a03ea1423afe43f9b82144"
     },
     {
       "path": "generator/browser/renderer/02e08da95efce96e20d70c1a7ec8dfe15ab8a719dcadea12acf81965927ce01a.mjs",
@@ -565,18 +565,18 @@
     },
     {
       "path": "generator/browser/site.js",
-      "size": 102224,
-      "sha256": "73043bc0964aac10118037cb6612bfd74d3454ba07b610746936cbed4565c2c2"
+      "size": 101558,
+      "sha256": "36a60efc2121a51130241d9e40b2df92556cceb8743af8d476c138cf0103c57a"
     },
     {
       "path": "generator/build-inputs.json",
-      "size": 118240,
-      "sha256": "d5de67d894056164f1c006fb6968c601786b03f84e0e514b8c8562ccf1e8d9f9"
+      "size": 118592,
+      "sha256": "db8e976cbf363a126bbb1f529a8bfad0408a8f17c8363faac19db6762c182858"
     },
     {
       "path": "generator/client/article-code.mjs",
-      "size": 26310,
-      "sha256": "10c37c4ba3d38270d3c09bfd149b36bd2136a32020e4539de97141c9533b8454"
+      "size": 24360,
+      "sha256": "bf6ae02de87ba94c278a1da7d1497b901be88279fc937c609a44d6ca0fc80ef7"
     },
     {
       "path": "generator/client/blog-home.mjs",
@@ -610,8 +610,8 @@
     },
     {
       "path": "generator/client/diagram-renderer.mjs",
-      "size": 3687,
-      "sha256": "1a0d3b8bdbf8bbde8272e61713737720bf183ca2cc6b620395a7cc14d1d278dc"
+      "size": 4155,
+      "sha256": "327df5e34f8d8cc69a4d368b7f7d3d94f36705234c36f0836c1e17a7c7792cfb"
     },
     {
       "path": "generator/client/discussions.mjs",
@@ -620,8 +620,8 @@
     },
     {
       "path": "generator/client/docs-navigation.mjs",
-      "size": 4840,
-      "sha256": "8d491a478bb426074e21e7e5e54d788c9f583492b0c2be13c86fa963f0c0ed26"
+      "size": 4506,
+      "sha256": "60dc7d255ca843db93c2594ab16253ee1deef8a18bfad1fb0a5a4c2979995ed8"
     },
     {
       "path": "generator/client/download-entry.mjs",
@@ -635,8 +635,8 @@
     },
     {
       "path": "generator/client/home-widgets.mjs",
-      "size": 2432,
-      "sha256": "96e4f5aa338c5404fdf81d81c4bd7287a85cd5994a53eb434869f640f521bd44"
+      "size": 2742,
+      "sha256": "6d291ec1e1bf38e59ba7128d810ee110f182dfa44f32bf7054538def93b9bb36"
     },
     {
       "path": "generator/client/lifecycle.mjs",
@@ -645,8 +645,13 @@
     },
     {
       "path": "generator/client/mermaid-frame.mjs",
-      "size": 2124,
-      "sha256": "83c82267e52bd5e941e5a9ed568302c87d760894a2ba43574d431bf21d4cda6e"
+      "size": 2389,
+      "sha256": "fc59ac86406b067e8e27ded6cc5e80844c666acc9a739fbdb808a68cd49728e5"
+    },
+    {
+      "path": "generator/client/navigation-data.mjs",
+      "size": 2761,
+      "sha256": "ea9d65b244d1c354825a68dc4dd211a178506c29ca1e639dab9b97a62a499de5"
     },
     {
       "path": "generator/client/navigation.mjs",
@@ -655,8 +660,8 @@
     },
     {
       "path": "generator/client/note-navigation.mjs",
-      "size": 9091,
-      "sha256": "8286a78e1e1a18ff31193bb56a84ce12a2874aaabd8cf73e909b6cee86ed3b86"
+      "size": 7684,
+      "sha256": "351e88f6cc362f591ba64708cb7a3c81c45260b035f0409a07aa5850c858c49f"
     },
     {
       "path": "generator/client/page-list.mjs",
@@ -675,8 +680,8 @@
     },
     {
       "path": "generator/client/protected.mjs",
-      "size": 6657,
-      "sha256": "c5a5a3b65c74f868ba055e1d1b3eecc18f5208ccd65a9e6b1afae30431981437"
+      "size": 7755,
+      "sha256": "8e8480715aa1f8d6653148cd2135021e0cb86b6c68d9c6060473fe10ef65d282"
     },
     {
       "path": "generator/client/pwa.mjs",
@@ -690,8 +695,8 @@
     },
     {
       "path": "generator/client/search.mjs",
-      "size": 3352,
-      "sha256": "1785aab0a8a6d31ab82b5d107f62be93495b32c78dac750b331e9896b37f5ff4"
+      "size": 3347,
+      "sha256": "429a49f59b37e2befa3bc13fcc87ea6236561465db286ad710d947484f22a436"
     },
     {
       "path": "generator/client/site-entry.mjs",
@@ -700,13 +705,13 @@
     },
     {
       "path": "generator/client/site.mjs",
-      "size": 2539,
-      "sha256": "82c9b0a1fb830f16c1bafb7f1f31e3be57f826db375324b4d33238d245303c56"
+      "size": 2534,
+      "sha256": "2628bfc50104c583732326b3b9d33c369466b9f4b94ccf3a92701f842c4d75b2"
     },
     {
       "path": "generator/client/theme-controller.mjs",
-      "size": 4954,
-      "sha256": "7852080d7bdfddc7e5c3a737415a763563c82850041d5f960daae34058f23a93"
+      "size": 5011,
+      "sha256": "3ae0510355744a69bf532ea87943ba71b734c03431ceafda4088265ab1058e63"
     },
     {
       "path": "generator/core/assets.mjs",
@@ -805,8 +810,8 @@
     },
     {
       "path": "generator/render/home-data.mjs",
-      "size": 3544,
-      "sha256": "65824d4490897a761f45896c63d91f22fa77a84719aa01a4e565d74aba7509ff"
+      "size": 3649,
+      "sha256": "d5ecb89b5723ec6a78ec51646e345a1e2f32dda0b461d7516cbdbeaf47908fd5"
     },
     {
       "path": "generator/render/home.mjs",
@@ -814,9 +819,14 @@
       "sha256": "edf0f67d12ad6a4ce6cbc8439cf02f1e7402ebfdd43a23e4d3f48f1bfb453745"
     },
     {
+      "path": "generator/render/markdown-fences.mjs",
+      "size": 427,
+      "sha256": "7b73be98f06268db2cbc6127431a118cb681749a6728d7b718291757b2a53371"
+    },
+    {
       "path": "generator/render/markdown.mjs",
-      "size": 13236,
-      "sha256": "65305ccd956632f1dda586246b52c7e40dd4d2c8471196c158519233187f0468"
+      "size": 13127,
+      "sha256": "898a256c2981fed24bd49b26622d19d9bd70350e91d19ab69bf6a20fbf5c0465"
     },
     {
       "path": "generator/render/note-toc.mjs",
@@ -880,8 +890,8 @@
     },
     {
       "path": "generator/styles/code.css",
-      "size": 5801,
-      "sha256": "f204d8fc35e2d59409104bded31ed7e5435875b4fdd0427b65c7c51acbe91e0f"
+      "size": 5816,
+      "sha256": "dfb21065e5e7cabba31ed045a170797a010ad17bd04ea106691b735901aa97fa"
     },
     {
       "path": "generator/styles/foundation.css",

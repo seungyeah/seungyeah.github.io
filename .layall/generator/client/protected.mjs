@@ -1,6 +1,7 @@
 import { folderCrypto } from '../core/protection.mjs';
 import { noteToc } from '../render/note-toc.mjs';
 import { mountProtectedDiscussion } from './discussions.mjs';
+import { listeners } from './lifecycle.mjs';
 import { mountNoteToc } from './note-navigation.mjs';
 
 export function mountProtected(
@@ -10,11 +11,15 @@ export function mountProtected(
 ) {
 	const { document, window, URL, Blob, BroadcastChannel } = platform;
 	const host = document.querySelector('[data-protected-post]');
-	if (!host) return;
+	if (!host) return { dispose() {} };
 	const publicMetadata = ['.article-meta', '.article-date'].map((selector) =>
 		host.querySelector(selector)?.cloneNode(true)
 	);
 	const urls = [];
+	const events = listeners();
+	let disposed = false,
+		suspended = false,
+		pendingLocks = 0;
 	let generation = 0,
 		disposeComments,
 		disposeToc;
@@ -40,6 +45,7 @@ export function mountProtected(
 		return el;
 	};
 	const locked = (notice = '') => {
+		if (disposed || suspended) return;
 		clear();
 		host.append(
 			text('h1', '보호된 글'),
@@ -60,6 +66,7 @@ export function mountProtected(
 		host.append(form, status);
 		form.onsubmit = async (event) => {
 			event.preventDefault();
+			if (disposed || suspended) return;
 			const current = ++generation;
 			button.disabled = true;
 			let password = input.value;
@@ -85,6 +92,7 @@ export function mountProtected(
 		};
 	};
 	const show = (payload, notice = '') => {
+		if (disposed || suspended) return;
 		clear();
 		const source = payload.source,
 			assets = new Map();
@@ -105,7 +113,10 @@ export function mountProtected(
 		const status = text('p', notice);
 		status.setAttribute('role', 'status');
 		relock.onclick = async () => {
+			if (disposed || suspended) return;
 			clear();
+			const current = generation;
+			pendingLocks++;
 			let failed = false,
 				revision;
 			try {
@@ -113,7 +124,13 @@ export function mountProtected(
 			} catch {
 				failed = true;
 			}
-			channel?.postMessage({ scope: name, revision });
+			try {
+				channel?.postMessage({ scope: name, revision });
+			} finally {
+				pendingLocks--;
+				if (disposed && !pendingLocks) channel?.close();
+			}
+			if (current !== generation) return;
 			locked(
 				failed
 					? '저장된 키를 지우지 못했습니다. 브라우저의 사이트 데이터를 삭제하세요.'
@@ -171,11 +188,17 @@ export function mountProtected(
 	};
 	channel &&
 		(channel.onmessage = (event) => {
-			if (event.data?.scope === name && core.notify(envelope, event.data.revision)) {
+			if (
+				!disposed &&
+				event.data?.scope === name &&
+				core.notify(envelope, event.data.revision)
+			) {
 				locked('이 폴더를 다시 잠갔습니다.');
 			}
 		});
 	const restore = async () => {
+		if (disposed) return;
+		suspended = false;
 		locked();
 		const current = generation;
 		try {
@@ -185,15 +208,34 @@ export function mountProtected(
 			else if (result.storageFailed)
 				locked('브라우저의 잠금 해제 저장소에 접근할 수 없습니다.');
 		} catch {
-			locked('보호된 글을 열 수 없습니다.');
+			if (current === generation) locked('보호된 글을 열 수 없습니다.');
 		}
 	};
-	window.addEventListener('pagehide', () => {
+	const controller = {
+		dispose() {
+			if (disposed) return;
+			disposed = true;
+			events.dispose();
+			if (channel) channel.onmessage = null;
+			// A user-started relock must still notify other tabs after its durable
+			// revision commits. Defer only channel.close until that operation settles.
+			if (!pendingLocks) channel?.close();
+			core.invalidate(envelope);
+			clear();
+		},
+	};
+	events.on(window, 'pagehide', (event) => {
+		if (event?.persisted === false) {
+			controller.dispose();
+			return;
+		}
+		suspended = true;
 		core.invalidate(envelope);
 		clear();
 	});
-	window.addEventListener('pageshow', (event) => {
+	events.on(window, 'pageshow', (event) => {
 		if (event.persisted) void restore();
 	});
 	void restore();
+	return controller;
 }

@@ -54,27 +54,20 @@ export async function renderDiagramFrame(input, { document, window, active = () 
 		host.innerHTML = svg;
 		// No bindFunctions, navigation, scripts, downloads or interactive links.
 		host.addEventListener('click', (event) => event.preventDefault());
-		const renderedSvg = host.querySelector?.('svg')?.outerHTML || '';
-		const measure = () => {
-			if (!renderedSvg)
-				return report(
-					'ready',
-					Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24))
-				);
-			return (
-				active() &&
-				window.parent.postMessage(
-					{
-						kind: 'layall:diagram',
-						token: input.token,
-						state: 'ready',
-						height: Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)),
-						svg: renderedSvg,
-					},
-					'*'
-				)
+		const renderedSvg = host.querySelector?.('svg');
+		const size = svgNaturalSize(renderedSvg);
+		const measure = () =>
+			active() &&
+			window.parent.postMessage(
+				{
+					kind: 'layall:diagram',
+					token: input.token,
+					state: 'ready',
+					height: Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)),
+					size,
+				},
+				'*'
 			);
-		};
 		const observer = new window.ResizeObserver(measure);
 		observer.observe(host);
 		measure();
@@ -85,8 +78,8 @@ export async function renderDiagramFrame(input, { document, window, active = () 
 	}
 }
 
-// No network or protected source text leaves this frame. Only the rendered SVG,
-// fixed state, token and dimensions cross back to the parent.
+// Rendered SVG never leaves this frame. Only fixed state, token and numeric
+// dimensions cross back to the parent, including for fullscreen rendering.
 export function mountDiagramFrame(input, { document, window }, load = (url) => import(url)) {
 	let active = true,
 		started = false,
@@ -127,4 +120,21 @@ export function mountDiagramFrame(input, { document, window }, load = (url) => i
 	window.addEventListener('pagehide', dispose);
 	window.parent.postMessage({ kind: 'layall:diagram', token: input.token, state: 'load' }, '*');
 	return { dispose };
+}
+
+function svgNaturalSize(svg) {
+	const viewBox = (svg?.getAttribute('viewBox') || '')
+		.trim()
+		.split(/[\s,]+/)
+		.map(Number);
+	const valid = (n) => Number.isFinite(n) && n > 0 && n <= 1000000;
+	if (viewBox.length === 4 && valid(viewBox[2]) && valid(viewBox[3]))
+		return { width: viewBox[2], height: viewBox[3] };
+	const length = (name) => {
+		const value = svg?.getAttribute(name) || '';
+		return value.includes('%') ? 0 : Number.parseFloat(value);
+	};
+	const width = length('width'),
+		height = length('height');
+	return valid(width) && valid(height) ? { width, height } : { width: 800, height: 600 };
 }

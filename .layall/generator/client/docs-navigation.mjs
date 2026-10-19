@@ -1,3 +1,5 @@
+import { bookNeighbors, navigationPath, validateNavigation } from './navigation-data.mjs';
+
 export function createDocsNavigation({ config, root, mount }) {
 	let docsRequest, activeController;
 	let disposed = false,
@@ -11,6 +13,7 @@ export function createDocsNavigation({ config, root, mount }) {
 		if (disposed) throw new Error('Navigation disposed');
 		const url = new URL(descriptor, location.href);
 		if (
+			!/^https?:$/.test(url.protocol) ||
 			url.origin !== location.origin ||
 			url.pathname !== docsResource ||
 			url.search ||
@@ -24,77 +27,62 @@ export function createDocsNavigation({ config, root, mount }) {
 			activeController = controller;
 			const requestTimeout = setTimeout(() => controller.abort(), 8000);
 			timeout = requestTimeout;
-			docsRequest = fetch(url.href, {
-				mode: 'same-origin',
-				credentials: 'omit',
-				redirect: 'error',
-				cache: 'no-cache',
-				signal: controller.signal,
-			})
-				.then(async (response) => {
-					if (!response.ok || response.url !== url.href)
-						throw new Error('Navigation unavailable');
-					const text = await response.text();
-					if (text.length > 8 * 1024 * 1024) throw new Error('Navigation too large');
-					const data = JSON.parse(text);
-					if (
-						data.format !== 'layall-docs-navigation' ||
-						data.version !== 1 ||
-						!Array.isArray(data.tree)
-					)
-						throw new Error('Invalid navigation');
-					return data;
-				})
+			const request = (async () => {
+				const response = await fetch(url.href, {
+					mode: 'same-origin',
+					credentials: 'omit',
+					redirect: 'error',
+					cache: 'no-cache',
+					signal: controller.signal,
+				});
+				if (!response.ok || response.url !== url.href)
+					throw new Error('Navigation unavailable');
+				const text = await response.text();
+				if (text.length > 8 * 1024 * 1024) throw new Error('Navigation too large');
+				if (disposed || controller.signal.aborted) throw new Error('Navigation cancelled');
+				const data = validateNavigation(JSON.parse(text), postPrefix, location.origin);
+				// Validate deployment skew before either shared consumer can retain it.
+				if (
+					location.pathname.startsWith(postPrefix) &&
+					!bookNeighbors(data.books, location.pathname, postPrefix, location.origin)
+				)
+					throw new Error('Book not found');
+				return data;
+			})()
 				.catch((error) => {
-					docsRequest = null;
+					if (docsRequest === request) docsRequest = null;
 					throw error;
 				})
 				.finally(() => {
 					clearTimeout(requestTimeout);
-					if (timeout === requestTimeout) timeout = undefined;
+					if (activeController === controller) {
+						activeController = null;
+						timeout = undefined;
+					}
 				});
+			docsRequest = request;
 		}
 		return docsRequest;
 	};
 	const docsTree = (entries) => {
-		let count = 0;
-		const paths = new Set();
 		const current = location.pathname.endsWith('/index.html')
 			? location.pathname.slice(0, -10)
 			: location.pathname;
-		const branch = (nodes, depth = 0) => {
-			if (!Array.isArray(nodes) || depth > 128) throw new Error('Invalid navigation');
+		const branch = (nodes) => {
 			const list = document.createElement('ul');
 			for (const node of nodes) {
-				if (!node || typeof node.label !== 'string' || ++count > 50000)
-					throw new Error('Invalid navigation');
 				const li = document.createElement('li');
 				if (typeof node.href === 'string') {
-					const url = new URL(node.href, location.href);
-					const segment = url.pathname.slice(postPrefix.length);
-					if (
-						url.origin !== location.origin ||
-						!url.pathname.startsWith(postPrefix) ||
-						!segment.endsWith('/') ||
-						!/^[a-z0-9][a-z0-9-]{0,127}$/.test(segment.slice(0, -1)) ||
-						url.search ||
-						url.hash ||
-						url.username ||
-						url.password ||
-						paths.has(url.pathname) ||
-						node.children !== undefined
-					)
-						throw new Error('Invalid navigation link');
-					paths.add(url.pathname);
+					const path = navigationPath(node.href, postPrefix, location.origin);
 					const link = document.createElement('a');
-					link.href = url.pathname;
+					link.href = path;
 					link.textContent = node.label;
-					if (url.pathname === current) link.setAttribute('aria-current', 'page');
+					if (path === current) link.setAttribute('aria-current', 'page');
 					li.append(link);
 				} else {
 					const label = document.createElement('span');
 					label.textContent = node.label;
-					li.append(label, branch(node.children, depth + 1));
+					li.append(label, branch(node.children));
 				}
 				list.append(li);
 			}
@@ -121,8 +109,7 @@ export function createDocsNavigation({ config, root, mount }) {
 			loadedDocs.add(nav);
 			status.textContent = '';
 		} catch {
-			// A malformed tree may fail after a successful fetch. Only invalidate
-			// that request; an older consumer must never clear a newer retry.
+			// Preserve the owner's consumer guard, including failures constructing DOM.
 			if (docsRequest === request) docsRequest = null;
 			if (current())
 				status.textContent = '목록을 불러오지 못했습니다. 전체 문서에서 글을 확인하세요.';

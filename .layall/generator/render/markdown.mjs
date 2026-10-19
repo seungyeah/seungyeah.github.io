@@ -1,3 +1,4 @@
+import { closesFence, openFence } from './markdown-fences.mjs';
 import { esc, plainText, safeExternal, safeSocialImage, slugify } from './text.mjs';
 
 export function createMarkdown({ href = (value) => value } = {}) {
@@ -236,7 +237,7 @@ export function createMarkdown({ href = (value) => value } = {}) {
 		for (let index = 0; index < lines.length; index += 1) {
 			const line = lines[index];
 			if (fence) {
-				if (new RegExp(`^[ \t]{0,3}${fence.marker}{${fence.length},}[ \t]*$`).test(line)) {
+				if (closesFence(line, fence)) {
 					html.push(
 						`<pre><code${fence.language ? ` data-language="${esc(fence.language)}"` : ''}>${esc(fence.lines.join('\n'))}</code></pre>`
 					);
@@ -244,13 +245,11 @@ export function createMarkdown({ href = (value) => value } = {}) {
 				} else fence.lines.push(line);
 				continue;
 			}
-			const fenceMatch = line.match(/^[ \t]{0,3}(`{3,}|~{3,}|'{3,})[ \t]*([^\s`~']*)/);
+			const fenceMatch = openFence(line);
 			if (fenceMatch) {
 				flushAll();
 				fence = {
-					marker: fenceMatch[1][0],
-					length: fenceMatch[1].length,
-					language: fenceMatch[2],
+					...fenceMatch,
 					lines: [],
 				};
 				continue;
@@ -286,7 +285,8 @@ export function createMarkdown({ href = (value) => value } = {}) {
 					if (
 						!cells ||
 						imageLine(lines[index + 1]) ||
-						/^(?:#{1,6}\s|[ \t]{0,3}(?:`{3,}|~{3,}|'{3,}))/.test(lines[index + 1])
+						/^#{1,6}\s/.test(lines[index + 1]) ||
+						openFence(lines[index + 1])
 					)
 						break;
 					rows.push(cells);

@@ -345,12 +345,13 @@
       accent: tokens.accent
     };
   }
-  function diagramDocument({ scriptUrl, origin, source, token, colors }) {
+  function diagramDocument({ scriptUrl, origin, source, token, colors, fullscreen = false }) {
     const script = new URL(scriptUrl, origin);
     if (script.origin !== origin || !/^https?:$/.test(script.protocol) || script.username || script.password || script.search || script.hash || !/\/assets\/static\/diagram-[a-f0-9]{64}\.js$/.test(script.pathname))
       throw new Error("Invalid local diagram runtime");
     const csp = `default-src 'none'; script-src ${script.href} blob:; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
-    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${esc(csp)}"><meta name="referrer" content="no-referrer"><style>html,body{margin:0;background:transparent}body{padding:12px;box-sizing:border-box;font-family:ui-sans-serif,system-ui,sans-serif}#diagram{min-width:0;overflow:auto}svg{display:block;max-width:100%;height:auto;margin:auto}</style></head><body><div id="diagram"></div><script type="application/json" data-mermaid-frame>${js({ source, token, colors })}<\/script><script defer src="${esc(script.href)}"><\/script></body></html>`;
+    const viewerStyle = fullscreen ? "html,body,#diagram{width:100%;height:100%;padding:0;overflow:hidden}#diagram>svg{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0}" : "";
+    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${esc(csp)}"><meta name="referrer" content="no-referrer"><style>html,body{margin:0;background:transparent}body{padding:12px;box-sizing:border-box;font-family:ui-sans-serif,system-ui,sans-serif}#diagram{min-width:0;overflow:auto}svg{display:block;max-width:100%;height:auto;margin:auto}${viewerStyle}</style></head><body><div id="diagram"></div><script type="application/json" data-mermaid-frame>${js({ source, token, colors })}<\/script><script defer src="${esc(script.href)}"><\/script></body></html>`;
   }
 
   // client/article-code.mjs
@@ -370,7 +371,7 @@
   function mountArticleCode(scope, { document: document2, window: window2, importHighlight = (url) => import(url) }, diagramConfig, highlightUrl) {
     if (!scope) return { dispose() {
     } };
-    const entries = /* @__PURE__ */ new Map(), events = listeners();
+    const entries = /* @__PURE__ */ new Map(), frames = /* @__PURE__ */ new Map(), events = listeners();
     let highlightPromise;
     const loadHighlight = () => {
       if (!highlightPromise) {
@@ -387,7 +388,7 @@
       return highlightPromise;
     };
     const enhanceCode = (entry) => {
-      if (entry.diagram || !entry.language || entry.source.length > 2e5 || entry.highlighted || entry.highlightPending)
+      if (entry.language === "mermaid" || !entry.language || entry.source.length > 2e5 || entry.highlighted || entry.highlightPending)
         return;
       entry.highlightPending = true;
       void loadHighlight().then(({ highlightCode }) => {
@@ -405,21 +406,48 @@
     const loader = createDiagramLoader(diagramConfig, { window: window2 });
     const scheme = window2.matchMedia?.("(prefers-color-scheme: dark)");
     let disposed = false, suspended = false, sequence = 0;
+    const mountFrame = (entry, container, fullscreen, ready, failed) => {
+      const scriptUrl = diagramURLs(diagramConfig, window2.location.origin).script;
+      const frame = document2.createElement("iframe");
+      const token = String(++sequence);
+      frame.className = "article-diagram";
+      frame.title = "Mermaid 다이어그램";
+      frame.setAttribute("sandbox", "allow-scripts");
+      frame.setAttribute("referrerpolicy", "no-referrer");
+      frame.setAttribute("tabindex", "-1");
+      frame.setAttribute("data-pending", "true");
+      frame.srcdoc = diagramDocument({
+        scriptUrl,
+        origin: window2.location.origin,
+        source: entry.source,
+        token,
+        colors: diagramTheme(root, scheme?.matches),
+        fullscreen
+      });
+      const record = { entry, token, ready, failed, loading: false };
+      frames.set(frame, record);
+      record.timer = window2.setTimeout(failed, 15e3);
+      container.append(frame);
+      return {
+        frame,
+        dispose() {
+          window2.clearTimeout(record.timer);
+          frames.delete(frame);
+          frame.srcdoc = "";
+          frame.remove();
+          if (!frames.size) loader.cancel();
+        }
+      };
+    };
     const discardFrame = (entry) => {
-      window2.clearTimeout(entry.timer);
       if (entry.viewer) closeMermaidViewer(entry, { document: document2, window: window2 }, false);
       entry.diagramEvents.dispose();
-      if (entry.diagram) {
-        entry.diagram.remove();
-        entry.diagram = null;
-      }
-      if (entry.frame) {
-        entry.frame.srcdoc = "";
-        entry.frame.remove();
-        entry.frame = null;
-      }
-      entry.markup = "";
-      if (![...entries.values()].some((item) => item.frame)) loader.cancel();
+      entry.frameController?.dispose();
+      entry.frameController = null;
+      entry.frame = null;
+      entry.diagram?.remove();
+      entry.diagram = null;
+      entry.size = null;
       entry.pre.hidden = false;
       entry.button.hidden = true;
     };
@@ -443,16 +471,7 @@
       entry.button.hidden = true;
       if (!diagramConfig || !entry.source.trim() || entry.source.length > 1e5) return;
       try {
-        const scriptUrl = diagramURLs(diagramConfig, window2.location.origin).script;
-        const frame = document2.createElement("iframe");
         const diagram = document2.createElement("div");
-        entry.loading = false;
-        entry.token = String(++sequence);
-        frame.className = "article-diagram";
-        frame.title = "Mermaid 다이어그램";
-        frame.setAttribute("sandbox", "allow-scripts");
-        frame.setAttribute("referrerpolicy", "no-referrer");
-        frame.setAttribute("data-pending", "true");
         diagram.className = "article-diagram-shell";
         diagram.setAttribute("role", "button");
         diagram.setAttribute("tabindex", "0");
@@ -465,20 +484,31 @@
         };
         entry.diagramEvents.on(diagram, "click", entry.diagramClick);
         entry.diagramEvents.on(diagram, "keydown", entry.diagramKeydown);
-        frame.srcdoc = diagramDocument({
-          scriptUrl,
-          origin: window2.location.origin,
-          source: entry.source,
-          token: entry.token,
-          colors: diagramTheme(root, scheme?.matches)
-        });
-        entry.frame = frame;
         entry.diagram = diagram;
-        diagram.append(frame);
         entry.block.append(diagram);
-        entry.timer = window2.setTimeout(() => {
-          discardFrame(entry);
-        }, 15e3);
+        entry.frameController = mountFrame(
+          entry,
+          diagram,
+          false,
+          (data) => {
+            entry.size = diagramSize(data.size);
+            entry.frame.style.height = Math.max(80, Math.min(4e3, data.height)) + "px";
+            const sourceVisible = entry.button.getAttribute("aria-pressed") === "true";
+            entry.pre.hidden = !sourceVisible;
+            diagram.hidden = sourceVisible;
+            entry.frame.hidden = sourceVisible;
+            entry.button.hidden = false;
+          },
+          () => discardFrame(entry)
+        );
+        entry.frame = entry.frameController.frame;
+        entry.mountViewerFrame = (viewer) => mountFrame(
+          entry,
+          viewer.stage,
+          true,
+          (data) => viewer.resize(diagramSize(data.size)),
+          () => closeMermaidViewer(entry, { document: document2, window: window2 }, true)
+        );
       } catch {
       }
     };
@@ -514,10 +544,8 @@
           ...kind,
           frame: null,
           diagram: null,
-          markup: "",
+          size: null,
           viewer: null,
-          timer: 0,
-          token: "",
           attributes: ["tabindex", "aria-label"].map((name) => [
             name,
             pre.getAttribute(name)
@@ -548,38 +576,34 @@
     };
     events.on(window2, "message", (event) => {
       if (disposed || suspended || event.data?.kind !== "layall:diagram") return;
-      for (const entry of entries.values()) {
-        if (!entry.frame || event.source !== entry.frame.contentWindow || event.data.token !== entry.token || !scope.contains(entry.code))
+      for (const [frame, record] of frames) {
+        const { entry, token } = record;
+        if (event.source !== frame.contentWindow || event.data.token !== token || !scope.contains(entry.code))
           continue;
+        const current = () => !disposed && !suspended && frames.get(frame) === record && scope.contains(entry.code);
         if (event.data.state === "load") {
-          if (entry.loading) return;
-          entry.loading = true;
-          const frame = entry.frame, token = entry.token;
+          if (record.loading) return;
+          record.loading = true;
           void loader.load().then((modules) => {
-            if (!disposed && !suspended && entry.frame === frame && entry.token === token && scope.contains(entry.code))
+            if (current())
               frame.contentWindow.postMessage(
                 { kind: "layall:diagram-modules", token, ...modules },
                 "*"
               );
           }).catch(() => {
-            if (entry.frame === frame) discardFrame(entry);
+            if (current()) record.failed();
           });
           return;
         }
         if (event.data.state === "error") {
-          discardFrame(entry);
+          record.failed();
           return;
         }
         if (event.data.state !== "ready" || !Number.isFinite(event.data.height)) return;
-        window2.clearTimeout(entry.timer);
-        entry.markup = typeof event.data.svg === "string" ? event.data.svg : "";
-        entry.frame.style.height = Math.max(80, Math.min(4e3, event.data.height)) + "px";
-        entry.frame.removeAttribute("data-pending");
-        const sourceVisible = entry.button.getAttribute("aria-pressed") === "true";
-        entry.pre.hidden = !sourceVisible;
-        if (entry.diagram) entry.diagram.hidden = sourceVisible;
-        entry.frame.hidden = sourceVisible;
-        entry.button.hidden = false;
+        window2.clearTimeout(record.timer);
+        frame.removeAttribute("data-pending");
+        record.ready(event.data);
+        return;
       }
     });
     const appearance = () => {
@@ -618,9 +642,7 @@
     };
   }
   function openMermaidViewer(entry, { document: document2, window: window2 }) {
-    if (entry.viewer || !entry.markup) return;
-    const prepared = createViewerSvg(document2, window2, entry.markup);
-    if (!prepared) return;
+    if (entry.viewer || !entry.size || !entry.frame) return;
     const dialog = document2.createElement("div");
     const frame = document2.createElement("div");
     const stage = document2.createElement("div");
@@ -640,7 +662,6 @@
     frame.setAttribute("aria-label", "Mermaid chart gesture area");
     stage.className = "article-mermaid-viewer-stage";
     tools.className = "article-mermaid-viewer-tools";
-    stage.append(document2.importNode(prepared.svg, true));
     frame.append(stage);
     tools.append(zoomOut, zoomIn, close);
     dialog.append(frame, tools);
@@ -652,8 +673,8 @@
       zoomOut,
       zoomIn,
       close,
-      naturalWidth: prepared.width,
-      naturalHeight: prepared.height,
+      naturalWidth: entry.size.width,
+      naturalHeight: entry.size.height,
       frameWidth: 0,
       frameHeight: 0,
       chartWidth: 1,
@@ -934,7 +955,18 @@
       viewerEvents.dispose();
       resetGesture();
     };
+    viewer.resize = (size) => {
+      viewer.naturalWidth = size.width;
+      viewer.naturalHeight = size.height;
+      applySize();
+    };
     applySize();
+    try {
+      viewer.frameController = entry.mountViewerFrame(viewer);
+    } catch {
+      closeMermaidViewer(entry, { document: document2, window: window2 }, true);
+      return;
+    }
     queueMicrotask(() => {
       if (entry.viewer === viewer) close.focus({ preventScroll: true });
     });
@@ -943,6 +975,7 @@
     const viewer = entry.viewer;
     if (!viewer) return;
     viewer.cleanup?.();
+    viewer.frameController?.dispose();
     entry.viewer = null;
     viewer.dialog.remove();
     if (document2.body?.style) document2.body.style.overflow = viewer.previousBodyOverflow;
@@ -983,84 +1016,10 @@
     icon.append(circle, line);
     return icon;
   }
-  function createViewerSvg(document2, window2, markup) {
-    const Parser = window2.DOMParser || globalThis.DOMParser;
-    if (typeof Parser !== "function") return null;
-    let parsed;
-    try {
-      parsed = new Parser().parseFromString(markup, "image/svg+xml");
-    } catch {
-      return null;
-    }
-    if (parsed.querySelector?.("parsererror")) return null;
-    const source = parsed.documentElement;
-    if (!source || String(source.tagName).toLowerCase() !== "svg") return null;
-    const size = svgNaturalSize(source);
-    for (const element of source.querySelectorAll("script, iframe, object, embed"))
-      element.remove();
-    namespaceSvgIds(source);
-    const svg = document2.importNode(source, true);
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
-    svg.style.display = "block";
-    svg.style.maxWidth = "none";
-    svg.style.maxHeight = "none";
-    svg.style.width = "100%";
-    svg.style.height = "100%";
-    svg.style.overflow = "visible";
-    return { svg, width: size.width, height: size.height };
-  }
-  function namespaceSvgIds(svg) {
-    const ids = /* @__PURE__ */ new Map();
-    for (const element of [svg, ...svg.querySelectorAll("[id]")]) {
-      if (!element.id) continue;
-      const next = element.id + "-layall-mermaid-viewer";
-      ids.set(element.id, next);
-      element.setAttribute("id", next);
-    }
-    for (const style of svg.querySelectorAll("style"))
-      style.textContent = rewriteSvgIdReferences(style.textContent || "", ids);
-    for (const element of [svg, ...svg.querySelectorAll("*")]) {
-      for (const attr of [...element.attributes]) {
-        const name = attr.name.toLowerCase();
-        if (name.startsWith("on")) {
-          element.removeAttribute(attr.name);
-          continue;
-        }
-        if ((name === "href" || name === "xlink:href") && attr.value.trim().toLowerCase().startsWith("javascript:")) {
-          element.removeAttribute(attr.name);
-          continue;
-        }
-        if (!attr.value.includes("#")) continue;
-        const next = rewriteSvgIdReferences(attr.value, ids);
-        if (next !== attr.value) element.setAttribute(attr.name, next);
-      }
-    }
-  }
-  function rewriteSvgIdReferences(value, ids) {
-    if (!value || ids.size === 0) return value;
-    const alternatives = [...ids.keys()].sort((left, right) => right.length - left.length).map(escapeRegExp).join("|");
-    return value.replace(new RegExp("#(?:" + alternatives + ")(?![\\w-])", "g"), (match) => {
-      const next = ids.get(match.slice(1));
-      return next ? "#" + next : match;
-    });
-  }
-  function escapeRegExp(value) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-  function svgNaturalSize(svg) {
-    const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
-    if (viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0)
-      return { width: viewBox[2], height: viewBox[3] };
-    const width = positiveLength(svg.getAttribute("width"));
-    const height = positiveLength(svg.getAttribute("height"));
-    if (width > 0 && height > 0) return { width, height };
-    return { width: 800, height: 600 };
-  }
-  function positiveLength(value) {
-    if (!value || value.includes("%")) return 0;
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  function diagramSize(size) {
+    return size && [size.width, size.height].every(
+      (value) => typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 1e6
+    ) ? { width: size.width, height: size.height } : { width: 800, height: 600 };
   }
   function fittedChartSize(width, height, availableWidth, availableHeight) {
     const fittedWidth = Math.max(1, availableWidth - VIEWER_PADDING * 2);
@@ -1364,6 +1323,61 @@
     };
   }
 
+  // client/navigation-data.mjs
+  function navigationPath(href, postPrefix, origin) {
+    const url = new URL(href, origin);
+    const segment = url.pathname.slice(postPrefix.length);
+    if (!/^https?:$/.test(url.protocol) || url.origin !== origin || !url.pathname.startsWith(postPrefix) || !/^[a-z0-9][a-z0-9-]{0,127}\/$/.test(segment) || url.search || url.hash || url.username || url.password)
+      throw new Error("Invalid navigation link");
+    return url.pathname;
+  }
+  function validateNavigation(data, postPrefix, origin) {
+    if (!data || data.format !== "layall-docs-navigation" || data.version !== 1)
+      throw new Error("Invalid navigation");
+    const paths = /* @__PURE__ */ new Set();
+    let count = 0;
+    const branch = (nodes, depth = 0) => {
+      if (!Array.isArray(nodes) || depth > 128) throw new Error("Invalid navigation");
+      for (const node of nodes) {
+        if (!node || typeof node.label !== "string" || ++count > 5e4)
+          throw new Error("Invalid navigation");
+        if (typeof node.href === "string") {
+          const path = navigationPath(node.href, postPrefix, origin);
+          if (paths.has(path) || node.children !== void 0)
+            throw new Error("Invalid navigation link");
+          paths.add(path);
+        } else branch(node.children, depth + 1);
+      }
+    };
+    branch(data.tree);
+    bookGroups(data.books, postPrefix, origin);
+    return data;
+  }
+  function bookGroups(books, postPrefix, origin) {
+    if (!Array.isArray(books)) throw new Error("Invalid book navigation");
+    const paths = /* @__PURE__ */ new Set();
+    const groups = books.map((book) => {
+      if (!Array.isArray(book)) throw new Error("Invalid book navigation");
+      return book.map((entry) => {
+        if (typeof entry?.label !== "string" || typeof entry.href !== "string" || paths.size >= 5e4)
+          throw new Error("Invalid book link");
+        const path = navigationPath(entry.href, postPrefix, origin);
+        if (paths.has(path)) throw new Error("Invalid book link");
+        paths.add(path);
+        return { label: entry.label, href: path };
+      });
+    });
+    return groups;
+  }
+  function bookNeighbors(books, current, postPrefix, origin) {
+    const groups = bookGroups(books, postPrefix, origin);
+    let pathname = current.endsWith("/index.html") ? current.slice(0, -10) : current;
+    if (!pathname.endsWith("/")) pathname += "/";
+    const group = groups.find((book) => book.some((entry) => entry.href === pathname));
+    const index = group?.findIndex((entry) => entry.href === pathname) ?? -1;
+    return index < 0 ? null : { entries: group, index, prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
+  }
+
   // client/docs-navigation.mjs
   function createDocsNavigation({ config: config2, root, mount }) {
     let docsRequest, activeController;
@@ -1375,64 +1389,61 @@
     const requestDocs = (descriptor) => {
       if (disposed) throw new Error("Navigation disposed");
       const url = new URL(descriptor, location.href);
-      if (url.origin !== location.origin || url.pathname !== docsResource || url.search || url.hash || url.username || url.password)
+      if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || url.pathname !== docsResource || url.search || url.hash || url.username || url.password)
         throw new Error("Invalid navigation resource");
       if (!docsRequest) {
         const controller = new AbortController();
         activeController = controller;
         const requestTimeout = setTimeout(() => controller.abort(), 8e3);
         timeout = requestTimeout;
-        docsRequest = fetch(url.href, {
-          mode: "same-origin",
-          credentials: "omit",
-          redirect: "error",
-          cache: "no-cache",
-          signal: controller.signal
-        }).then(async (response) => {
+        const request = (async () => {
+          const response = await fetch(url.href, {
+            mode: "same-origin",
+            credentials: "omit",
+            redirect: "error",
+            cache: "no-cache",
+            signal: controller.signal
+          });
           if (!response.ok || response.url !== url.href)
             throw new Error("Navigation unavailable");
           const text = await response.text();
           if (text.length > 8 * 1024 * 1024) throw new Error("Navigation too large");
-          const data = JSON.parse(text);
-          if (data.format !== "layall-docs-navigation" || data.version !== 1 || !Array.isArray(data.tree))
-            throw new Error("Invalid navigation");
+          if (disposed || controller.signal.aborted) throw new Error("Navigation cancelled");
+          const data = validateNavigation(JSON.parse(text), postPrefix, location.origin);
+          if (location.pathname.startsWith(postPrefix) && !bookNeighbors(data.books, location.pathname, postPrefix, location.origin))
+            throw new Error("Book not found");
           return data;
-        }).catch((error) => {
-          docsRequest = null;
+        })().catch((error) => {
+          if (docsRequest === request) docsRequest = null;
           throw error;
         }).finally(() => {
           clearTimeout(requestTimeout);
-          if (timeout === requestTimeout) timeout = void 0;
+          if (activeController === controller) {
+            activeController = null;
+            timeout = void 0;
+          }
         });
+        docsRequest = request;
       }
       return docsRequest;
     };
     const docsTree = (entries) => {
-      let count = 0;
-      const paths = /* @__PURE__ */ new Set();
       const current = location.pathname.endsWith("/index.html") ? location.pathname.slice(0, -10) : location.pathname;
-      const branch = (nodes, depth = 0) => {
-        if (!Array.isArray(nodes) || depth > 128) throw new Error("Invalid navigation");
+      const branch = (nodes) => {
         const list = document.createElement("ul");
         for (const node of nodes) {
-          if (!node || typeof node.label !== "string" || ++count > 5e4)
-            throw new Error("Invalid navigation");
           const li = document.createElement("li");
           if (typeof node.href === "string") {
-            const url = new URL(node.href, location.href);
-            const segment = url.pathname.slice(postPrefix.length);
-            if (url.origin !== location.origin || !url.pathname.startsWith(postPrefix) || !segment.endsWith("/") || !/^[a-z0-9][a-z0-9-]{0,127}$/.test(segment.slice(0, -1)) || url.search || url.hash || url.username || url.password || paths.has(url.pathname) || node.children !== void 0)
-              throw new Error("Invalid navigation link");
-            paths.add(url.pathname);
+            const path = navigationPath(node.href, postPrefix, location.origin);
             const link = document.createElement("a");
-            link.href = url.pathname;
+            link.href = path;
             link.textContent = node.label;
-            if (url.pathname === current) link.setAttribute("aria-current", "page");
+            if (path === current) link.setAttribute("aria-current", "page");
             li.append(link);
           } else {
             const label = document.createElement("span");
             label.textContent = node.label;
-            li.append(label, branch(node.children, depth + 1));
+            li.append(label, branch(node.children));
           }
           list.append(li);
         }
@@ -1488,7 +1499,7 @@
   // client/home-widgets.mjs
   function createHomeWidgets({ mount }) {
     const events = listeners();
-    let selectedReaction = "+1";
+    let selectedReaction = "+1", selectedYear;
     const bindReactions = () => {
       const section = document.querySelector("[data-reaction-ranking]");
       if (!section) return;
@@ -1517,6 +1528,7 @@
       const select = (year) => {
         const panel = panels.find((node) => node.dataset.heatmapPanel === year);
         if (!panel) return;
+        selectedYear = year;
         summary.textContent = year;
         summary.setAttribute("aria-controls", panel.id);
         total.textContent = panel.dataset.heatmapTotal + "개 글";
@@ -1531,8 +1543,11 @@
         (option) => events.on(option, "click", () => select(option.dataset.heatmapYearOption))
       );
       events.on(picker, "toggle", syncExpanded);
+      const available = options.filter(
+        (option) => panels.some((panel) => panel.dataset.heatmapPanel === option.dataset.heatmapYearOption)
+      );
       select(
-        options.find((option) => option.getAttribute("aria-selected") === "true")?.dataset.heatmapYearOption || options[0].dataset.heatmapYearOption
+        available.find((option) => option.dataset.heatmapYearOption === selectedYear)?.dataset.heatmapYearOption ?? available.find((option) => option.getAttribute("aria-selected") === "true")?.dataset.heatmapYearOption ?? available[0]?.dataset.heatmapYearOption
       );
     };
     return {
@@ -2014,28 +2029,6 @@
       }
     };
   }
-  function bookNeighbors(books, current, postPrefix, origin) {
-    if (!Array.isArray(books)) throw new Error("Invalid book navigation");
-    const paths = /* @__PURE__ */ new Set();
-    const groups = books.map((book) => {
-      if (!Array.isArray(book)) throw new Error("Invalid book navigation");
-      return book.map((entry) => {
-        if (typeof entry?.label !== "string" || typeof entry.href !== "string" || paths.size >= 5e4)
-          throw new Error("Invalid book link");
-        const url = new URL(entry.href, origin);
-        const segment = url.pathname.slice(postPrefix.length);
-        if (url.origin !== origin || !url.pathname.startsWith(postPrefix) || !/^[a-z0-9][a-z0-9-]{0,127}\/$/.test(segment) || url.search || url.hash || url.username || url.password || paths.has(url.pathname))
-          throw new Error("Invalid book link");
-        paths.add(url.pathname);
-        return { label: entry.label, href: url.pathname };
-      });
-    });
-    let pathname = current.endsWith("/index.html") ? current.slice(0, -10) : current;
-    if (!pathname.endsWith("/")) pathname += "/";
-    const group = groups.find((book) => book.some((entry) => entry.href === pathname));
-    const index = group?.findIndex((entry) => entry.href === pathname) ?? -1;
-    return index < 0 ? null : { entries: group, index, prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
-  }
   function mountNoteNavigation({ config: config2, loadBooks }, { document: document2, window: window2, location: location2 } = globalThis) {
     const article = document2.querySelector('[data-theme-piece="article"]');
     const toc = article && !article.querySelector("[data-protected-post]") ? mountNoteToc(article, { document: document2, window: window2 }) : null;
@@ -2269,7 +2262,7 @@
       throw error;
     });
     const events = listeners();
-    const bindSearch = (preservedQuery = "") => {
+    const bindSearch = (preservedQuery) => {
       events.dispose();
       const generation = ++pageGeneration;
       const form = document.querySelector("[data-search-form]");
@@ -2332,7 +2325,7 @@
         event.preventDefault();
         void run(true);
       });
-      input.value = preservedQuery || new URL(location.href).searchParams.get("q") || "";
+      input.value = preservedQuery ?? new URL(location.href).searchParams.get("q") ?? "";
       void run();
     };
     return {
@@ -2400,7 +2393,7 @@
         node.parentElement?.setAttribute("data-palette", root.dataset.theme);
       });
     };
-    const activate = (next) => {
+    const activate = (next, preserveInput = true) => {
       if (!layoutThemes.has(next) || !mount) return false;
       if (root.dataset.theme === next) return true;
       if (applyArticleAppearance(root, mount, next)) {
@@ -2410,7 +2403,7 @@
       }
       const template = document.querySelector('template[data-theme-layout="' + next + '"]');
       if (!template) return false;
-      const query = document.querySelector("[data-search-input]")?.value || "";
+      const query = preserveInput ? document.querySelector("[data-search-input]")?.value : void 0;
       const fragment = template.content.cloneNode(true);
       fragment.querySelectorAll("[data-layout-id]").forEach((node) => {
         node.id = node.dataset.layoutId;
@@ -2475,7 +2468,7 @@
       },
       restore() {
         const remembered = readStored(layoutKey);
-        if (layoutThemes.has(remembered) && remembered !== authorTheme && activate(remembered)) {
+        if (layoutThemes.has(remembered) && remembered !== authorTheme && activate(remembered, false)) {
           if (mount?.querySelector("[data-article-shell]")) onPageMounted();
         } else {
           root.dataset.theme = authorTheme;
@@ -2515,7 +2508,7 @@
         docs.bind();
         noteNavigation?.refresh();
       },
-      onPageMounted(query = "") {
+      onPageMounted(query) {
         docs.bind();
         search.bind(query);
         blog.bind();

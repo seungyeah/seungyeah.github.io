@@ -167,7 +167,7 @@ html[data-color-mode='dark'] .article-mermaid-viewer {
 	overflow: visible;
 	transform-origin: top left;
 }
-.article-mermaid-viewer-stage svg {
+.article-mermaid-viewer-stage > .article-diagram {
 	display: block;
 	width: 100%;
 	height: 100%;
