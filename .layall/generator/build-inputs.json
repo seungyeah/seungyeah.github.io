@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 76635303ff278bdf404d4e8162ed1e9ca827f192885ee1d15f88d538a0aee1b5",
+  "sourceStamp": "// layall-generator-source-sha256: 3cef1be0dcc9a61ad762f4b08c982702223eb84111508cef629ed2e65ac91576",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -2182,7 +2182,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/giscus.mjs",
-      "sha256": "094004e6149954e0ab5b67d4686c08301e0b9f367170202b2496491858619231"
+      "sha256": "5d4fdd6042c608d55c87cf063c2bdb91456e60df2f8d7a5564ef65ecb438f58f"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home-data.mjs",
@@ -2258,7 +2258,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/giscus.css",
-      "sha256": "df2bb47ec7c08e749132d874cf0f2a3dc80b6ae26e866778c3e5aa9c7846a70e"
+      "sha256": "d3af91de67ae348af5a26e3289f7106872da098884da82a4d035567527c651fe"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/header.css",
