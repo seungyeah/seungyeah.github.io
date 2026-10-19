@@ -114,6 +114,10 @@ select {
 html[data-theme='portfolio'] .floating-nav {
 	display: flex;
 }
+html[data-theme='portfolio'] body[data-page-kind='article'] .floating-nav,
+html[data-theme='portfolio'] body[data-page-kind='docs-article'] .floating-nav {
+	display: none;
+}
 .theme-article-blog.article-shell {
 	width: 100%;
 	max-width: none;

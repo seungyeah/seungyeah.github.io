@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "dc8207c3378f52437813757e65efa4df19a0c957e95b3b8ea2a9986c32d43423",
+  "sha256": "31b0a529f529e4e823c0e6e1a044bf0cfdd9258cef262f99720985eb2a5171ae",
   "entries": [
     {
       "path": "build.mjs",
@@ -566,7 +566,7 @@
     {
       "path": "generator/build-inputs.json",
       "size": 118055,
-      "sha256": "9174c6aa6ce14f8d5904c1060dc725499e380ad875cebcaa01f6e5fd81903da9"
+      "sha256": "00d4b62ce3b1d1454fd5015246142a966b47fce9769b4a26e77f7b63d7ac18cf"
     },
     {
       "path": "generator/client/appearance.mjs",
@@ -795,8 +795,8 @@
     },
     {
       "path": "generator/render/giscus.mjs",
-      "size": 6347,
-      "sha256": "ac5d456ad08e7cf74805c6320f55056c96840c66abd536e7f4b3bae74eca627a"
+      "size": 6430,
+      "sha256": "094004e6149954e0ab5b67d4686c08301e0b9f367170202b2496491858619231"
     },
     {
       "path": "generator/render/home-data.mjs",
@@ -890,8 +890,8 @@
     },
     {
       "path": "generator/styles/giscus.css",
-      "size": 7476,
-      "sha256": "c2090ca23a60f4f52d75cca8437e791a7811025e6a79f670362ff24d466d6f44"
+      "size": 7212,
+      "sha256": "df2bb47ec7c08e749132d874cf0f2a3dc80b6ae26e866778c3e5aa9c7846a70e"
     },
     {
       "path": "generator/styles/header.css",
@@ -955,8 +955,8 @@
     },
     {
       "path": "generator/styles/responsive.css",
-      "size": 2554,
-      "sha256": "c119b0932dc649e7fadea79d19fceeb2b5340fd3426668e0bd54a42448fd81ca"
+      "size": 2728,
+      "sha256": "3dd0146123f063182fedae3070b41d9d0c7e4e36070a2aeb027c0cc9dc7407c8"
     }
   ]
 }
