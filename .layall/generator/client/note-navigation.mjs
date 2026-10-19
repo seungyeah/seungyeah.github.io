@@ -1,4 +1,5 @@
 import { listeners } from './lifecycle.mjs';
+import { mountPageList } from './page-list.mjs';
 import { mountReadingBar } from './reading-bar.mjs';
 
 // Re-evaluate every heading's current position; an intersection-only cursor can
@@ -27,6 +28,7 @@ export function mountNoteToc(scope, { document, window }) {
 	const events = listeners();
 	const readingBar = mountReadingBar(strip, toggle, { document, window });
 	let suspended = false;
+	let scrolled = false;
 	let frame = 0,
 		disposed = false,
 		hashTarget;
@@ -56,7 +58,8 @@ export function mountNoteToc(scope, { document, window }) {
 		frame = window.requestAnimationFrame(() => {
 			frame = 0;
 			if (disposed || suspended) return;
-			const offset = readingBar.refresh();
+			const offset = readingBar.refresh(scrolled);
+			scrolled = false;
 			scope.style.setProperty('--note-heading-offset', `${offset}px`);
 			const scroller = document.scrollingElement || root;
 			const maxScroll = scroller.scrollHeight - scroller.clientHeight;
@@ -107,11 +110,20 @@ export function mountNoteToc(scope, { document, window }) {
 			close(true);
 		}
 	});
-	events.on(window, 'scroll', refresh, { passive: true });
+	events.on(
+		window,
+		'scroll',
+		() => {
+			scrolled = true;
+			refresh();
+		},
+		{ passive: true }
+	);
 	events.on(window, 'resize', refresh);
 	events.on(window, 'hashchange', fromHash);
 	events.on(window, 'pagehide', () => {
 		suspended = true;
+		scrolled = false;
 		close();
 		readingBar.reset();
 	});
@@ -122,7 +134,9 @@ export function mountNoteToc(scope, { document, window }) {
 	events.on(body, 'load', refresh, true);
 	const observer =
 		typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(refresh) : null;
-	[header, toggle, body, scope].filter(Boolean).forEach((node) => observer?.observe(node));
+	[header, toggle, body, scope, strip.closest?.('.article')?.querySelector('.article-bottom-nav')]
+		.filter(Boolean)
+		.forEach((node) => observer?.observe(node));
 	const appearance =
 		typeof window.MutationObserver === 'function'
 			? new window.MutationObserver(() => {
@@ -183,10 +197,15 @@ export function bookNeighbors(books, current, postPrefix, origin) {
 	if (!pathname.endsWith('/')) pathname += '/';
 	const group = groups.find((book) => book.some((entry) => entry.href === pathname));
 	const index = group?.findIndex((entry) => entry.href === pathname) ?? -1;
-	return index < 0 ? null : { prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
+	return index < 0
+		? null
+		: { entries: group, index, prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
 }
 
-export function mountNoteNavigation({ config, loadBooks }) {
+export function mountNoteNavigation(
+	{ config, loadBooks },
+	{ document, window, location } = globalThis
+) {
 	const article = document.querySelector('[data-theme-piece="article"]');
 	const toc =
 		article && !article.querySelector('[data-protected-post]')
@@ -194,13 +213,14 @@ export function mountNoteNavigation({ config, loadBooks }) {
 			: null;
 	const bottom = article?.querySelector('.article-bottom-nav');
 	let disposed = false,
-		loading = false,
-		loaded = false;
-	const refresh = () => {
-		toc?.refresh();
-		if (disposed || !bottom || loading || loaded) return;
-		loading = true;
-		loadBooks()
+		pending,
+		loaded;
+	const loadBook = () => {
+		if (disposed || !bottom) return Promise.reject(new Error('Navigation unavailable'));
+		if (loaded) return Promise.resolve(loaded);
+		if (pending) return pending;
+		pending = Promise.resolve()
+			.then(loadBooks)
 			.then((books) => {
 				if (disposed) return;
 				const neighbors = bookNeighbors(
@@ -209,7 +229,7 @@ export function mountNoteNavigation({ config, loadBooks }) {
 					config.postPrefix,
 					location.origin
 				);
-				if (!neighbors) return;
+				if (!neighbors) throw new Error('Book not found');
 				for (const direction of ['prev', 'next']) {
 					const entry = neighbors[direction];
 					const link = bottom.querySelector(`[data-nav-${direction}]`);
@@ -228,14 +248,18 @@ export function mountNoteNavigation({ config, loadBooks }) {
 					link.hidden = false;
 					bottom.querySelector(`[data-nav-${direction}-empty]`).hidden = true;
 				}
-				loaded = true;
-			})
-			.catch(() => {
-				/* The public list link remains available on failure. */
+				loaded = neighbors;
+				return neighbors;
 			})
 			.finally(() => {
-				loading = false;
+				pending = null;
 			});
+		return pending;
+	};
+	const list = bottom && mountPageList(bottom, { document, window, loadBook });
+	const refresh = () => {
+		toc?.refresh();
+		if (!disposed && bottom) void loadBook().catch(() => {});
 	};
 	refresh();
 	return {
@@ -243,6 +267,7 @@ export function mountNoteNavigation({ config, loadBooks }) {
 		dispose() {
 			disposed = true;
 			toc?.dispose();
+			list?.dispose();
 		},
 	};
 }

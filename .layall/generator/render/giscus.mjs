@@ -104,7 +104,7 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 	const layallTimeline =
 		name === 'layall'
 			? [
-        '.gsc-main{--layall-comment-inset:.4rem;--layall-reaction-inset:0rem;width:100%;max-width:100%;min-width:0;box-sizing:border-box}',
+        '.gsc-main{--layall-reply-inset:0px;--layall-comment-inset:.4rem;--layall-reaction-inset:0rem;width:100%;max-width:100%;min-width:0;box-sizing:border-box}',
                         '.gsc-header{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding-inline:var(--layall-comment-inset)}',
         '.gsc-reactions{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:.6rem .4rem 1.5rem var(--layall-reaction-inset)}',
         '.gsc-reactions>div{margin:0;min-width:0;max-width:100%}',

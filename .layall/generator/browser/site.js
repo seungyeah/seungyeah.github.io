@@ -15387,6 +15387,118 @@
     };
   }
 
+  // client/page-list.mjs
+  function mountPageList(bottom, { document: document2, window: window2, loadBook }) {
+    const toggle = bottom.querySelector("[data-page-list-toggle]");
+    if (!toggle) return { dispose() {
+    } };
+    const panel = bottom.querySelector("[data-page-list]");
+    const list = panel.querySelector("ol");
+    const status = panel.querySelector('[role="status"]');
+    const retry = panel.querySelector("[data-page-list-retry]");
+    const fallback = bottom.querySelector("[data-page-list-fallback]");
+    const events = listeners();
+    let disposed = false, request = 0, frame = 0;
+    toggle.hidden = false;
+    fallback.hidden = true;
+    const position = () => {
+      if (panel.hidden || disposed) return;
+      const rect = bottom.getBoundingClientRect();
+      const above = Math.max(0, rect.top - 8);
+      const below = Math.max(0, document2.documentElement.clientHeight - rect.bottom - 8);
+      panel.dataset.placement = above >= below ? "above" : "below";
+      panel.style.maxHeight = `${Math.min(384, document2.documentElement.clientHeight * 0.4, Math.max(above, below))}px`;
+    };
+    const reposition = () => {
+      if (frame || panel.hidden || disposed) return;
+      frame = window2.requestAnimationFrame(() => {
+        frame = 0;
+        position();
+      });
+    };
+    const close = (restore = false) => {
+      if (panel.hidden) return;
+      const hadFocus = panel.contains(document2.activeElement);
+      panel.hidden = true;
+      request++;
+      toggle.setAttribute("aria-expanded", "false");
+      if (restore || hadFocus) toggle.focus({ preventScroll: true });
+    };
+    const populate = async () => {
+      const id = ++request;
+      status.textContent = "목록을 불러오는 중…";
+      status.hidden = false;
+      retry.hidden = true;
+      try {
+        const book = await loadBook();
+        if (disposed || panel.hidden || id !== request) return;
+        const rows = book.entries.map((entry, index) => {
+          const row = document2.createElement("li");
+          const link = document2.createElement("a");
+          link.href = entry.href;
+          link.textContent = entry.label;
+          if (index === book.index) link.setAttribute("aria-current", "page");
+          row.append(link);
+          return row;
+        });
+        list.replaceChildren(...rows);
+        status.hidden = true;
+        const current = list.querySelector('[aria-current="page"]');
+        if (document2.activeElement === toggle || document2.activeElement === retry) {
+          current?.focus({ preventScroll: true });
+          if (current)
+            panel.scrollTop = Math.max(0, current.offsetTop - panel.clientHeight / 2);
+        }
+      } catch {
+        if (disposed || panel.hidden || id !== request) return;
+        status.textContent = "목록을 불러오지 못했어요.";
+        retry.hidden = false;
+      }
+    };
+    events.on(toggle, "click", () => {
+      if (!panel.hidden) return close(true);
+      toggle.focus({ preventScroll: true });
+      panel.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      position();
+      void populate();
+    });
+    events.on(retry, "click", () => void populate());
+    events.on(list, "click", (event) => {
+      if (event.target.closest("a")) close();
+    });
+    events.on(document2, "click", (event) => {
+      if (!panel.contains(event.target) && !toggle.contains(event.target)) close();
+    });
+    events.on(document2, "focusin", (event) => {
+      if (!panel.contains(event.target) && !toggle.contains(event.target)) close();
+    });
+    events.on(document2, "keydown", (event) => {
+      if (event.key === "Escape" && !panel.hidden) {
+        event.preventDefault();
+        close(true);
+      }
+    });
+    events.on(window2, "layall:reading", () => close());
+    events.on(window2, "layall:page-navigation-hide", () => close());
+    events.on(window2, "pagehide", () => close());
+    events.on(window2, "scroll", reposition, { passive: true });
+    events.on(window2, "resize", reposition);
+    return {
+      dispose() {
+        disposed = true;
+        close();
+        events.dispose();
+        if (frame) window2.cancelAnimationFrame(frame);
+        panel.style.removeProperty("max-height");
+        delete panel.dataset.placement;
+        list.replaceChildren();
+        toggle.hidden = true;
+        fallback.hidden = false;
+      }
+    };
+  }
+
   // client/reading-bar.mjs
   function readingBarPosition(anchorTop, headerHeight) {
     return { pinned: anchorTop <= 0, headerShift: Math.min(0, anchorTop - headerHeight) };
@@ -15398,44 +15510,92 @@
       aria: header.getAttribute("aria-hidden")
     };
     let pinned = false;
+    let revealed = false;
+    let lastScroll;
+    let travel = 0;
+    const footerAnchor = strip.closest?.(".article")?.querySelector(".page-nav-anchor");
+    const footer = footerAnchor?.querySelector(".article-bottom-nav");
     strip.dataset.readingReady = "true";
     const restoreHeader = () => {
       if (!header) return;
       delete header.dataset.readingHidden;
+      delete header.dataset.readingRevealed;
       header.style.removeProperty("--reading-header-shift");
       header.inert = original.inert;
       if (original.aria === null) header.removeAttribute("aria-hidden");
       else header.setAttribute("aria-hidden", original.aria);
     };
     return {
-      refresh() {
+      refresh(scrolling = false) {
         const height = toggle.getBoundingClientRect().height;
-        const position = readingBarPosition(
-          strip.getBoundingClientRect().top,
-          header?.getBoundingClientRect().height || 0
+        const headerHeight = header?.getBoundingClientRect().height || 0;
+        const position = readingBarPosition(strip.getBoundingClientRect().top, headerHeight);
+        const scroller = document2.scrollingElement || document2.documentElement;
+        const scroll = Math.max(
+          0,
+          Math.min(
+            scroller.scrollTop,
+            Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+          )
         );
+        if (!position.pinned || !pinned) {
+          revealed = false;
+          travel = 0;
+        } else if (scrolling && lastScroll !== void 0) {
+          const delta = scroll - lastScroll;
+          if (delta) travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
+          if (Math.abs(travel) >= 8) revealed = travel < 0;
+        }
+        lastScroll = scroll;
+        const top = position.pinned && revealed ? headerHeight : 0;
         strip.style.setProperty("--reading-bar-height", `${height}px`);
+        strip.style.setProperty("--reading-bar-top", `${top}px`);
         strip.dataset.pinned = String(position.pinned);
         if (header) {
-          header.style.setProperty("--reading-header-shift", `${position.headerShift}px`);
-          if (position.pinned && !pinned) {
-            const moveFocus = header.contains(document2.activeElement) || document2.activeElement?.closest?.("[data-palette-options]");
+          const hidden = position.pinned && !revealed;
+          if (hidden && header.dataset.readingHidden !== "true") {
+            const moveFocus = header.contains(document2.activeElement) || footerAnchor?.dataset.docked === "true" && footer.contains(document2.activeElement) || document2.activeElement?.closest?.("[data-palette-options]");
             window2.dispatchEvent(new window2.Event("layall:reading"));
             if (moveFocus) toggle.focus({ preventScroll: true });
             header.inert = true;
             header.setAttribute("aria-hidden", "true");
             header.dataset.readingHidden = "true";
-          } else if (!position.pinned && pinned) {
+          } else if (!hidden) {
             restoreHeader();
-            header.style.setProperty("--reading-header-shift", `${position.headerShift}px`);
           }
+          header.style.setProperty(
+            "--reading-header-shift",
+            `${revealed ? 0 : position.headerShift}px`
+          );
+          if (position.pinned && revealed) header.dataset.readingRevealed = "true";
+          else delete header.dataset.readingRevealed;
+        }
+        if (footer) {
+          const footerHeight = footer.getBoundingClientRect().height;
+          footerAnchor.style.setProperty("--page-nav-height", `${footerHeight}px`);
+          const belowViewport = footerAnchor.getBoundingClientRect().top + footerHeight > scroller.clientHeight;
+          const docked = position.pinned && revealed && belowViewport;
+          if (footerAnchor.dataset.docked === "true" && !docked && belowViewport) {
+            const moveFocus = footer.contains(document2.activeElement);
+            window2.dispatchEvent(new window2.Event("layall:page-navigation-hide"));
+            if (moveFocus) toggle.focus({ preventScroll: true });
+          }
+          footerAnchor.dataset.docked = String(docked);
         }
         pinned = position.pinned;
-        return height + 16;
+        return top + height + 16;
       },
       reset() {
         pinned = false;
+        revealed = false;
+        lastScroll = void 0;
+        travel = 0;
         delete strip.dataset.pinned;
+        strip.style.removeProperty("--reading-bar-top");
+        if (footerAnchor) {
+          delete footerAnchor.dataset.docked;
+          footerAnchor.style.removeProperty("--page-nav-height");
+        }
         restoreHeader();
       },
       dispose() {
@@ -15472,6 +15632,7 @@
     const events = listeners();
     const readingBar = mountReadingBar(strip, toggle, { document: document2, window: window2 });
     let suspended = false;
+    let scrolled = false;
     let frame = 0, disposed = false, hashTarget;
     const select = (heading) => {
       if (!heading) return;
@@ -15499,7 +15660,8 @@
       frame = window2.requestAnimationFrame(() => {
         frame = 0;
         if (disposed || suspended) return;
-        const offset = readingBar.refresh();
+        const offset = readingBar.refresh(scrolled);
+        scrolled = false;
         scope.style.setProperty("--note-heading-offset", `${offset}px`);
         const scroller = document2.scrollingElement || root;
         const maxScroll = scroller.scrollHeight - scroller.clientHeight;
@@ -15549,11 +15711,20 @@
         close(true);
       }
     });
-    events.on(window2, "scroll", refresh, { passive: true });
+    events.on(
+      window2,
+      "scroll",
+      () => {
+        scrolled = true;
+        refresh();
+      },
+      { passive: true }
+    );
     events.on(window2, "resize", refresh);
     events.on(window2, "hashchange", fromHash);
     events.on(window2, "pagehide", () => {
       suspended = true;
+      scrolled = false;
       close();
       readingBar.reset();
     });
@@ -15563,7 +15734,7 @@
     });
     events.on(body, "load", refresh, true);
     const observer = typeof window2.ResizeObserver === "function" ? new window2.ResizeObserver(refresh) : null;
-    [header, toggle, body, scope].filter(Boolean).forEach((node) => observer?.observe(node));
+    [header, toggle, body, scope, strip.closest?.(".article")?.querySelector(".article-bottom-nav")].filter(Boolean).forEach((node) => observer?.observe(node));
     const appearance = typeof window2.MutationObserver === "function" ? new window2.MutationObserver(() => {
       close();
       refresh();
@@ -15605,26 +15776,26 @@
     if (!pathname.endsWith("/")) pathname += "/";
     const group = groups.find((book) => book.some((entry) => entry.href === pathname));
     const index = group?.findIndex((entry) => entry.href === pathname) ?? -1;
-    return index < 0 ? null : { prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
+    return index < 0 ? null : { entries: group, index, prev: group[index - 1] ?? null, next: group[index + 1] ?? null };
   }
-  function mountNoteNavigation({ config: config2, loadBooks }) {
-    const article = document.querySelector('[data-theme-piece="article"]');
-    const toc = article && !article.querySelector("[data-protected-post]") ? mountNoteToc(article, { document, window }) : null;
+  function mountNoteNavigation({ config: config2, loadBooks }, { document: document2, window: window2, location: location2 } = globalThis) {
+    const article = document2.querySelector('[data-theme-piece="article"]');
+    const toc = article && !article.querySelector("[data-protected-post]") ? mountNoteToc(article, { document: document2, window: window2 }) : null;
     const bottom = article?.querySelector(".article-bottom-nav");
-    let disposed = false, loading = false, loaded = false;
-    const refresh = () => {
-      toc?.refresh();
-      if (disposed || !bottom || loading || loaded) return;
-      loading = true;
-      loadBooks().then((books) => {
+    let disposed = false, pending, loaded;
+    const loadBook = () => {
+      if (disposed || !bottom) return Promise.reject(new Error("Navigation unavailable"));
+      if (loaded) return Promise.resolve(loaded);
+      if (pending) return pending;
+      pending = Promise.resolve().then(loadBooks).then((books) => {
         if (disposed) return;
         const neighbors = bookNeighbors(
           books,
-          location.pathname,
+          location2.pathname,
           config2.postPrefix,
-          location.origin
+          location2.origin
         );
-        if (!neighbors) return;
+        if (!neighbors) throw new Error("Book not found");
         for (const direction of ["prev", "next"]) {
           const entry = neighbors[direction];
           const link = bottom.querySelector(`[data-nav-${direction}]`);
@@ -15643,10 +15814,17 @@
           link.hidden = false;
           bottom.querySelector(`[data-nav-${direction}-empty]`).hidden = true;
         }
-        loaded = true;
-      }).catch(() => {
+        loaded = neighbors;
+        return neighbors;
       }).finally(() => {
-        loading = false;
+        pending = null;
+      });
+      return pending;
+    };
+    const list = bottom && mountPageList(bottom, { document: document2, window: window2, loadBook });
+    const refresh = () => {
+      toc?.refresh();
+      if (!disposed && bottom) void loadBook().catch(() => {
       });
     };
     refresh();
@@ -15655,6 +15833,7 @@
       dispose() {
         disposed = true;
         toc?.dispose();
+        list?.dispose();
       }
     };
   }

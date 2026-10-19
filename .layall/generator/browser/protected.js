@@ -801,44 +801,92 @@
       aria: header.getAttribute("aria-hidden")
     };
     let pinned = false;
+    let revealed = false;
+    let lastScroll;
+    let travel = 0;
+    const footerAnchor = strip.closest?.(".article")?.querySelector(".page-nav-anchor");
+    const footer = footerAnchor?.querySelector(".article-bottom-nav");
     strip.dataset.readingReady = "true";
     const restoreHeader = () => {
       if (!header) return;
       delete header.dataset.readingHidden;
+      delete header.dataset.readingRevealed;
       header.style.removeProperty("--reading-header-shift");
       header.inert = original.inert;
       if (original.aria === null) header.removeAttribute("aria-hidden");
       else header.setAttribute("aria-hidden", original.aria);
     };
     return {
-      refresh() {
+      refresh(scrolling = false) {
         const height = toggle.getBoundingClientRect().height;
-        const position = readingBarPosition(
-          strip.getBoundingClientRect().top,
-          header?.getBoundingClientRect().height || 0
+        const headerHeight = header?.getBoundingClientRect().height || 0;
+        const position = readingBarPosition(strip.getBoundingClientRect().top, headerHeight);
+        const scroller = document2.scrollingElement || document2.documentElement;
+        const scroll = Math.max(
+          0,
+          Math.min(
+            scroller.scrollTop,
+            Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+          )
         );
+        if (!position.pinned || !pinned) {
+          revealed = false;
+          travel = 0;
+        } else if (scrolling && lastScroll !== void 0) {
+          const delta = scroll - lastScroll;
+          if (delta) travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
+          if (Math.abs(travel) >= 8) revealed = travel < 0;
+        }
+        lastScroll = scroll;
+        const top = position.pinned && revealed ? headerHeight : 0;
         strip.style.setProperty("--reading-bar-height", `${height}px`);
+        strip.style.setProperty("--reading-bar-top", `${top}px`);
         strip.dataset.pinned = String(position.pinned);
         if (header) {
-          header.style.setProperty("--reading-header-shift", `${position.headerShift}px`);
-          if (position.pinned && !pinned) {
-            const moveFocus = header.contains(document2.activeElement) || document2.activeElement?.closest?.("[data-palette-options]");
+          const hidden = position.pinned && !revealed;
+          if (hidden && header.dataset.readingHidden !== "true") {
+            const moveFocus = header.contains(document2.activeElement) || footerAnchor?.dataset.docked === "true" && footer.contains(document2.activeElement) || document2.activeElement?.closest?.("[data-palette-options]");
             window2.dispatchEvent(new window2.Event("layall:reading"));
             if (moveFocus) toggle.focus({ preventScroll: true });
             header.inert = true;
             header.setAttribute("aria-hidden", "true");
             header.dataset.readingHidden = "true";
-          } else if (!position.pinned && pinned) {
+          } else if (!hidden) {
             restoreHeader();
-            header.style.setProperty("--reading-header-shift", `${position.headerShift}px`);
           }
+          header.style.setProperty(
+            "--reading-header-shift",
+            `${revealed ? 0 : position.headerShift}px`
+          );
+          if (position.pinned && revealed) header.dataset.readingRevealed = "true";
+          else delete header.dataset.readingRevealed;
+        }
+        if (footer) {
+          const footerHeight = footer.getBoundingClientRect().height;
+          footerAnchor.style.setProperty("--page-nav-height", `${footerHeight}px`);
+          const belowViewport = footerAnchor.getBoundingClientRect().top + footerHeight > scroller.clientHeight;
+          const docked = position.pinned && revealed && belowViewport;
+          if (footerAnchor.dataset.docked === "true" && !docked && belowViewport) {
+            const moveFocus = footer.contains(document2.activeElement);
+            window2.dispatchEvent(new window2.Event("layall:page-navigation-hide"));
+            if (moveFocus) toggle.focus({ preventScroll: true });
+          }
+          footerAnchor.dataset.docked = String(docked);
         }
         pinned = position.pinned;
-        return height + 16;
+        return top + height + 16;
       },
       reset() {
         pinned = false;
+        revealed = false;
+        lastScroll = void 0;
+        travel = 0;
         delete strip.dataset.pinned;
+        strip.style.removeProperty("--reading-bar-top");
+        if (footerAnchor) {
+          delete footerAnchor.dataset.docked;
+          footerAnchor.style.removeProperty("--page-nav-height");
+        }
         restoreHeader();
       },
       dispose() {
@@ -875,6 +923,7 @@
     const events = listeners();
     const readingBar = mountReadingBar(strip, toggle, { document: document2, window: window2 });
     let suspended = false;
+    let scrolled = false;
     let frame = 0, disposed = false, hashTarget;
     const select = (heading) => {
       if (!heading) return;
@@ -902,7 +951,8 @@
       frame = window2.requestAnimationFrame(() => {
         frame = 0;
         if (disposed || suspended) return;
-        const offset = readingBar.refresh();
+        const offset = readingBar.refresh(scrolled);
+        scrolled = false;
         scope.style.setProperty("--note-heading-offset", `${offset}px`);
         const scroller = document2.scrollingElement || root;
         const maxScroll = scroller.scrollHeight - scroller.clientHeight;
@@ -952,11 +1002,20 @@
         close(true);
       }
     });
-    events.on(window2, "scroll", refresh, { passive: true });
+    events.on(
+      window2,
+      "scroll",
+      () => {
+        scrolled = true;
+        refresh();
+      },
+      { passive: true }
+    );
     events.on(window2, "resize", refresh);
     events.on(window2, "hashchange", fromHash);
     events.on(window2, "pagehide", () => {
       suspended = true;
+      scrolled = false;
       close();
       readingBar.reset();
     });
@@ -966,7 +1025,7 @@
     });
     events.on(body, "load", refresh, true);
     const observer = typeof window2.ResizeObserver === "function" ? new window2.ResizeObserver(refresh) : null;
-    [header, toggle, body, scope].filter(Boolean).forEach((node) => observer?.observe(node));
+    [header, toggle, body, scope, strip.closest?.(".article")?.querySelector(".article-bottom-nav")].filter(Boolean).forEach((node) => observer?.observe(node));
     const appearance = typeof window2.MutationObserver === "function" ? new window2.MutationObserver(() => {
       close();
       refresh();

@@ -158,6 +158,9 @@ html[data-color-mode='dark'] .article {
 	text-decoration: line-through;
 }
 html[data-theme='layall'] .article-table,
-html[data-theme='layall'] .article-table :is(th, td) {
+html[data-theme='layall'] .article-table :is(table, thead, tbody, tfoot, tr, td, colgroup, col) {
+	background: transparent;
+}
+html[data-theme='layall'] .article-table th {
 	background: var(--code-surface);
 }
