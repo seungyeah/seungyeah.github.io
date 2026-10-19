@@ -60,7 +60,7 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		posts,
 		absolute,
 		write,
-		omyuFontPath: staticAssets.font,
+		tmoneyFontPath: staticAssets.tmoneyFont,
 		linkedPostTitle,
 	});
 	const folderName = (id) => String(folders.get(String(id))?.name ?? id ?? 'Unfiled');

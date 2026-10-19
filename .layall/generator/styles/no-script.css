@@ -6,6 +6,9 @@ html:not([data-js='true']) .site-nav {
 	width: auto;
 	box-shadow: none;
 }
+html:not([data-js='true']) .nav-toggle {
+	display: none;
+}
 html:not([data-js='true']) .header-inner {
 	flex-wrap: wrap;
 }

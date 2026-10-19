@@ -7,7 +7,7 @@ const fillTemplate = (values) =>
 		return values[slot];
 	});
 
-export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
+export const giscusCss = (name, mode, { absolute, tmoneyFontPath }) => {
 	const tokens = themeTokens(name, mode);
 	const giscusSurface =
 		name === 'layall'
@@ -23,8 +23,17 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 			: tokens['accent-soft'];
 	const font =
 		name === 'layall'
-			? '"Omyu Pretty",ui-sans-serif,system-ui,sans-serif'
+			? '"TmoneyRoundWindRegular","Tmoney RoundWind","티머니 둥근바람",ui-sans-serif,system-ui,sans-serif'
 			: 'ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+	const tmoneyFontFace =
+		name === 'layall'
+			? ['TmoneyRoundWindRegular', 'Tmoney RoundWind', '티머니 둥근바람']
+					.map(
+						(family) =>
+							`@font-face{font-family:${JSON.stringify(family)};src:url(${JSON.stringify(absolute(`/${tmoneyFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}`
+					)
+					.join('')
+			: '';
 	const vars = {};
 	const assign = (names, value) => names.split(' ').forEach((key) => (vars[key] = value));
 	assign(
@@ -103,8 +112,8 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 			? `.gsc-main{--layall-editor-surface:${tokens.surface}}.gsc-comment-box-is-reply{display:flow-root}.gsc-comment-box-main,.gsc-comment-box-preview,.gsc-comment-box-md-preview,.gsc-comment-box-textarea-extras,.gsc-replies,.gsc-reply-author-avatar img{background:${tokens.surface}}.gsc-reply-box{background:var(--color-canvas-default)}.gsc-main .gsc-reply-box>button{background:${tokens.surface}}`
 			: '';
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
-${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
-:root{color-scheme:${mode};font-size:16px;--layall-type-scale:${name === 'layall' ? 1.125 : 1};--font-family-default:${font};--font-family-sans:${font};--font-family-monospace:${name === 'layall' ? font : 'ui-monospace,SFMono-Regular,Consolas,monospace'};${Object.entries(
+${tmoneyFontFace}
+:root{color-scheme:${mode};font-size:16px;--layall-type-scale:1;--font-family-default:${font};--font-family-sans:${font};--font-family-monospace:${name === 'layall' ? font : 'ui-monospace,SFMono-Regular,Consolas,monospace'};${Object.entries(
 		vars
 	)
 		.map(([key, value]) => `--color-${key}:${value}`)
@@ -116,12 +125,12 @@ ${fillTemplate({
 	__EDITOR_SURFACE__: editorSurface,
 	__MINIMAL__:
 		name === 'minimal'
-			? '.gsc-comment>div:first-child{border-width:0;background:transparent}.gsc-comment-header{padding-left:0;padding-right:0}.gsc-comment-content,.gsc-comment-footer{padding-left:0;padding-right:0}'
+			? '.gsc-comment>div:first-child{border-width:0;background:transparent}'
 			: '',
 	__BORDERED_HEADER__:
 		name === 'blog' || name === 'docs'
 			? '.gsc-comment-header{border-bottom:1px solid var(--color-border-default);background:var(--color-canvas-subtle);border-radius:var(--layall-radius) var(--layall-radius) 0 0}'
 			: '',
-	__MOBILE_SCALE__: name === 'layall' ? 1.0546875 : 0.9375,
+	__MOBILE_SCALE__: name === 'layall' ? 1 : 0.9375,
 })}`;
 };

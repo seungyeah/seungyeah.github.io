@@ -37,7 +37,7 @@ export const tokenSets = {
 		shadow: '0 18px 60px rgba(0,0,0,.28)',
 	},
 	layall: {
-		'font-scale': '1.125',
+		'font-scale': '1',
 		'font-ui':
 			'"TmoneyRoundWindRegular","Tmoney RoundWind","티머니 둥근바람",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
 		paper: '#f6f4f0',

@@ -11,7 +11,7 @@ export function createDiscussions({
 	posts,
 	absolute,
 	write,
-	omyuFontPath,
+	tmoneyFontPath,
 	linkedPostTitle,
 }) {
 	const discussionsEnabled = site.githubDiscussionsEnabled === true;
@@ -74,7 +74,7 @@ export function createDiscussions({
 			giscusThemeUrls[name] = {};
 			protectedGiscusThemeUrls[name] = {};
 			for (const mode of ['light', 'dark']) {
-				const css = giscusCss(name, mode, { absolute, omyuFontPath });
+				const css = giscusCss(name, mode, { absolute, tmoneyFontPath });
 				const digest = createHash('sha256').update(css).digest('hex').slice(0, 16);
 				const file = `assets/giscus/${name}-${mode}-${digest}.css`;
 				write(file, css);

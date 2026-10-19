@@ -36,9 +36,6 @@ body[data-post-page='true'] .appearance-controls {
 		grid-template-columns: 180px minmax(0, 1fr);
 		gap: 1.5rem;
 	}
-	.home-layall .archive-ledger {
-		display: block;
-	}
 	.knowledge-layout {
 		grid-template-columns: 160px minmax(0, 1fr);
 		gap: 1.5rem;
@@ -145,9 +142,9 @@ body[data-post-page='true'] .appearance-controls {
 	object-fit: cover;
 	border-radius: 4px;
 }
-.home-docs:is([data-blog-active-tab='books'], [data-blog-active-tab='posts']) .home-profile {
-	display: none;
-}
-.home-docs:is([data-blog-active-tab='books'], [data-blog-active-tab='posts']) .knowledge-layout {
-	display: block;
+@media (max-width: 680px) {
+	.home-blog .home-profile,
+	.home-docs .home-profile {
+		top: 76px;
+	}
 }

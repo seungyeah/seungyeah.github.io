@@ -28,6 +28,15 @@
 :is(.home-blog, .home-docs, .home-minimal) .profile-links {
 	justify-content: flex-start;
 }
+.home-blog .home-profile,
+.home-docs .home-profile {
+	position: sticky;
+	top: 92px;
+	align-self: start;
+	align-items: start;
+	height: max-content;
+	z-index: 1;
+}
 .home-minimal .blog-tabs {
 	justify-content: center;
 }
@@ -52,6 +61,11 @@
 	align-items: center;
 	margin: 0 0 2rem;
 }
+.home-layall,
+.home-portfolio {
+	width: min(calc(100% - 2rem), 760px);
+	margin-inline: auto;
+}
 .home-layall .profile-photo {
 	--profile-photo-height: 128px;
 	margin-bottom: 0;
@@ -65,9 +79,7 @@
 	background: var(--surface);
 }
 .home-layall .archive-ledger {
-	display: grid;
-	grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-	gap: 2rem;
+	display: block;
 }
 .home-portfolio .home-profile {
 	display: grid;

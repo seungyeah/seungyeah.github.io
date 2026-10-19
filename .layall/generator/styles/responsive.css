@@ -27,8 +27,7 @@
 	.nav-toggle {
 		display: block;
 	}
-	.site-nav,
-	body[data-post-page='true'] .site-nav {
+	.site-nav {
 		position: absolute;
 		top: calc(100% + 1px);
 		left: 0;
@@ -43,8 +42,7 @@
 		background: var(--surface);
 		box-shadow: var(--shadow);
 	}
-	.site-nav[data-open='true'],
-	body[data-post-page='true'] .site-nav[data-open='true'] {
+	.site-nav[data-open='true'] {
 		display: flex;
 	}
 	.post-toc-panel {

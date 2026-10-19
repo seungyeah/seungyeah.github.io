@@ -12,10 +12,10 @@ export function emitStaticAssets({ resources, write, href }) {
 		write(file, bytes);
 		return file;
 	};
-	const font = emit('omyu-pretty', 'woff2', resources.font);
+	const tmoneyFont = emit('tmoney-round-wind', 'woff2', resources.tmoneyFont ?? resources.font);
 	const icon192 = emit('layall-192', 'png', resources.icon192);
 	const icon512 = emit('layall-512', 'png', resources.icon512);
-	const css = emit('site', 'css', siteCss(resources.styles, href('/' + font)));
+	const css = emit('site', 'css', siteCss(resources.styles, href('/' + tmoneyFont)));
 	const noScriptCss = emit('no-script', 'css', resources.noScriptStyles);
 	const site = emit('site', 'js', resources.site);
 	// Emit the protected runtime unconditionally: deleting the last protected post
@@ -28,7 +28,7 @@ export function emitStaticAssets({ resources, write, href }) {
 	write(diagramRoot + '/license.json', resources.diagramLicense);
 	const download = emit('download', 'js', resources.download);
 	return {
-		font,
+		tmoneyFont,
 		icon192,
 		icon512,
 		css,

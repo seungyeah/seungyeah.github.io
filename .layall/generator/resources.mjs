@@ -14,7 +14,7 @@ export const resources = {
 	diagramLicense: read('browser/renderer/license.json'),
 	styles: readSiteStyles(),
 	noScriptStyles: read('styles/no-script.css', 'utf8'),
-	font: read('fonts/omyu-pretty.woff2'),
+	tmoneyFont: read('fonts/omyu-pretty.woff2'),
 	icon192: read('icons/layall-192.png'),
 	icon512: read('icons/layall-512.png'),
 	site: read('browser/site.js', 'utf8'),
