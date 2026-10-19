@@ -15509,12 +15509,19 @@
       inert: header.inert,
       aria: header.getAttribute("aria-hidden")
     };
-    let pinned = false;
     let revealed = false;
     let lastScroll;
     let travel = 0;
     const footerAnchor = strip.closest?.(".article")?.querySelector(".page-nav-anchor");
     const footer = footerAnchor?.querySelector(".article-bottom-nav");
+    const focusReader = () => {
+      if (toggle) return toggle.focus({ preventScroll: true });
+      const originalTabIndex = strip.getAttribute("tabindex");
+      strip.setAttribute("tabindex", "-1");
+      strip.focus({ preventScroll: true });
+      if (originalTabIndex === null) strip.removeAttribute("tabindex");
+      else strip.setAttribute("tabindex", originalTabIndex);
+    };
     strip.dataset.readingReady = "true";
     const restoreHeader = () => {
       if (!header) return;
@@ -15527,7 +15534,7 @@
     };
     return {
       refresh(scrolling = false) {
-        const height = toggle.getBoundingClientRect().height;
+        const height = toggle?.getBoundingClientRect().height || 0;
         const headerHeight = header?.getBoundingClientRect().height || 0;
         const position = readingBarPosition(strip.getBoundingClientRect().top, headerHeight);
         const scroller = document2.scrollingElement || document2.documentElement;
@@ -15538,16 +15545,13 @@
             Math.max(0, scroller.scrollHeight - scroller.clientHeight)
           )
         );
-        if (!position.pinned || !pinned) {
-          revealed = false;
-          travel = 0;
-        } else if (scrolling && lastScroll !== void 0) {
+        if (scrolling && lastScroll !== void 0) {
           const delta = scroll - lastScroll;
           if (delta) travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
           if (Math.abs(travel) >= 8) revealed = travel < 0;
         }
         lastScroll = scroll;
-        const top = position.pinned && revealed ? headerHeight : 0;
+        const top = revealed ? headerHeight : 0;
         strip.style.setProperty("--reading-bar-height", `${height}px`);
         strip.style.setProperty("--reading-bar-top", `${top}px`);
         strip.dataset.pinned = String(position.pinned);
@@ -15556,7 +15560,7 @@
           if (hidden && header.dataset.readingHidden !== "true") {
             const moveFocus = header.contains(document2.activeElement) || footerAnchor?.dataset.docked === "true" && footer.contains(document2.activeElement) || document2.activeElement?.closest?.("[data-palette-options]");
             window2.dispatchEvent(new window2.Event("layall:reading"));
-            if (moveFocus) toggle.focus({ preventScroll: true });
+            if (moveFocus) focusReader();
             header.inert = true;
             header.setAttribute("aria-hidden", "true");
             header.dataset.readingHidden = "true";
@@ -15567,26 +15571,24 @@
             "--reading-header-shift",
             `${revealed ? 0 : position.headerShift}px`
           );
-          if (position.pinned && revealed) header.dataset.readingRevealed = "true";
+          if (revealed) header.dataset.readingRevealed = "true";
           else delete header.dataset.readingRevealed;
         }
         if (footer) {
           const footerHeight = footer.getBoundingClientRect().height;
           footerAnchor.style.setProperty("--page-nav-height", `${footerHeight}px`);
           const belowViewport = footerAnchor.getBoundingClientRect().top + footerHeight > scroller.clientHeight;
-          const docked = position.pinned && revealed && belowViewport;
+          const docked = revealed && belowViewport;
           if (footerAnchor.dataset.docked === "true" && !docked && belowViewport) {
             const moveFocus = footer.contains(document2.activeElement);
             window2.dispatchEvent(new window2.Event("layall:page-navigation-hide"));
-            if (moveFocus) toggle.focus({ preventScroll: true });
+            if (moveFocus) focusReader();
           }
           footerAnchor.dataset.docked = String(docked);
         }
-        pinned = position.pinned;
         return top + height + 16;
       },
       reset() {
-        pinned = false;
         revealed = false;
         lastScroll = void 0;
         travel = 0;
@@ -15616,21 +15618,22 @@
     return current;
   }
   function mountNoteToc(scope, { document: document2, window: window2 }) {
-    const strip = scope.querySelector("[data-note-toc-strip]");
-    if (!strip) return { refresh() {
+    const body = scope.querySelector(".article-body");
+    if (!body) return { refresh() {
     }, dispose() {
     } };
-    const toggle = strip.querySelector("[data-note-toc-toggle]");
-    const dropdown = strip.querySelector("[data-note-toc-dropdown]");
-    const marker = strip.querySelector("[data-note-toc-marker]");
-    const label = strip.querySelector("[data-note-toc-label]");
-    const items = [...dropdown.querySelectorAll("[data-toc-target]")];
-    const body = scope.querySelector(".article-body");
+    const strip = scope.querySelector("[data-note-toc-strip]");
+    const toggle = strip?.querySelector("[data-note-toc-toggle]");
+    const dropdown = strip?.querySelector("[data-note-toc-dropdown]");
+    const marker = strip?.querySelector("[data-note-toc-marker]");
+    const label = strip?.querySelector("[data-note-toc-label]");
+    const items = [...dropdown?.querySelectorAll("[data-toc-target]") || []];
     const headings = [...body.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]")];
     const header = document2.querySelector(".site-header");
     const root = document2.documentElement;
     const events = listeners();
-    const readingBar = mountReadingBar(strip, toggle, { document: document2, window: window2 });
+    const anchor = strip || body;
+    const readingBar = mountReadingBar(anchor, toggle, { document: document2, window: window2 });
     let suspended = false;
     let scrolled = false;
     let frame = 0, disposed = false, hashTarget;
@@ -15648,7 +15651,7 @@
       }
     };
     const close = (restore = false) => {
-      if (dropdown.hidden) return;
+      if (!dropdown || dropdown.hidden) return;
       const hadFocus = dropdown.contains(document2.activeElement);
       dropdown.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
@@ -15703,10 +15706,10 @@
         }
       });
     events.on(document2, "click", (event) => {
-      if (!strip.contains(event.target)) close();
+      if (!strip?.contains(event.target)) close();
     });
     events.on(document2, "keydown", (event) => {
-      if (event.key === "Escape" && !dropdown.hidden) {
+      if (event.key === "Escape" && dropdown && !dropdown.hidden) {
         event.preventDefault();
         close(true);
       }
@@ -15734,7 +15737,13 @@
     });
     events.on(body, "load", refresh, true);
     const observer = typeof window2.ResizeObserver === "function" ? new window2.ResizeObserver(refresh) : null;
-    [header, toggle, body, scope, strip.closest?.(".article")?.querySelector(".article-bottom-nav")].filter(Boolean).forEach((node) => observer?.observe(node));
+    [
+      header,
+      toggle,
+      body,
+      scope,
+      anchor.closest?.(".article")?.querySelector(".article-bottom-nav")
+    ].filter(Boolean).forEach((node) => observer?.observe(node));
     const appearance = typeof window2.MutationObserver === "function" ? new window2.MutationObserver(() => {
       close();
       refresh();

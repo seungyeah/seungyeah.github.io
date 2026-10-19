@@ -141,7 +141,7 @@ export function mountProtected(
 			host.append(template.content);
 		}
 		host.append(content);
-		if (tocMarkup) disposeToc = mountNoteToc(host, platform).dispose;
+		disposeToc = mountNoteToc(host, platform).dispose;
 		for (const [field, label] of [
 			['tags', '태그'],
 			['summaries', '요약'],

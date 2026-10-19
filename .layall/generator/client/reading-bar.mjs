@@ -9,12 +9,19 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 		inert: header.inert,
 		aria: header.getAttribute('aria-hidden'),
 	};
-	let pinned = false;
 	let revealed = false;
 	let lastScroll;
 	let travel = 0;
 	const footerAnchor = strip.closest?.('.article')?.querySelector('.page-nav-anchor');
 	const footer = footerAnchor?.querySelector('.article-bottom-nav');
+	const focusReader = () => {
+		if (toggle) return toggle.focus({ preventScroll: true });
+		const originalTabIndex = strip.getAttribute('tabindex');
+		strip.setAttribute('tabindex', '-1');
+		strip.focus({ preventScroll: true });
+		if (originalTabIndex === null) strip.removeAttribute('tabindex');
+		else strip.setAttribute('tabindex', originalTabIndex);
+	};
 	strip.dataset.readingReady = 'true';
 	const restoreHeader = () => {
 		if (!header) return;
@@ -27,7 +34,7 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 	};
 	return {
 		refresh(scrolling = false) {
-			const height = toggle.getBoundingClientRect().height;
+			const height = toggle?.getBoundingClientRect().height || 0;
 			const headerHeight = header?.getBoundingClientRect().height || 0;
 			const position = readingBarPosition(strip.getBoundingClientRect().top, headerHeight);
 			const scroller = document.scrollingElement || document.documentElement;
@@ -38,17 +45,14 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 					Math.max(0, scroller.scrollHeight - scroller.clientHeight)
 				)
 			);
-			if (!position.pinned || !pinned) {
-				revealed = false;
-				travel = 0;
-			} else if (scrolling && lastScroll !== undefined) {
+			if (scrolling && lastScroll !== undefined) {
 				const delta = scroll - lastScroll;
 				if (delta) travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
 				// Accumulate actual scroll travel, ignoring subpixel/touch jitter.
 				if (Math.abs(travel) >= 8) revealed = travel < 0;
 			}
 			lastScroll = scroll;
-			const top = position.pinned && revealed ? headerHeight : 0;
+			const top = revealed ? headerHeight : 0;
 			strip.style.setProperty('--reading-bar-height', `${height}px`);
 			strip.style.setProperty('--reading-bar-top', `${top}px`);
 			strip.dataset.pinned = String(position.pinned);
@@ -61,7 +65,7 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 							footer.contains(document.activeElement)) ||
 						document.activeElement?.closest?.('[data-palette-options]');
 					window.dispatchEvent(new window.Event('layall:reading'));
-					if (moveFocus) toggle.focus({ preventScroll: true });
+					if (moveFocus) focusReader();
 					header.inert = true;
 					header.setAttribute('aria-hidden', 'true');
 					header.dataset.readingHidden = 'true';
@@ -72,7 +76,7 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 					'--reading-header-shift',
 					`${revealed ? 0 : position.headerShift}px`
 				);
-				if (position.pinned && revealed) header.dataset.readingRevealed = 'true';
+				if (revealed) header.dataset.readingRevealed = 'true';
 				else delete header.dataset.readingRevealed;
 			}
 			if (footer) {
@@ -80,19 +84,17 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 				footerAnchor.style.setProperty('--page-nav-height', `${footerHeight}px`);
 				const belowViewport =
 					footerAnchor.getBoundingClientRect().top + footerHeight > scroller.clientHeight;
-				const docked = position.pinned && revealed && belowViewport;
+				const docked = revealed && belowViewport;
 				if (footerAnchor.dataset.docked === 'true' && !docked && belowViewport) {
 					const moveFocus = footer.contains(document.activeElement);
 					window.dispatchEvent(new window.Event('layall:page-navigation-hide'));
-					if (moveFocus) toggle.focus({ preventScroll: true });
+					if (moveFocus) focusReader();
 				}
 				footerAnchor.dataset.docked = String(docked);
 			}
-			pinned = position.pinned;
 			return top + height + 16;
 		},
 		reset() {
-			pinned = false;
 			revealed = false;
 			lastScroll = undefined;
 			travel = 0;

@@ -14,19 +14,20 @@ export function readingHeading(headings, offset) {
 }
 
 export function mountNoteToc(scope, { document, window }) {
-	const strip = scope.querySelector('[data-note-toc-strip]');
-	if (!strip) return { refresh() {}, dispose() {} };
-	const toggle = strip.querySelector('[data-note-toc-toggle]');
-	const dropdown = strip.querySelector('[data-note-toc-dropdown]');
-	const marker = strip.querySelector('[data-note-toc-marker]');
-	const label = strip.querySelector('[data-note-toc-label]');
-	const items = [...dropdown.querySelectorAll('[data-toc-target]')];
 	const body = scope.querySelector('.article-body');
+	if (!body) return { refresh() {}, dispose() {} };
+	const strip = scope.querySelector('[data-note-toc-strip]');
+	const toggle = strip?.querySelector('[data-note-toc-toggle]');
+	const dropdown = strip?.querySelector('[data-note-toc-dropdown]');
+	const marker = strip?.querySelector('[data-note-toc-marker]');
+	const label = strip?.querySelector('[data-note-toc-label]');
+	const items = [...(dropdown?.querySelectorAll('[data-toc-target]') || [])];
 	const headings = [...body.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]')];
 	const header = document.querySelector('.site-header');
 	const root = document.documentElement;
 	const events = listeners();
-	const readingBar = mountReadingBar(strip, toggle, { document, window });
+	const anchor = strip || body;
+	const readingBar = mountReadingBar(anchor, toggle, { document, window });
 	let suspended = false;
 	let scrolled = false;
 	let frame = 0,
@@ -46,7 +47,7 @@ export function mountNoteToc(scope, { document, window }) {
 		}
 	};
 	const close = (restore = false) => {
-		if (dropdown.hidden) return;
+		if (!dropdown || dropdown.hidden) return;
 		const hadFocus = dropdown.contains(document.activeElement);
 		dropdown.hidden = true;
 		toggle.setAttribute('aria-expanded', 'false');
@@ -102,10 +103,10 @@ export function mountNoteToc(scope, { document, window }) {
 			}
 		});
 	events.on(document, 'click', (event) => {
-		if (!strip.contains(event.target)) close();
+		if (!strip?.contains(event.target)) close();
 	});
 	events.on(document, 'keydown', (event) => {
-		if (event.key === 'Escape' && !dropdown.hidden) {
+		if (event.key === 'Escape' && dropdown && !dropdown.hidden) {
 			event.preventDefault();
 			close(true);
 		}
@@ -134,7 +135,13 @@ export function mountNoteToc(scope, { document, window }) {
 	events.on(body, 'load', refresh, true);
 	const observer =
 		typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(refresh) : null;
-	[header, toggle, body, scope, strip.closest?.('.article')?.querySelector('.article-bottom-nav')]
+	[
+		header,
+		toggle,
+		body,
+		scope,
+		anchor.closest?.('.article')?.querySelector('.article-bottom-nav'),
+	]
 		.filter(Boolean)
 		.forEach((node) => observer?.observe(node));
 	const appearance =

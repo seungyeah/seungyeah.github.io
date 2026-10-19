@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 23a5951dce7382caedd6311a87313e758eea529d7801143dd2962c52d47495bd",
+  "sourceStamp": "// layall-generator-source-sha256: b7369ca4e357192927bbc0008d2d7f815d0eab6de7052da2d77f008428390f35",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -2070,7 +2070,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/note-navigation.mjs",
-      "sha256": "0ee95f8b2a6b3644f37c6e0acbdd974936c273994e64eab4aaa5ca9560bca2de"
+      "sha256": "8286a78e1e1a18ff31193bb56a84ce12a2874aaabd8cf73e909b6cee86ed3b86"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/page-list.mjs",
@@ -2086,7 +2086,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/protected.mjs",
-      "sha256": "2ba4cd2cc58898d78bb25f2114c9be69aaa09aa28f37f427e7e222ce90a7c9b6"
+      "sha256": "c5a5a3b65c74f868ba055e1d1b3eecc18f5208ccd65a9e6b1afae30431981437"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/pwa.mjs",
@@ -2094,7 +2094,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/reading-bar.mjs",
-      "sha256": "28cd338385a4904bda62955a6cde7d3053c8fec83c9c9d2adae2a61fd6b00673"
+      "sha256": "2bd0508b17bf13db1c41e553c196a1894545af0df67cc3fbb343f79be8b8f90a"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/search.mjs",
@@ -2182,7 +2182,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/giscus.mjs",
-      "sha256": "138f7d65c84ea74831c336e72b41b8cdaee0a3e9c8790be3f57fe6d03162f6fb"
+      "sha256": "ac5d456ad08e7cf74805c6320f55056c96840c66abd536e7f4b3bae74eca627a"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home-data.mjs",
@@ -2258,7 +2258,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/giscus.css",
-      "sha256": "602099e40e5834c8ed6b14cde8141343cfa566876fa1714e3bab451ac0fc85ed"
+      "sha256": "c2090ca23a60f4f52d75cca8437e791a7811025e6a79f670362ff24d466d6f44"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/header.css",
