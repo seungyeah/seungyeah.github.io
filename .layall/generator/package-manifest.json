@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "598f8d8916e4129534898451689cc5660560ad5ca324071ac480dbd677d7f6a2",
+  "sha256": "9f4fb16efe86152c55998dd0140730f236f217e3ef55378608276bd6febc3482",
   "entries": [
     {
       "path": "build.mjs",
@@ -566,7 +566,7 @@
     {
       "path": "generator/build-inputs.json",
       "size": 118055,
-      "sha256": "943bc44b0486e9300bc4f9483e8111ebfcfbeb32b45e50b48799d29065581a72"
+      "sha256": "0c6db22c81c1e4de9656563079eecfb3574949de23989dba1e786fd328a6672f"
     },
     {
       "path": "generator/client/appearance.mjs",
@@ -795,8 +795,8 @@
     },
     {
       "path": "generator/render/giscus.mjs",
-      "size": 6589,
-      "sha256": "b28ce3aa75bab59d59e11412807a174f3727f781d93254fb548f788a2bbda4af"
+      "size": 6698,
+      "sha256": "828edb0ace341125510dc4e2301ce9741a007ab0b34c69362d869dcb41b38786"
     },
     {
       "path": "generator/render/home-data.mjs",

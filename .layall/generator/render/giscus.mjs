@@ -97,9 +97,10 @@ export const giscusCss = (name, mode, { absolute, omyuFontPath }) => {
 		name
 	];
 	const surface = name === 'layall' ? giscusSurface2 : tokens.surface;
+	// Keep the reply footer's last-child margin inside the form, off the darker parent card.
 	const editorSurface =
 		name === 'layall'
-			? `.gsc-main{--layall-editor-surface:${tokens.surface}}.gsc-comment-box-main,.gsc-comment-box-preview,.gsc-comment-box-md-preview,.gsc-comment-box-is-reply,.gsc-comment-box-textarea-extras,.gsc-replies,.gsc-reply-author-avatar img{background:${tokens.surface}}.gsc-reply-box{background:var(--color-canvas-default)}.gsc-main .gsc-reply-box>button{background:${tokens.surface}}`
+			? `.gsc-main{--layall-editor-surface:${tokens.surface}}.gsc-comment-box-is-reply{display:flow-root}.gsc-comment-box-main,.gsc-comment-box-preview,.gsc-comment-box-md-preview,.gsc-comment-box-textarea-extras,.gsc-replies,.gsc-reply-author-avatar img{background:${tokens.surface}}.gsc-reply-box{background:var(--color-canvas-default)}.gsc-main .gsc-reply-box>button{background:${tokens.surface}}`
 			: '';
 	return `/* LayAll ${name} ${mode}. First-party giscus custom theme; no external imports. */
 ${name === 'layall' ? `@font-face{font-family:"Omyu Pretty";src:url(${JSON.stringify(absolute(`/${omyuFontPath}`))}) format("woff2");font-style:normal;font-weight:400;font-display:swap}` : ''}
