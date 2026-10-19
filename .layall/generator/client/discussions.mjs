@@ -1,4 +1,16 @@
+import { listeners } from './lifecycle.mjs';
+
+function discussionTheme(config, root, system) {
+	const name = Object.hasOwn(config.themes, root.dataset.theme) ? root.dataset.theme : 'layall';
+	const mode =
+		root.dataset.colorMode === 'dark' || (root.dataset.colorMode === 'system' && system.matches)
+			? 'dark'
+			: 'light';
+	return config.themes[name][mode];
+}
+
 export function mountProtectedDiscussion(config, host) {
+	const events = listeners();
 	const section = document.createElement('section');
 	section.className = 'discussion-thread';
 	section.setAttribute('aria-label', '댓글과 반응');
@@ -29,17 +41,7 @@ export function mountProtectedDiscussion(config, host) {
 	frame.style.cssText = 'width:100%;min-height:150px;border:0';
 	const root = document.documentElement;
 	const system = window.matchMedia('(prefers-color-scheme: dark)');
-	const theme = () => {
-		const name = Object.hasOwn(config.themes, root.dataset.theme)
-			? root.dataset.theme
-			: 'layall';
-		const mode =
-			root.dataset.colorMode === 'dark' ||
-			(root.dataset.colorMode === 'system' && system.matches)
-				? 'dark'
-				: 'light';
-		return config.themes[name][mode];
-	};
+	const theme = () => discussionTheme(config, root, system);
 	let disposed = false,
 		session = '';
 	const returned = new URL(location.href);
@@ -117,23 +119,26 @@ export function mountProtectedDiscussion(config, host) {
 		attributes: true,
 		attributeFilter: ['data-theme', 'data-color-mode'],
 	});
-	system.addEventListener('change', sync);
-	window.addEventListener('message', message);
-	frame.addEventListener('load', sync);
+	events.on(system, 'change', sync);
+	events.on(window, 'message', message);
+	events.on(frame, 'load', sync);
 	start();
 	section.append(frame);
 	return () => {
 		disposed = true;
 		session = '';
 		appearance.disconnect();
-		system.removeEventListener('change', sync);
-		window.removeEventListener('message', message);
-		frame.removeEventListener('load', sync);
+		events.dispose();
 		section.remove();
 	};
 }
 
 export function mountDiscussion(config) {
+	const events = listeners(),
+		frameEvents = listeners(),
+		scriptEvents = listeners();
+	let disposed = false,
+		observedFrame;
 	const root = document.documentElement;
 	const holder = document.querySelector('[data-post-discussion]');
 	const container = holder?.querySelector('.giscus');
@@ -142,20 +147,11 @@ export function mountDiscussion(config) {
 	const status = holder.querySelector('[data-discussion-status]');
 	const retry = holder.querySelector('[data-discussion-retry]');
 	const system = window.matchMedia('(prefers-color-scheme: dark)');
-	const themeUrl = () => {
-		const name = Object.hasOwn(config.themes, root.dataset.theme)
-			? root.dataset.theme
-			: 'layall';
-		const mode =
-			root.dataset.colorMode === 'dark' ||
-			(root.dataset.colorMode === 'system' && system.matches)
-				? 'dark'
-				: 'light';
-		return config.themes[name][mode];
-	};
+	const themeUrl = () => discussionTheme(config, root, system);
 	const frame = () => container.querySelector('iframe.giscus-frame');
 	let lastTheme = '';
 	const sync = (force = false) => {
+		if (disposed) return;
 		const target = frame();
 		const theme = themeUrl();
 		if (!target?.contentWindow || (!force && theme === lastTheme)) return;
@@ -172,16 +168,18 @@ export function mountDiscussion(config) {
 	});
 	const frames = new MutationObserver(() => {
 		const target = frame();
-		if (target && target.dataset.layallObserved !== 'true') {
-			target.dataset.layallObserved = 'true';
-			target.addEventListener('load', () => sync(true));
+		if (target !== observedFrame) {
+			frameEvents.dispose();
+			observedFrame = target;
+			frameEvents.on(target, 'load', () => sync(true));
 			sync(true);
 		}
 	});
 	frames.observe(container, { childList: true });
-	system.addEventListener('change', () => sync());
-	window.addEventListener('message', (event) => {
+	events.on(system, 'change', () => sync());
+	events.on(window, 'message', (event) => {
 		if (
+			disposed ||
 			event.origin !== 'https://giscus.app' ||
 			event.source !== frame()?.contentWindow ||
 			!event.data?.giscus
@@ -199,7 +197,8 @@ export function mountDiscussion(config) {
 		}
 	});
 	const start = () => {
-		if (frame() || holder.querySelector('script[data-layall-giscus]')) return;
+		if (disposed || frame() || holder.querySelector('script[data-layall-giscus]')) return;
+		scriptEvents.dispose();
 		retry.hidden = true;
 		status.hidden = false;
 		status.textContent = '댓글·반응 불러오는 중…';
@@ -222,7 +221,8 @@ export function mountDiscussion(config) {
 			'data-lang': config.lang,
 		};
 		for (const [name, value] of Object.entries(attributes)) script.setAttribute(name, value);
-		script.addEventListener('error', () => {
+		scriptEvents.on(script, 'error', () => {
+			if (disposed) return;
 			script.remove();
 			status.hidden = false;
 			status.textContent =
@@ -231,6 +231,18 @@ export function mountDiscussion(config) {
 		});
 		holder.append(script);
 	};
-	retry.addEventListener('click', start);
+	events.on(retry, 'click', start);
 	start();
+	return () => {
+		if (disposed) return;
+		disposed = true;
+		appearance.disconnect();
+		frames.disconnect();
+		events.dispose();
+		frameEvents.dispose();
+		scriptEvents.dispose();
+		holder.querySelector('script[data-layall-giscus]')?.remove();
+		container.replaceChildren();
+		delete holder.dataset.giscusMounted;
+	};
 }

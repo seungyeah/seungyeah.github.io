@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const packageFormat = 'layall-generator-package';
+const packageFormat = 'layall-generator-package';
 export const manifestPath = 'generator/package-manifest.json';
 export const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
-export const fileLimit = (name) =>
+const fileLimit = (name) =>
 	name === 'generator/fonts/omyu-pretty.woff2' ? 4 * 1024 * 1024 : 2 * 1024 * 1024;
 export function packageIdentity(entries) {
 	return digest(

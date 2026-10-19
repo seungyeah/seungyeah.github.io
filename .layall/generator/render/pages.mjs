@@ -1,12 +1,21 @@
+import { indexPublications } from '../core/publications.mjs';
 import { createArticleRenderer } from './article.mjs';
 import { createDiscussions } from './discussions.mjs';
+import { projectHomeData } from './home-data.mjs';
 import { createHomeRenderer } from './home.mjs';
 import { createMarkdown } from './markdown.mjs';
 import { createShell } from './shell.mjs';
 import { esc, excerpt, safeExternal, tagSegment } from './text.mjs';
 import { palettes, themeNames, themeOrder } from './theme-data.mjs';
 
-export function createPages({ sources, assets, staticAssets, write }) {
+export function createPages({
+	sources,
+	assets,
+	staticAssets,
+	write,
+	publications = indexPublications(sources),
+	markdown = createMarkdown(sources),
+}) {
 	const {
 		site,
 		owner,
@@ -23,8 +32,9 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		basePath,
 		publicBase,
 	} = sources;
-	const { profileAsset, imageByPost, coverAssetsByPost, assetsByPost } = assets;
-	const { renderMarkdown, inlineMarkdown } = createMarkdown({ href });
+	const { profileAsset, imageByPost, coverAssetsByPost } = assets;
+	const { postInfo, folderChildren, books } = publications;
+	const { renderMarkdown, inlineMarkdown } = markdown;
 	const theme = themeNames.has(site.theme) ? site.theme : 'layall';
 	const layoutStorageKey = `layall-layout-theme:${publicBase || basePath || '/'}`;
 	const siteTitle = String(site.title || 'LayAll Blog');
@@ -38,12 +48,9 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		.filter((link) => link && typeof link === 'object')
 		.map((link) => ({ label: String(link.label ?? '').trim(), url: safeExternal(link.url) }))
 		.filter((link) => link.label && link.url);
-	const postUrl = (post) => href(`/posts/${encodeURIComponent(post.permalink)}/`);
+	const postUrl = (post) => postInfo.get(post.postId).url;
 	const linkedPostTitle = (post) => {
-		const folderId = String(post.folderId ?? '');
-		const folder = folders.get(folderId);
-		const bookId = folder ? `book-folder-${folderId}` : 'book-unfiled';
-		const name = folder ? String(folder.name ?? folderId) : '분류 없는 글';
+		const { bookId, folderName: name } = postInfo.get(post.postId);
 		return `<a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(name)}</a> / <a class="post-title-link" href="${esc(postUrl(post))}">${esc(post.title || 'Untitled')}</a>`;
 	};
 	const {
@@ -78,10 +85,7 @@ export function createPages({ sources, assets, staticAssets, write }) {
 					? ` (${koreanDate(dates.updatedAt)} 수정)`
 					: '')
 			: '';
-		const folderId = String(post.folderId ?? '');
-		const folder = folders.get(folderId);
-		const bookId = folder ? `book-folder-${folderId}` : 'book-unfiled';
-		const folderLabel = folder ? String(folder.name ?? folderId) : '분류 없는 글';
+		const { bookId, folderName: folderLabel } = postInfo.get(post.postId);
 		return {
 			folder: `<div class="post-meta article-meta"><a href="${esc(href(`/#${bookId}`))}" data-blog-book="${esc(bookId)}">${esc(folderLabel)}</a></div>`,
 			dates: `<div class="post-meta article-date"><span class="article-date-default">${esc(date)}</span>${dates ? `<span class="article-date-note"><span title="블로그 최초 게시일">생성 <time datetime="${esc(dates.publishedAt)}">${esc(koreanDate(dates.publishedAt))}</time></span><span>수정 <time datetime="${esc(dates.updatedAt)}">${esc(koreanDate(dates.updatedAt))}</time></span></span>` : ''}</div>`,
@@ -102,19 +106,6 @@ export function createPages({ sources, assets, staticAssets, write }) {
 			? `<img class="${className}" src="${esc(source)}" alt="" loading="lazy">`
 			: '';
 	};
-
-	const folderChildren = new Map();
-	for (const [id, folder] of folders) {
-		const parent =
-			folder.parentFolderId && folders.has(String(folder.parentFolderId))
-				? String(folder.parentFolderId)
-				: '';
-		const entries = folderChildren.get(parent) ?? [];
-		entries.push({ id, folder });
-		folderChildren.set(parent, entries);
-	}
-	for (const entries of folderChildren.values())
-		entries.sort((a, b) => compareText(String(a.folder.name), String(b.folder.name)));
 
 	const navigationTree = () => {
 		const rendered = new Set();
@@ -148,16 +139,14 @@ export function createPages({ sources, assets, staticAssets, write }) {
 			tree: docsTreeEntries,
 			// Same groups/order as the public home book lists. Do not flatten folders or
 			// expose decrypted titles, source timestamps or private source page order.
-			books: [...[...folders].map(([id]) => postsByFolder.get(id) ?? []), unfiledPosts]
-				.filter((items) => items.length)
-				.map((items) =>
-					orderBookPosts(items).map((post) => ({
+			books: books
+				.filter((book) => book.items.length)
+				.map((book) =>
+					book.orderedItems.map((post) => ({
 						label: post.protectedEnvelope
 							? '보호된 글'
 							: String(post.title || 'Untitled'),
-						href: href(
-							`/posts/${encodeURIComponent(post.protectedEnvelope ? post.postId : post.permalink)}/`
-						),
+						href: postUrl(post),
 					}))
 				),
 		})
@@ -182,6 +171,7 @@ export function createPages({ sources, assets, staticAssets, write }) {
 	};
 
 	const clientConfig = {
+		highlight: href('/' + staticAssets.highlight),
 		diagram: {
 			script: href('/' + staticAssets.diagram),
 			graph: href('/' + staticAssets.diagramGraph),
@@ -211,6 +201,16 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		topLinks,
 		discussionBehavior,
 	});
+	const homeData = projectHomeData({
+		posts,
+		books,
+		coverAssetsByPost,
+		inlineMarkdown,
+		orderBookPosts,
+		site,
+		publicationDay,
+	});
+	const { bookImageByPost, postTags } = homeData;
 	const compactRow = (post, bookThumbnails = false) => {
 		const text = `<strong class="linked-post-title">${linkedPostTitle(post)}</strong><span class="post-meta">${esc(formatDate(post.publicationDates?.publishedAt))}</span>`;
 		const image = bookThumbnails ? bookImageByPost.get(post.postId) : null;
@@ -227,15 +227,9 @@ export function createPages({ sources, assets, staticAssets, write }) {
 	const portfolioCard = (post) =>
 		`<article class="showcase-card">${picture(post)}<div class="showcase-card-content"><span class="post-meta">${esc(formatDate(post.publicationDates?.publishedAt))}</span><h3 class="linked-post-title">${linkedPostTitle(post)}</h3>${excerpt(post.body) ? `<p>${esc(excerpt(post.body, 120))}</p>` : ''}</div></article>`;
 
-	const { renderHome, docsHome, postTags, bookImageByPost } = createHomeRenderer({
+	const { renderHome, docsHome } = createHomeRenderer({
+		homeData,
 		posts,
-		folders,
-		postsByFolder,
-		unfiledPosts,
-		coverAssetsByPost,
-		inlineMarkdown,
-		orderBookPosts,
-		site,
 		publicationDay,
 		postUrl,
 		docsTreeEntries,
@@ -269,6 +263,7 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		staticAssets,
 	});
 	return {
+		postInfo,
 		shell,
 		variantsOf,
 		articleLayout,
@@ -283,7 +278,6 @@ export function createPages({ sources, assets, staticAssets, write }) {
 		blogCard,
 		portfolioCard,
 		compactList,
-		folderName,
 		postTags,
 		docsHome,
 		linkedPostTitle,

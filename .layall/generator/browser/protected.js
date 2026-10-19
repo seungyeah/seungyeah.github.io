@@ -656,8 +656,29 @@
     return visibleHeadings.length ? `<div class="note-toc-strip" data-note-toc-strip><div class="note-toc-bar"><button type="button" class="note-toc-toggle-bar" data-note-toc-toggle aria-expanded="false" aria-label="목차 열기" aria-controls="note-toc-list"><span class="note-toc-current"><span class="note-toc-active-marker" data-note-toc-marker>§</span><span class="note-toc-active-label" data-note-toc-label>${esc(firstHeadingLabel)}</span></span><span class="note-toc-caret" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button><nav class="note-toc-dropdown" id="note-toc-list" data-note-toc-dropdown hidden aria-label="글 목차"><ol class="note-toc-list">${visibleHeadings.map((h, i) => `<li class="note-toc-item toc-level-${h.level}" data-toc-target="${esc(h.id)}" data-toc-idx="${i}"><a href="#${esc(h.id)}" class="note-toc-link"><span class="note-toc-item-marker">${h.level <= 2 ? "§" : "•"}</span><span class="note-toc-item-title">${esc(h.label)}</span></a></li>`).join("")}</ol></nav></div></div>` : "";
   }
 
+  // client/lifecycle.mjs
+  function listeners() {
+    const cleanup = [];
+    return {
+      on(target, type, handler, options) {
+        if (!target) return;
+        target.addEventListener(type, handler, options);
+        cleanup.push(() => target.removeEventListener(type, handler, options));
+      },
+      dispose() {
+        cleanup.splice(0).forEach((remove) => remove());
+      }
+    };
+  }
+
   // client/discussions.mjs
+  function discussionTheme(config2, root, system) {
+    const name = Object.hasOwn(config2.themes, root.dataset.theme) ? root.dataset.theme : "layall";
+    const mode = root.dataset.colorMode === "dark" || root.dataset.colorMode === "system" && system.matches ? "dark" : "light";
+    return config2.themes[name][mode];
+  }
   function mountProtectedDiscussion(config2, host) {
+    const events = listeners();
     const section = document.createElement("section");
     section.className = "discussion-thread";
     section.setAttribute("aria-label", "댓글과 반응");
@@ -685,11 +706,7 @@
     frame.style.cssText = "width:100%;min-height:150px;border:0";
     const root = document.documentElement;
     const system = window.matchMedia("(prefers-color-scheme: dark)");
-    const theme = () => {
-      const name = Object.hasOwn(config2.themes, root.dataset.theme) ? root.dataset.theme : "layall";
-      const mode = root.dataset.colorMode === "dark" || root.dataset.colorMode === "system" && system.matches ? "dark" : "light";
-      return config2.themes[name][mode];
-    };
+    const theme = () => discussionTheme(config2, root, system);
     let disposed = false, session = "";
     const returned = new URL(location.href);
     const incoming = returned.searchParams.get("giscus");
@@ -759,34 +776,17 @@
       attributes: true,
       attributeFilter: ["data-theme", "data-color-mode"]
     });
-    system.addEventListener("change", sync);
-    window.addEventListener("message", message);
-    frame.addEventListener("load", sync);
+    events.on(system, "change", sync);
+    events.on(window, "message", message);
+    events.on(frame, "load", sync);
     start();
     section.append(frame);
     return () => {
       disposed = true;
       session = "";
       appearance.disconnect();
-      system.removeEventListener("change", sync);
-      window.removeEventListener("message", message);
-      frame.removeEventListener("load", sync);
+      events.dispose();
       section.remove();
-    };
-  }
-
-  // client/lifecycle.mjs
-  function listeners() {
-    const cleanup = [];
-    return {
-      on(target, type, handler, options) {
-        if (!target) return;
-        target.addEventListener(type, handler, options);
-        cleanup.push(() => target.removeEventListener(type, handler, options));
-      },
-      dispose() {
-        cleanup.splice(0).forEach((remove) => remove());
-      }
     };
   }
 
@@ -805,6 +805,7 @@
     let travel = 0;
     const footerAnchor = strip.closest?.(".article")?.querySelector(".page-nav-anchor");
     const footer = footerAnchor?.querySelector(".article-bottom-nav");
+    const content = footerAnchor || strip.closest?.(".article");
     const focusReader = () => {
       if (toggle) return toggle.focus({ preventScroll: true });
       const originalTabIndex = strip.getAttribute("tabindex");
@@ -826,6 +827,7 @@
     return {
       refresh(scrolling = false) {
         const height = toggle?.getBoundingClientRect().height || 0;
+        const contentWidth = content?.getBoundingClientRect().width || 0;
         const headerHeight = header?.getBoundingClientRect().height || 0;
         const position = readingBarPosition(strip.getBoundingClientRect().top, headerHeight);
         const scroller = document2.scrollingElement || document2.documentElement;
@@ -845,6 +847,9 @@
         const top = revealed ? headerHeight : 0;
         strip.style.setProperty("--reading-bar-height", `${height}px`);
         strip.style.setProperty("--reading-bar-top", `${top}px`);
+        if (contentWidth > 0)
+          strip.style.setProperty("--reading-content-width", `${contentWidth}px`);
+        else strip.style.removeProperty("--reading-content-width");
         strip.dataset.pinned = String(position.pinned);
         if (header) {
           const hidden = position.pinned && !revealed;
@@ -885,6 +890,7 @@
         travel = 0;
         delete strip.dataset.pinned;
         strip.style.removeProperty("--reading-bar-top");
+        strip.style.removeProperty("--reading-content-width");
         if (footerAnchor) {
           delete footerAnchor.dataset.docked;
           footerAnchor.style.removeProperty("--page-nav-height");

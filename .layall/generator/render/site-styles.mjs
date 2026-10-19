@@ -1,10 +1,11 @@
-import { palettes, themeOrder, tokenSets } from './theme-data.mjs';
+import { darkAccentTokens, palettes, themeOrder, tokenSets } from './theme-data.mjs';
 
 export function siteCss(source, fontUrl) {
 	const declarations = (tokens) =>
 		Object.entries(tokens)
 			.map(([key, value]) => `--${key}:${value};`)
 			.join('');
+	const darkDeclarations = (name) => declarations(darkAccentTokens(name)).slice(0, -1);
 	let css = source.replaceAll('__FONT_URL__', JSON.stringify(fontUrl));
 	for (const [name, tokens] of Object.entries(tokenSets))
 		css = css.replaceAll(`/* @tokens:${name} */`, declarations(tokens));
@@ -13,7 +14,7 @@ export function siteCss(source, fontUrl) {
 		themeOrder
 			.map(
 				(name) =>
-					`[data-palette="${name}"]{--palette-primary:${palettes[name].primary};--palette-dark:${palettes[name].dark}}html[data-theme=${name}][data-color-mode=dark]{--accent:${palettes[name].dark};--accent-soft:color-mix(in srgb,${palettes[name].dark} 16%,var(--surface))}`
+					`[data-palette="${name}"]{--palette-primary:${palettes[name].primary};--palette-dark:${palettes[name].dark}}html[data-theme=${name}][data-color-mode=dark]{${darkDeclarations(name)}}`
 			)
 			.join('')
 	);
@@ -22,7 +23,7 @@ export function siteCss(source, fontUrl) {
 		themeOrder
 			.map(
 				(name) =>
-					`html[data-theme=${name}][data-color-mode=system]{--accent:${palettes[name].dark};--accent-soft:color-mix(in srgb,${palettes[name].dark} 16%,var(--surface))}`
+					`html[data-theme=${name}][data-color-mode=system]{${darkDeclarations(name)}}`
 			)
 			.join('')
 	);

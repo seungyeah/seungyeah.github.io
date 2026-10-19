@@ -81,6 +81,8 @@ html[data-theme='docs'] .article {
 }
 .note-toc-bar {
 	position: relative;
+	width: 100vw;
+	margin-left: calc(50% - 50vw);
 	border: 0;
 	border-radius: 0;
 	background: var(--reader-surface);
@@ -92,7 +94,9 @@ html[data-theme='docs'] .article {
 	margin: 0;
 }
 .note-toc-toggle-bar {
-	width: 100%;
+	width: min(100%, var(--reading-content-width, min(760px, calc(100% - 2rem))));
+	max-width: var(--reading-content-width, 760px);
+	margin-inline: auto;
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -139,7 +143,11 @@ html[data-theme='docs'] .article {
 .note-toc-dropdown {
 	position: absolute;
 	top: 100%;
-	inset-inline: 0;
+	left: 50%;
+	right: auto;
+	width: min(100%, var(--reading-content-width, min(760px, calc(100% - 2rem))));
+	max-width: var(--reading-content-width, 760px);
+	transform: translateX(-50%);
 	border: 0;
 	border-top: 1px solid var(--line);
 	border-radius: 0 0 var(--reader-radius) var(--reader-radius);

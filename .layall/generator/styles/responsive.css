@@ -42,9 +42,6 @@
 		background: var(--surface);
 		box-shadow: var(--shadow);
 	}
-	.site-nav[data-open='true'] {
-		display: flex;
-	}
 	.post-toc-panel {
 		left: 0;
 		right: 0;
@@ -118,7 +115,7 @@ html[data-theme='portfolio'] body[data-page-kind='docs-article'] .floating-nav {
 }
 .theme-article-blog.article-shell {
 	width: 100%;
-	max-width: none;
+	max-width: 760px;
 	padding-inline: clamp(0.75rem, 2vw, 2rem);
 }
 .theme-article-blog .article {

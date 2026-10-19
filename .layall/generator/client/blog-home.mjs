@@ -2,10 +2,8 @@ import { listeners } from './lifecycle.mjs';
 export function createBlogHome({ mount }) {
 	const events = listeners();
 	const blogState = { tab: 'overview', book: '', tags: new Set(), enabled: true };
-	let syncBlogHash = () => {};
 	const bindBlog = () => {
 		events.dispose();
-		syncBlogHash = () => {};
 		const home = mount?.querySelector('[data-blog-home]');
 		if (!home) return;
 		const tabs = [...home.querySelectorAll('[data-blog-tab]')];
@@ -77,7 +75,7 @@ export function createBlogHome({ mount }) {
 			});
 			if (sync) setHash(book || tab);
 		};
-		syncBlogHash = () => {
+		const syncBlogHash = () => {
 			let hash = location.hash.slice(1);
 			try {
 				hash = decodeURIComponent(hash);
@@ -134,7 +132,7 @@ export function createBlogHome({ mount }) {
 					?.focus();
 			})
 		);
-		home.querySelector('[data-blog-open-posts]')?.addEventListener('click', (event) => {
+		events.on(home.querySelector('[data-blog-open-posts]'), 'click', (event) => {
 			event.preventDefault();
 			show('posts', '', true);
 			tabs.find((node) => node.dataset.blogTab === 'posts')?.focus();
@@ -195,16 +193,14 @@ export function createBlogHome({ mount }) {
 			blogState.tags.clear();
 			filter();
 		});
+		events.on(window, 'hashchange', () => syncBlogHash());
 		syncBlogHash();
 		filter();
 	};
-	const onHashChange = () => syncBlogHash();
-	window.addEventListener('hashchange', onHashChange);
 	return {
 		bind: bindBlog,
 		dispose: () => {
 			events.dispose();
-			window.removeEventListener('hashchange', onHashChange);
 		},
 	};
 }

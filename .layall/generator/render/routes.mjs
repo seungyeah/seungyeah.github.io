@@ -5,6 +5,7 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 		sources;
 	const { assetsByPost } = assets;
 	const {
+		postInfo,
 		shell,
 		variantsOf,
 		articleLayout,
@@ -17,53 +18,42 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 		blogCard,
 		portfolioCard,
 		compactList,
-		folderName,
 		postTags,
 		docsHome,
 		linkedPostTitle,
 	} = pages;
-	const { cachedPostHtml, cacheMetrics, cpuMs, postInputs } = cache;
+	const articleVariants = variantsOf(articleLayout);
 	for (const post of posts) {
-		const route = postInputs[post.postId].cacheableOutputs[0].path;
-		const cached = post.protectedEnvelope ? null : cachedPostHtml(post);
-		if (cached) {
-			cacheMetrics.hits += 1;
-			write(route, cached, post.postId);
-			continue;
-		}
-		cacheMetrics.misses += 1;
-		const renderStarted = performance.now();
-		const renderCpuStarted = process.cpuUsage();
-		const rendered = renderMarkdown(
-			post.protectedEnvelope ? '' : post.body,
-			assetsByPost.get(post.postId)
-		);
-		const variants = variantsOf(articleLayout);
-		const pieces = {
-			article: articleContent(post, rendered),
-			'docs-navigation': `<div class="docs-sidebar-wrap" data-theme-piece="docs-navigation"><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation(post)}</aside></div>`,
-		};
-		const html = shell(
-			post.protectedEnvelope ? '보호된 글' : post.title || 'Untitled',
-			variants[theme],
-			{
-				kind: theme === 'docs' ? 'docs-article' : 'article',
-				article: !post.protectedEnvelope,
-				noindex: Boolean(post.protectedEnvelope),
-				publicationDates: post.protectedEnvelope ? null : post.publicationDates,
-				discussionPostId: post.protectedEnvelope ? null : post.postId,
-				description: post.protectedEnvelope ? '' : excerpt(post.body, 160),
-				url: canonical(`/posts/${encodeURIComponent(post.permalink)}/`),
-				image: rendered.firstImage?.url,
-				imageAlt: rendered.firstImage?.alt,
-				variants,
-				pieces,
-				postToc: toc(rendered.headings),
-			}
-		);
-		cacheMetrics.renderWallMs += performance.now() - renderStarted;
-		cacheMetrics.renderCpuMs += cpuMs(renderCpuStarted);
-		write(route, html, post.postId);
+		const html = cache.renderPost(post, () => {
+			const rendered = renderMarkdown(
+				post.protectedEnvelope ? '' : post.body,
+				assetsByPost.get(post.postId)
+			);
+			const variants = articleVariants;
+			const pieces = {
+				article: articleContent(post, rendered),
+				'docs-navigation': `<div class="docs-sidebar-wrap" data-theme-piece="docs-navigation"><aside class="docs-sidebar" data-docs-sidebar>${docsNavigation(post)}</aside></div>`,
+			};
+			return shell(
+				post.protectedEnvelope ? '보호된 글' : post.title || 'Untitled',
+				variants[theme],
+				{
+					kind: theme === 'docs' ? 'docs-article' : 'article',
+					article: !post.protectedEnvelope,
+					noindex: Boolean(post.protectedEnvelope),
+					publicationDates: post.protectedEnvelope ? null : post.publicationDates,
+					discussionPostId: post.protectedEnvelope ? null : post.postId,
+					description: post.protectedEnvelope ? '' : excerpt(post.body, 160),
+					url: canonical(`/posts/${encodeURIComponent(post.permalink)}/`),
+					image: rendered.firstImage?.url,
+					imageAlt: rendered.firstImage?.alt,
+					variants,
+					pieces,
+					postToc: toc(rendered.headings),
+				}
+			);
+		});
+		write(postInfo.get(post.postId).route, html, post.postId);
 	}
 
 	const PAGE_SIZE = 10;
@@ -164,12 +154,8 @@ export function emitPages({ sources, assets, pages, cache, renderMarkdown, write
 			permalink: post.permalink,
 			body: plainText(post.body),
 			tags: Array.isArray(post.tags) ? post.tags.map(String) : [],
-			folder: folders.has(String(post.folderId ?? ''))
-				? folderName(post.folderId)
-				: '분류 없는 글',
-			bookId: folders.has(String(post.folderId ?? ''))
-				? `book-folder-${post.folderId}`
-				: 'book-unfiled',
+			folder: postInfo.get(post.postId).folderName,
+			bookId: postInfo.get(post.postId).bookId,
 		}));
 	write('search.json', JSON.stringify(search));
 	const searchPanel = `<p class="eyebrow">Archive Search</p><h1>Search</h1><form class="search-form" data-search-form role="search"><label class="skip-link" for="search-query">검색어</label><input id="search-query" data-search-input type="search" autocomplete="off" placeholder="제목, 내용, 태그 검색"><button type="submit">검색</button></form><p class="muted" data-search-status aria-live="polite"></p><ul class="post-list search-results" data-search-results></ul>`;

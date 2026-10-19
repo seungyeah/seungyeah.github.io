@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export function createCacheReader({ context, generatorSha256, cacheMetrics }) {
+export function createCacheReader({ context, generatorSha256 }) {
 	// This is a private, transport-verified input, never a second public output tree.
 	// Limits affect eligibility only: any failure takes the normal fresh renderer.
 	const cacheManifestLimit = 32 * 1024 * 1024;
@@ -86,8 +86,7 @@ export function createCacheReader({ context, generatorSha256, cacheMetrics }) {
 	};
 	const loadRenderCache = () => {
 		const value = process.env.LAYALL_RENDER_CACHE_ROOT;
-		if (!value) return null;
-		cacheMetrics.status = 'rejected';
+		if (!value) return { status: 'disabled', cache: null };
 		try {
 			// Unversioned/external date data is outside the key's supported runtime scope.
 			if (
@@ -99,8 +98,9 @@ export function createCacheReader({ context, generatorSha256, cacheMetrics }) {
 				process.execArgv.some((arg) => arg.startsWith('--icu-data-dir')) ||
 				/--icu-data-dir/.test(process.env.NODE_OPTIONS ?? '')
 			)
-				return null;
-			if (!path.isAbsolute(value) || typeof process.getuid !== 'function') return null;
+				return { status: 'rejected', cache: null };
+			if (!path.isAbsolute(value) || typeof process.getuid !== 'function')
+				return { status: 'rejected', cache: null };
 			const stat = fs.lstatSync(value);
 			if (
 				!stat.isDirectory() ||
@@ -108,7 +108,7 @@ export function createCacheReader({ context, generatorSha256, cacheMetrics }) {
 				(stat.mode & 0o777) !== 0o700 ||
 				stat.uid !== process.getuid()
 			)
-				return null;
+				return { status: 'rejected', cache: null };
 			const root = fs.realpathSync(value);
 			const manifest = parseCacheManifest(
 				readCacheFile(root, '__layall-output-manifest.json', cacheManifestLimit)
@@ -126,7 +126,7 @@ export function createCacheReader({ context, generatorSha256, cacheMetrics }) {
 				typeof manifest.renderInputs.posts !== 'object' ||
 				Array.isArray(manifest.renderInputs.posts)
 			)
-				return null;
+				return { status: 'rejected', cache: null };
 			const hashes = new Map();
 			for (const entry of manifest.files) {
 				if (
@@ -134,23 +134,23 @@ export function createCacheReader({ context, generatorSha256, cacheMetrics }) {
 					!cacheHashSafe(entry.sha256) ||
 					hashes.has(entry.path)
 				)
-					return null;
+					return { status: 'rejected', cache: null };
 				hashes.set(entry.path, entry.sha256);
 			}
 			const inputs = new Map(Object.entries(manifest.renderInputs.posts));
-			if (inputs.size > 50000) return null;
+			if (inputs.size > 50000) return { status: 'rejected', cache: null };
 			const claimed = new Set();
 			for (const input of inputs.values()) {
 				if (!Array.isArray(input?.cacheableOutputs)) continue;
 				for (const output of input.cacheableOutputs) {
-					if (!cachePathSafe(output?.path) || claimed.has(output.path)) return null;
+					if (!cachePathSafe(output?.path) || claimed.has(output.path))
+						return { status: 'rejected', cache: null };
 					claimed.add(output.path);
 				}
 			}
-			cacheMetrics.status = 'ready';
-			return { root, hashes, inputs };
+			return { status: 'ready', cache: { root, hashes, inputs } };
 		} catch {
-			return null;
+			return { status: 'rejected', cache: null };
 		}
 	};
 	return {

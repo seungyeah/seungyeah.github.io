@@ -1,11 +1,14 @@
 export function createDocsNavigation({ config, root, mount }) {
 	let docsRequest, activeController;
-	let disposed = false;
+	let disposed = false,
+		generation = 0,
+		timeout;
 	const loadingDocs = new WeakSet();
 	const loadedDocs = new WeakSet();
 	const docsResource = config.docsResource;
 	const postPrefix = config.postPrefix;
 	const requestDocs = (descriptor) => {
+		if (disposed) throw new Error('Navigation disposed');
 		const url = new URL(descriptor, location.href);
 		if (
 			url.origin !== location.origin ||
@@ -19,7 +22,8 @@ export function createDocsNavigation({ config, root, mount }) {
 		if (!docsRequest) {
 			const controller = new AbortController();
 			activeController = controller;
-			const timeout = setTimeout(() => controller.abort(), 8000);
+			const requestTimeout = setTimeout(() => controller.abort(), 8000);
+			timeout = requestTimeout;
 			docsRequest = fetch(url.href, {
 				mode: 'same-origin',
 				credentials: 'omit',
@@ -45,7 +49,10 @@ export function createDocsNavigation({ config, root, mount }) {
 					docsRequest = null;
 					throw error;
 				})
-				.finally(() => clearTimeout(timeout));
+				.finally(() => {
+					clearTimeout(requestTimeout);
+					if (timeout === requestTimeout) timeout = undefined;
+				});
 		}
 		return docsRequest;
 	};
@@ -100,17 +107,24 @@ export function createDocsNavigation({ config, root, mount }) {
 		const tree = nav.querySelector('[data-docs-tree]');
 		const status = nav.querySelector('[data-docs-status]');
 		if (!tree || !status) return;
+		const mounted = generation;
+		const current = () =>
+			!disposed && mounted === generation && nav.isConnected && mount.contains(nav);
 		loadingDocs.add(nav);
 		tree.setAttribute('aria-busy', 'true');
+		let request;
 		try {
-			const entries = await requestDocs(nav.dataset.docsResource);
-			if (disposed || !nav.isConnected || !mount.contains(nav)) return;
+			request = requestDocs(nav.dataset.docsResource);
+			const entries = await request;
+			if (!current()) return;
 			tree.replaceChildren(docsTree(entries.tree));
 			loadedDocs.add(nav);
 			status.textContent = '';
 		} catch {
-			docsRequest = null;
-			if (!disposed)
+			// A malformed tree may fail after a successful fetch. Only invalidate
+			// that request; an older consumer must never clear a newer retry.
+			if (docsRequest === request) docsRequest = null;
+			if (current())
 				status.textContent = '목록을 불러오지 못했습니다. 전체 문서에서 글을 확인하세요.';
 		} finally {
 			tree.removeAttribute('aria-busy');
@@ -123,10 +137,14 @@ export function createDocsNavigation({ config, root, mount }) {
 	};
 	return {
 		bind: bindDocs,
-		loadEntries: async () => (await requestDocs(docsResource)).tree,
+		invalidate() {
+			generation++;
+		},
 		loadBooks: async () => (await requestDocs(docsResource)).books,
 		dispose() {
 			disposed = true;
+			generation++;
+			clearTimeout(timeout);
 			activeController?.abort();
 		},
 	};

@@ -1,32 +1,7 @@
-import { planRenderInputs } from './cache-identity.mjs';
 import { createCacheReader } from './cache-reader.mjs';
 
-export function createRenderCache({
-	posts,
-	folders,
-	inputHashes,
-	assetClaims,
-	outputHashes,
-	basePath,
-	publicBase,
-	owner = '',
-	repo = '',
-	generatorSha256,
-	runtimeAssets = {},
-}) {
-	const { uniquePathsByPost, siteSha256, context, postInputs } = planRenderInputs({
-		posts,
-		folders,
-		inputHashes,
-		assetClaims,
-		outputHashes,
-		basePath,
-		publicBase,
-		owner,
-		repo,
-		generatorSha256,
-		runtimeAssets,
-	});
+export function createRenderCache({ posts, plan, generatorSha256 }) {
+	const { context, postInputs } = plan;
 
 	const cacheMetrics = {
 		format: 'layall-render-cache',
@@ -47,11 +22,11 @@ export function createRenderCache({
 	const { loadRenderCache, readPost } = createCacheReader({
 		context,
 		generatorSha256,
-		cacheMetrics,
 	});
 	const cacheStarted = performance.now();
 	const cacheCpuStarted = process.cpuUsage();
-	const renderCache = loadRenderCache();
+	const { cache: renderCache, status } = loadRenderCache();
+	cacheMetrics.status = status;
 	cacheMetrics.cacheReadWallMs += performance.now() - cacheStarted;
 	cacheMetrics.cacheReadCpuMs += cpuMs(cacheCpuStarted);
 	const cachedPostHtml = (post) => {
@@ -70,12 +45,23 @@ export function createRenderCache({
 	};
 
 	return {
-		cachedPostHtml,
 		cacheMetrics,
-		cpuMs,
-		postInputs,
-		siteSha256,
-		context,
-		uniquePathsByPost,
+		renderPost(post, render) {
+			// Cache admission, protected exclusion and accounting have one owner.
+			const cached = post.protectedEnvelope ? null : cachedPostHtml(post);
+			if (cached) {
+				cacheMetrics.hits++;
+				return cached;
+			}
+			cacheMetrics.misses++;
+			const started = performance.now(),
+				cpuStarted = process.cpuUsage();
+			try {
+				return render();
+			} finally {
+				cacheMetrics.renderWallMs += performance.now() - started;
+				cacheMetrics.renderCpuMs += cpuMs(cpuStarted);
+			}
+		},
 	};
 }

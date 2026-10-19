@@ -14,6 +14,7 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 	let travel = 0;
 	const footerAnchor = strip.closest?.('.article')?.querySelector('.page-nav-anchor');
 	const footer = footerAnchor?.querySelector('.article-bottom-nav');
+	const content = footerAnchor || strip.closest?.('.article');
 	const focusReader = () => {
 		if (toggle) return toggle.focus({ preventScroll: true });
 		const originalTabIndex = strip.getAttribute('tabindex');
@@ -35,6 +36,7 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 	return {
 		refresh(scrolling = false) {
 			const height = toggle?.getBoundingClientRect().height || 0;
+			const contentWidth = content?.getBoundingClientRect().width || 0;
 			const headerHeight = header?.getBoundingClientRect().height || 0;
 			const position = readingBarPosition(strip.getBoundingClientRect().top, headerHeight);
 			const scroller = document.scrollingElement || document.documentElement;
@@ -55,6 +57,9 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 			const top = revealed ? headerHeight : 0;
 			strip.style.setProperty('--reading-bar-height', `${height}px`);
 			strip.style.setProperty('--reading-bar-top', `${top}px`);
+			if (contentWidth > 0)
+				strip.style.setProperty('--reading-content-width', `${contentWidth}px`);
+			else strip.style.removeProperty('--reading-content-width');
 			strip.dataset.pinned = String(position.pinned);
 			if (header) {
 				const hidden = position.pinned && !revealed;
@@ -100,6 +105,7 @@ export function mountReadingBar(strip, toggle, { document, window }) {
 			travel = 0;
 			delete strip.dataset.pinned;
 			strip.style.removeProperty('--reading-bar-top');
+			strip.style.removeProperty('--reading-content-width');
 			if (footerAnchor) {
 				delete footerAnchor.dataset.docked;
 				footerAnchor.style.removeProperty('--page-nav-height');

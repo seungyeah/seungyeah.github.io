@@ -1,6 +1,27 @@
 import { listeners } from './lifecycle.mjs';
 export function createSearch(config) {
-	let pageGeneration = 0;
+	let pageGeneration = 0,
+		queryGeneration = 0,
+		indexPromise;
+	// One normalized index per site controller, shared across theme remounts.
+	const loadIndex = () =>
+		(indexPromise ??= fetch(config.searchUrl)
+			.then((response) => {
+				if (!response.ok) throw new Error('Search index unavailable');
+				return response.json();
+			})
+			.then((entries) =>
+				entries.map((entry) => ({
+					entry,
+					text: [entry.title, entry.body, entry.folder, ...entry.tags]
+						.join(' ')
+						.toLocaleLowerCase(),
+				}))
+			)
+			.catch((error) => {
+				indexPromise = undefined;
+				throw error;
+			}));
 	const events = listeners();
 	const bindSearch = (preservedQuery = '') => {
 		events.dispose();
@@ -11,17 +32,24 @@ export function createSearch(config) {
 		const status = document.querySelector('[data-search-status]');
 		if (!form || !input || !results || !status) return;
 		const run = async (syncUrl = false) => {
-			const query = input.value.trim().toLocaleLowerCase();
-			const entries = await fetch(config.searchUrl).then((response) => response.json());
-			if (generation !== pageGeneration || input.isConnected === false) return;
-			const found = query
-				? entries.filter((entry) =>
-						[entry.title, entry.body, entry.folder, ...entry.tags]
-							.join(' ')
-							.toLocaleLowerCase()
-							.includes(query)
-					)
-				: entries;
+			const request = ++queryGeneration;
+			const value = input.value.trim();
+			const query = value.toLocaleLowerCase();
+			const current = () =>
+				generation === pageGeneration &&
+				request === queryGeneration &&
+				input.isConnected !== false;
+			let entries;
+			try {
+				entries = await loadIndex();
+			} catch {
+				if (current()) status.textContent = '검색 색인을 불러오지 못했습니다.';
+				return;
+			}
+			if (!current()) return;
+			const found = (
+				query ? entries.filter(({ text }) => text.includes(query)) : entries
+			).map(({ entry }) => entry);
 			results.replaceChildren(
 				...found.map((entry) => {
 					const li = document.createElement('li');
@@ -55,18 +83,16 @@ export function createSearch(config) {
 			status.textContent = found.length + '개 결과';
 			if (syncUrl) {
 				const url = new URL(location.href);
-				query
-					? url.searchParams.set('q', input.value.trim())
-					: url.searchParams.delete('q');
+				query ? url.searchParams.set('q', value) : url.searchParams.delete('q');
 				history.replaceState(null, '', url);
 			}
 		};
 		events.on(form, 'submit', (event) => {
 			event.preventDefault();
-			run(true).catch(() => (status.textContent = '검색 색인을 불러오지 못했습니다.'));
+			void run(true);
 		});
 		input.value = preservedQuery || new URL(location.href).searchParams.get('q') || '';
-		run().catch(() => (status.textContent = '검색 색인을 불러오지 못했습니다.'));
+		void run();
 	};
 	return {
 		bind: bindSearch,

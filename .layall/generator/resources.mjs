@@ -18,6 +18,7 @@ export const resources = {
 	icon192: read('icons/layall-192.png'),
 	icon512: read('icons/layall-512.png'),
 	site: read('browser/site.js', 'utf8'),
+	highlight: read('browser/highlight.mjs', 'utf8'),
 	protected: read('browser/protected.js', 'utf8'),
 	download: read('browser/download.js', 'utf8'),
 };

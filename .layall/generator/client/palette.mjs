@@ -10,6 +10,7 @@ export function mountPalettes({ root, nav, current, onSelect }) {
 		// Escape both Menu overflow and the sticky header's backdrop-filter containing block.
 		document.body.append(panel);
 		const viewport = window.visualViewport;
+		const watchingEvents = listeners();
 		let frame = 0;
 		let watching = false;
 		const contains = (target) => picker.contains(target) || panel.contains(target);
@@ -19,10 +20,7 @@ export function mountPalettes({ root, nav, current, onSelect }) {
 			summary.setAttribute('aria-expanded', 'false');
 			window.cancelAnimationFrame(frame);
 			frame = 0;
-			window.removeEventListener('resize', schedule);
-			window.removeEventListener('scroll', schedule, true);
-			viewport?.removeEventListener('resize', schedule);
-			viewport?.removeEventListener('scroll', schedule);
+			watchingEvents.dispose();
 			observer?.disconnect();
 			watching = false;
 			if (focus) summary.focus({ preventScroll: true });
@@ -87,10 +85,10 @@ export function mountPalettes({ root, nav, current, onSelect }) {
 			position();
 			if (!picker.open || watching) return;
 			watching = true;
-			window.addEventListener('resize', schedule);
-			window.addEventListener('scroll', schedule, true);
-			viewport?.addEventListener('resize', schedule);
-			viewport?.addEventListener('scroll', schedule);
+			watchingEvents.on(window, 'resize', schedule);
+			watchingEvents.on(window, 'scroll', schedule, true);
+			watchingEvents.on(viewport, 'resize', schedule);
+			watchingEvents.on(viewport, 'scroll', schedule);
 			observer?.observe(summary);
 			if (nav) observer?.observe(nav);
 		};
@@ -167,10 +165,9 @@ export function mountPalettes({ root, nav, current, onSelect }) {
 		};
 		const pagehide = () => close();
 		events.on(document, 'click', outside);
-		window.addEventListener('pagehide', pagehide);
+		events.on(window, 'pagehide', pagehide);
 		disposers.push(() => {
 			close();
-			window.removeEventListener('pagehide', pagehide);
 			picker.append(panel);
 		});
 		palettePickers.push({ contains, close });

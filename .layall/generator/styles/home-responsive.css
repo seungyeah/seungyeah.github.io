@@ -32,12 +32,9 @@ body[data-post-page='true'] .appearance-controls {
 	overflow-wrap: anywhere;
 }
 @media (max-width: 900px) {
-	.home-blog {
-		grid-template-columns: 180px minmax(0, 1fr);
-		gap: 1.5rem;
-	}
+	.home-blog,
 	.knowledge-layout {
-		grid-template-columns: 160px minmax(0, 1fr);
+		grid-template-columns: 220px minmax(0, 1fr);
 		gap: 1.5rem;
 	}
 }

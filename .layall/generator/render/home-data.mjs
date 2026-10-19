@@ -1,8 +1,6 @@
 export function projectHomeData({
 	posts,
-	folders,
-	postsByFolder,
-	unfiledPosts,
+	books: sourceBooks,
 	coverAssetsByPost,
 	inlineMarkdown,
 	orderBookPosts,
@@ -14,17 +12,6 @@ export function projectHomeData({
 		...new Set((Array.isArray(post.tags) ? post.tags : []).map(String)),
 	];
 
-	const folderTrail = (id) => {
-		const names = [];
-		const seen = new Set();
-		while (folders.has(id) && !seen.has(id)) {
-			seen.add(id);
-			const folder = folders.get(id);
-			names.unshift(String(folder.name ?? id));
-			id = String(folder.parentFolderId ?? '');
-		}
-		return names.join(' / ');
-	};
 	// Reuse the inline parser's code/link handling without rendering cached articles again.
 	const bookImageByPost = new Map();
 	for (const post of posts) {
@@ -53,19 +40,7 @@ export function projectHomeData({
 		}
 		bookImageByPost.set(post.postId, first || candidates[0].url);
 	}
-	const books = [...folders].map(([id, folder]) => ({
-		id: `book-folder-${id}`,
-		name: String(folder.name ?? id),
-		trail: folderTrail(id),
-		items: postsByFolder.get(id) ?? [],
-	}));
-	if (unfiledPosts.length)
-		books.push({
-			id: 'book-unfiled',
-			name: '분류 없는 글',
-			trail: '',
-			items: unfiledPosts,
-		});
+	const books = sourceBooks.map((book) => ({ ...book }));
 	const cover = (book) =>
 		[...book.items]
 			.sort(
@@ -78,7 +53,6 @@ export function projectHomeData({
 			.find(Boolean);
 	for (const book of books) {
 		book.image = cover(book);
-		book.orderedItems = orderBookPosts(book.items);
 		const dates = book.items.map(publicationDay).filter(Boolean).sort();
 		book.period = dates.length
 			? `${dates[0].replaceAll('-', '.')} - ${dates.at(-1).replaceAll('-', '.')}`

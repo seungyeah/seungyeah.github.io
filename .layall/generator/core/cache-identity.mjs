@@ -21,6 +21,10 @@ export function planRenderInputs({
 	for (const asset of assetClaims) uniquePathsByPost.get(asset.postId).push(asset.path);
 	for (const paths of uniquePathsByPost.values()) paths.sort();
 	const hashInput = (value) => createHash('sha256').update(value).digest('hex');
+	const folderHashes = new Map(
+		[...folders].map(([id, folder]) => [id, hashInput(JSON.stringify(folder))])
+	);
+	const missingFolderHash = hashInput('null');
 	const siteSha256 = inputHashes.get('.layall/site.json') ?? hashInput('{}');
 	const context = {
 		basePath,
@@ -43,9 +47,8 @@ export function planRenderInputs({
 			.map((post) => {
 				const route = `posts/${post.permalink}/index.html`;
 				const sourceSha256 = inputHashes.get(path.join(post.sourceDir, 'post.layallnote'));
-				const folderSha256 = hashInput(
-					JSON.stringify(folders.get(String(post.folderId ?? '')) ?? null)
-				);
+				const folderSha256 =
+					folderHashes.get(String(post.folderId ?? '')) ?? missingFolderHash;
 				const assets = uniquePathsByPost
 					.get(post.postId)
 					.filter((name) => name !== route)

@@ -1,6 +1,6 @@
 .home-blog {
 	display: grid;
-	grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+	grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
 	gap: 2.5rem;
 }
 .home-blog .home-introduction {
@@ -124,7 +124,7 @@
 }
 .knowledge-layout {
 	display: grid;
-	grid-template-columns: 190px minmax(0, 1fr);
+	grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
 	gap: 2.5rem;
 	margin-top: 1.5rem;
 }

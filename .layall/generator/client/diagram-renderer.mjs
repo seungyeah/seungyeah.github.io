@@ -54,8 +54,27 @@ export async function renderDiagramFrame(input, { document, window, active = () 
 		host.innerHTML = svg;
 		// No bindFunctions, navigation, scripts, downloads or interactive links.
 		host.addEventListener('click', (event) => event.preventDefault());
-		const measure = () =>
-			report('ready', Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)));
+		const renderedSvg = host.querySelector?.('svg')?.outerHTML || '';
+		const measure = () => {
+			if (!renderedSvg)
+				return report(
+					'ready',
+					Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24))
+				);
+			return (
+				active() &&
+				window.parent.postMessage(
+					{
+						kind: 'layall:diagram',
+						token: input.token,
+						state: 'ready',
+						height: Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)),
+						svg: renderedSvg,
+					},
+					'*'
+				)
+			);
+		};
 		const observer = new window.ResizeObserver(measure);
 		observer.observe(host);
 		measure();
@@ -66,8 +85,8 @@ export async function renderDiagramFrame(input, { document, window, active = () 
 	}
 }
 
-// No network or protected text in messages out of this frame. Only fixed state,
-// token and dimensions cross back to the parent.
+// No network or protected source text leaves this frame. Only the rendered SVG,
+// fixed state, token and dimensions cross back to the parent.
 export function mountDiagramFrame(input, { document, window }, load = (url) => import(url)) {
 	let active = true,
 		started = false,

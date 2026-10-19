@@ -283,9 +283,14 @@ html[data-theme='docs'] {
 html[data-theme='docs'] body[data-page-kind='docs-article'] .docs-layout > .docs-sidebar-wrap {
 	display: none;
 }
+html[data-theme='docs'] body[data-page-kind='docs-article'] .docs-layout {
+	grid-template-columns: minmax(0, 1fr);
+}
 html[data-theme='docs'] body[data-page-kind='docs-article'] .docs-layout > [data-article-main] {
 	grid-column: 1 / -1;
 	width: min(100%, 760px);
+	max-width: 760px;
+	margin-inline: auto;
 	justify-self: center;
 }
 .docs-sidebar-wrap {

@@ -1,13 +1,6 @@
 export const themeOrder = ['layall', 'blog', 'minimal', 'portfolio', 'docs'];
 export const themeNames = new Set(themeOrder);
 // Stable storage/layout IDs; only the visitor-facing palette names change.
-export const palettes = {
-	layall: { name: '청록', primary: '#566b72', dark: '#aec4c8' },
-	blog: { name: '초록', primary: '#286a47', dark: '#8dcca4' },
-	minimal: { name: '차콜', primary: '#20201e', dark: '#d8d8d2' },
-	portfolio: { name: '올리브', primary: '#556846', dark: '#b3c69d' },
-	docs: { name: '파랑', primary: '#3973a8', dark: '#9ac4e9' },
-};
 
 export const tokenSets = {
 	root: {
@@ -108,3 +101,37 @@ export const tokenSets = {
 		shadow: '0 22px 58px rgba(0,0,0,.28)',
 	},
 };
+
+// Palette chips, site CSS and Giscus resolve the same accent values/formula.
+const names = { layall: '청록', blog: '초록', minimal: '차콜', portfolio: '올리브', docs: '파랑' };
+const darkAccents = {
+	layall: tokenSets.layallDark.accent,
+	blog: '#8dcca4',
+	minimal: '#d8d8d2',
+	portfolio: '#b3c69d',
+	docs: '#9ac4e9',
+};
+export const palettes = Object.fromEntries(
+	themeOrder.map((name) => [
+		name,
+		{
+			name: names[name],
+			primary: tokenSets[name].accent,
+			dark: darkAccents[name],
+		},
+	])
+);
+export function darkAccentTokens(name, surface = 'var(--surface)') {
+	const accent = palettes[name].dark;
+	return { accent, 'accent-soft': `color-mix(in srgb,${accent} 16%,${surface})` };
+}
+export function themeTokens(name, mode) {
+	if (!themeOrder.includes(name) || !['light', 'dark'].includes(mode))
+		throw new Error('unknown theme');
+	const tokens = { ...tokenSets.root, ...tokenSets[name] };
+	if (mode === 'dark') {
+		Object.assign(tokens, tokenSets.dark, name === 'layall' ? tokenSets.layallDark : {});
+		Object.assign(tokens, darkAccentTokens(name, tokens.surface));
+	}
+	return tokens;
+}

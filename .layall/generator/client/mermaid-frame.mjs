@@ -1,6 +1,5 @@
 import { esc, js } from '../render/text.mjs';
-import { themeOrder } from '../render/theme-data.mjs';
-import { themeTokens } from '../render/tokens.mjs';
+import { themeOrder, themeTokens } from '../render/theme-data.mjs';
 
 export function diagramTheme(root, darkSystem = false) {
 	const theme = themeOrder.includes(root.dataset.theme) ? root.dataset.theme : 'layall';

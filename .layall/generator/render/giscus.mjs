@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { themeTokens } from './tokens.mjs';
+import { themeTokens } from './theme-data.mjs';
 const template = fs.readFileSync(new URL('../styles/giscus.css', import.meta.url), 'utf8');
 const fillTemplate = (values) =>
 	template.replace(/__[A-Z_]+__/g, (slot) => {

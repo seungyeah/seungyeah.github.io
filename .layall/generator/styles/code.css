@@ -118,6 +118,96 @@ html[data-color-mode='dark'] .article {
 	height: 200px;
 	border: 0;
 	background: transparent;
+	pointer-events: none;
+}
+.article-diagram-shell {
+	min-width: 0;
+	max-width: 100%;
+	cursor: zoom-in;
+	touch-action: manipulation;
+	user-select: none;
+}
+.article-diagram-shell:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+.article-mermaid-viewer {
+	position: fixed;
+	inset: 0;
+	z-index: 2200;
+	display: flex;
+	width: 100vw;
+	height: 100dvh;
+	max-height: 100dvh;
+	min-height: 0;
+	flex-direction: column;
+	overflow: hidden;
+	touch-action: none;
+	background: color-mix(in srgb, #e8f7fb 22%, var(--paper));
+	color: var(--ink);
+}
+html[data-color-mode='dark'] .article-mermaid-viewer {
+	background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+@media (prefers-color-scheme: dark) {
+	html[data-color-mode='system'] .article-mermaid-viewer {
+		background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+	}
+}
+.article-mermaid-viewer-frame {
+	position: relative;
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow: hidden;
+	overscroll-behavior: contain;
+	touch-action: none;
+}
+.article-mermaid-viewer-stage {
+	position: absolute;
+	overflow: visible;
+	transform-origin: top left;
+}
+.article-mermaid-viewer-stage svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	max-height: none;
+	overflow: visible;
+}
+.article-mermaid-viewer-tools {
+	position: absolute;
+	z-index: 10;
+	top: calc(0.75rem + env(safe-area-inset-top, 0px));
+	right: calc(0.75rem + env(safe-area-inset-right, 0px));
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+}
+.article-mermaid-viewer-tool {
+	display: inline-flex;
+	width: 2.5rem;
+	height: 2.5rem;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: rgb(0 0 0 / 65%);
+	color: #fff;
+	backdrop-filter: blur(8px);
+	cursor: pointer;
+}
+.article-mermaid-viewer-tool:hover {
+	background: rgb(0 0 0 / 78%);
+}
+.article-mermaid-viewer-tool:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+.article-mermaid-viewer-tool:disabled {
+	opacity: 0.35;
+	cursor: default;
 }
 .article-diagram[data-pending] {
 	position: absolute;

@@ -30,7 +30,7 @@ try {
 } finally {
 	fs.closeSync(fd);
 }
-if (createHash('sha256').update(bytes).digest('hex') !== '6848bc06bbe579eb95fb079112cade871144bce5b9a44d80ccc5243fc255170e')
+if (createHash('sha256').update(bytes).digest('hex') !== 'a8e0498b0436ba117edc025f0474d53c922d1ca9fa3645e8085cff36d6533fad')
 	throw new Error('generator verifier pin mismatch');
 const { verifyPackage } = await import(pathToFileURL(verifier));
 const identity = verifyPackage(root);

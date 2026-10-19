@@ -1,6 +1,8 @@
 import { emitAttachments } from './core/assets.mjs';
+import { planRenderInputs } from './core/cache-identity.mjs';
 import { createRenderCache } from './core/cache.mjs';
 import { createOutput } from './core/output.mjs';
+import { indexPublications } from './core/publications.mjs';
 import { readSources } from './core/sources.mjs';
 import { emitStaticAssets } from './core/static-assets.mjs';
 import { emitFeeds } from './render/feeds.mjs';
@@ -23,27 +25,31 @@ export function generate({ out, sha, generatorSha256, resources }) {
 	const assets = emitAttachments({ ...sources, write });
 	const staticAssets = emitStaticAssets({ resources, write, href: sources.href });
 	emitPwa({ ...sources, write, staticAssets });
-	const pages = createPages({ sources, assets, staticAssets, write });
-	const cache = createRenderCache({
+	const publications = indexPublications(sources);
+	const markdown = createMarkdown(sources);
+	const pages = createPages({ sources, assets, staticAssets, write, publications, markdown });
+	const plan = planRenderInputs({
 		...sources,
 		...assets,
-		...output,
+		outputHashes: output.outputHashes,
 		generatorSha256,
 		runtimeAssets: staticAssets,
 	});
-	const { renderMarkdown } = createMarkdown(sources);
+	const cache = createRenderCache({ posts: sources.posts, plan, generatorSha256 });
+	const { renderMarkdown } = markdown;
 	emitPages({ sources, assets, pages, cache, renderMarkdown, write });
 	emitFeeds({ ...sources, ...pages, write });
 	write(
 		'download.html',
 		`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>첨부파일 다운로드</title><p id="status">첨부파일을 준비합니다.</p><script type="application/json" data-download-config>${js({ basePath: sources.basePath })}</script><script defer src="${esc(sources.href('/' + staticAssets.download))}"></script></html>`
 	);
-	output.finish({ ...cache, ...assets, sha, generatorSha256 });
+	output.finish({ ...plan, ...assets, sha, generatorSha256 });
+	const generationCpu = process.cpuUsage(generationCpuStarted);
 	process.stderr.write(
 		`LAYALL_RENDER_CACHE_METRICS=${JSON.stringify({
 			...cache.cacheMetrics,
 			generationWallMs: performance.now() - generationStarted,
-			generationCpuMs: cache.cpuMs(generationCpuStarted),
+			generationCpuMs: (generationCpu.user + generationCpu.system) / 1000,
 		})}\n`
 	);
 }

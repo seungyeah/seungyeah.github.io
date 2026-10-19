@@ -1,5 +1,17 @@
-import { applyArticleAppearance } from './appearance.mjs';
 import { listeners } from './lifecycle.mjs';
+
+// An iframe draft belongs to its browsing context. Article appearance changes
+// must update attributes in place; never move the article through a fragment.
+function applyArticleAppearance(root, mount, next) {
+	const articleShell = mount.querySelector('[data-article-shell]');
+	if (!articleShell) return false;
+	root.dataset.theme = next;
+	root.dataset.layallTheme = next;
+	articleShell.className = next === 'docs' ? 'docs-layout' : 'article-frame';
+	articleShell.querySelector('[data-article-main]').className =
+		next === 'docs' ? 'docs-content' : 'article-shell theme-article-' + next;
+	return true;
+}
 
 export function createThemeController({
 	config,
@@ -52,16 +64,16 @@ export function createThemeController({
 		});
 	};
 	const activate = (next) => {
-		if (!layoutThemes.has(next) || !mount) return;
+		if (!layoutThemes.has(next) || !mount) return false;
+		if (root.dataset.theme === next) return true;
 		if (applyArticleAppearance(root, mount, next)) {
 			syncLayout();
 			onArticleAppearance();
-			return;
+			return true;
 		}
 		const template = document.querySelector('template[data-theme-layout="' + next + '"]');
-		if (!template) return;
+		if (!template) return false;
 		const query = document.querySelector('[data-search-input]')?.value || '';
-		beforeReplace();
 		const fragment = template.content.cloneNode(true);
 		fragment.querySelectorAll('[data-layout-id]').forEach((node) => {
 			node.id = node.dataset.layoutId;
@@ -74,6 +86,7 @@ export function createThemeController({
 			])
 		);
 		const used = new Set();
+		beforeReplace(); // Unmount controllers before detaching their DOM.
 		fragment.querySelectorAll('[data-theme-slot]').forEach((target) => {
 			const piece = retained.get(target.dataset.themeSlot);
 			if (piece) {
@@ -90,6 +103,7 @@ export function createThemeController({
 		mount.replaceChildren(fragment);
 		syncLayout();
 		onPageMounted(query);
+		return true;
 	};
 	const savedColor = readStored('layall-color-mode');
 	if (colorModes.has(savedColor)) root.dataset.colorMode = savedColor;
@@ -110,22 +124,29 @@ export function createThemeController({
 				syncLayout();
 				return;
 			}
-			activate(next);
-			writeStored(layoutKey, next);
+			if (activate(next)) writeStored(layoutKey, next);
+			else syncLayout();
 		})
 	);
 
 	return {
 		current: () => root.dataset.theme,
 		select(next) {
-			if (!layoutThemes.has(next)) return;
-			activate(next);
-			writeStored(layoutKey, next);
+			const success = activate(next);
+			if (success) writeStored(layoutKey, next);
+			else syncLayout();
+			return success;
 		},
 		restore() {
 			const remembered = readStored(layoutKey);
-			if (layoutThemes.has(remembered) && remembered !== authorTheme) activate(remembered);
-			else {
+			if (
+				layoutThemes.has(remembered) &&
+				remembered !== authorTheme &&
+				activate(remembered)
+			) {
+				// Article appearance retains DOM but still needs its initial mount.
+				if (mount?.querySelector('[data-article-shell]')) onPageMounted();
+			} else {
 				root.dataset.theme = authorTheme;
 				root.dataset.layallTheme = authorTheme;
 				syncLayout();

@@ -27,7 +27,7 @@ export function diagramURLs(config, origin) {
 }
 const hex = (bytes) =>
 	[...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
-export async function readDiagramAsset(url, limit, hash, { window }, signal) {
+async function readDiagramAsset(url, limit, hash, { window }, signal) {
 	const response = await window.fetch(url, {
 		credentials: 'omit',
 		redirect: 'error',

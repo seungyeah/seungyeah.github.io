@@ -128,7 +128,24 @@
       };
       host.innerHTML = svg;
       host.addEventListener("click", (event) => event.preventDefault());
-      const measure = () => report("ready", Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)));
+      const renderedSvg = host.querySelector?.("svg")?.outerHTML || "";
+      const measure = () => {
+        if (!renderedSvg)
+          return report(
+            "ready",
+            Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24))
+          );
+        return active() && window2.parent.postMessage(
+          {
+            kind: "layall:diagram",
+            token: input2.token,
+            state: "ready",
+            height: Math.max(80, Math.ceil(host.getBoundingClientRect().height + 24)),
+            svg: renderedSvg
+          },
+          "*"
+        );
+      };
       const observer = new window2.ResizeObserver(measure);
       observer.observe(host);
       measure();

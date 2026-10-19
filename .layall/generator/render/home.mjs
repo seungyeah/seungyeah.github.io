@@ -1,14 +1,8 @@
-import { projectHeatmap, projectHomeData } from './home-data.mjs';
+import { projectHeatmap } from './home-data.mjs';
 import { esc, tagSegment } from './text.mjs';
 export function createHomeRenderer({
 	posts,
-	folders,
-	postsByFolder,
-	unfiledPosts,
-	coverAssetsByPost,
-	inlineMarkdown,
-	orderBookPosts,
-	site,
+	homeData,
 	publicationDay,
 	postUrl,
 	docsTreeEntries,
@@ -29,17 +23,7 @@ export function createHomeRenderer({
 	siteDescription,
 	renderMarkdown,
 }) {
-	const { postTags, bookImageByPost, books, starred, dated, activityByDay } = projectHomeData({
-		posts,
-		folders,
-		postsByFolder,
-		unfiledPosts,
-		coverAssetsByPost,
-		inlineMarkdown,
-		orderBookPosts,
-		site,
-		publicationDay,
-	});
+	const { postTags, books, starred, dated, activityByDay } = homeData;
 	const blogBooks = () => {
 		const covers = books
 			.map((book) => {
@@ -122,8 +106,8 @@ export function createHomeRenderer({
 					`<a href="#${id}" id="blog-tab-${id}" data-blog-tab="${id}">${label}</a>`
 			)
 			.join('')}</nav>`;
+	const tags = [...new Set(posts.flatMap(postTags))].sort(compareText);
 	const homePosts = (selectedTheme) => {
-		const tags = [...new Set(posts.flatMap(postTags))].sort(compareText);
 		const listing =
 			selectedTheme === 'docs'
 				? `<nav class="docs-nav docs-directory" aria-label="전체 문서">${staticDocsTree(docsTreeEntries, true)}</nav>`
@@ -138,19 +122,22 @@ export function createHomeRenderer({
 					? `<div class="blog-grid">${starred.map(blogCard).join('')}</div>`
 					: compactList(starred);
 		const stars = `<section class="home-stars"><h2>Pinned</h2>${starred.length ? starList : '<p class="muted">아직 고정한 글이 없습니다.</p>'}</section>`;
-		const heatmap = `<section class="home-heatmap" data-heatmap><h2>Post Activity</h2>${blogHeatmap(posts)}</section>`;
+		const heatmap = `<section class="home-heatmap" data-heatmap><h2>Post Activity</h2>${heatmapMarkup}</section>`;
 		const activity = `<section class="home-activity"><h2>Timeline</h2>${dated.length ? `<ol class="post-activity">${[...activityByDay].map(([day, items]) => `<li${items.length > 1 ? ' class="post-activity-multiple"' : ''}><time datetime="${day}">${day}</time>${items.map((post) => `<div class="linked-post-title">${linkedPostTitle(post)}</div>`).join('')}</li>`).join('')}</ol>` : '<p class="muted">아직 게시한 글이 없습니다.</p>'}<a href="#posts" data-blog-open-posts>모든 글 보기 →</a></section>`;
 		const composition =
 			selectedTheme === 'layall'
 				? `<div class="archive-ledger">${heatmap}${activity}</div>`
 				: `${heatmap}${activity}`;
-		return `<section id="overview" data-blog-panel="overview" class="blog-panel">${stars}${reactionOverview()}${composition}</section>`;
+		return `<section id="overview" data-blog-panel="overview" class="blog-panel">${stars}${reactions}${composition}</section>`;
 	};
+	const tabs = homeTabs();
+	const bookMarkup = blogBooks();
+	const profile = homeProfile();
+	const heatmapMarkup = blogHeatmap(posts);
+	const reactions = reactionOverview();
+	const aboutMe = `<section id="about-me" data-blog-panel="about-me" class="blog-panel">${siteDescription.trim() ? `<div class="home-introduction article-body">${renderMarkdown(siteDescription).html}</div>` : '<p class="muted">아직 블로그 소개가 없습니다.</p>'}</section>`;
 	const renderHome = (_items, selectedTheme = theme) => {
-		const tabs = homeTabs();
-		const aboutMe = `<section id="about-me" data-blog-panel="about-me" class="blog-panel">${siteDescription.trim() ? `<div class="home-introduction article-body">${renderMarkdown(siteDescription).html}</div>` : '<p class="muted">아직 블로그 소개가 없습니다.</p>'}</section>`;
-		const panels = `${aboutMe}${homeOverview(selectedTheme)}<section id="books" data-blog-panel="books" class="blog-panel"><header class="books-heading" data-books-heading hidden><h2><a class="books-back" href="#books" data-books-back aria-label="Books 목차로 돌아가기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg><span data-books-title></span></a></h2><p class="books-meta muted"><span data-books-count></span><span data-books-period></span></p></header>${blogBooks()}</section>${homePosts(selectedTheme)}`;
-		const profile = homeProfile();
+		const panels = `${aboutMe}${homeOverview(selectedTheme)}<section id="books" data-blog-panel="books" class="blog-panel"><header class="books-heading" data-books-heading hidden><h2><a class="books-back" href="#books" data-books-back aria-label="Books 목차로 돌아가기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg><span data-books-title></span></a></h2><p class="books-meta muted"><span data-books-count></span><span data-books-period></span></p></header>${bookMarkup}</section>${homePosts(selectedTheme)}`;
 		const composition =
 			selectedTheme === 'blog'
 				? `${profile}<div class="home-main">${tabs}${panels}</div>`
@@ -159,5 +146,5 @@ export function createHomeRenderer({
 					: `${profile}${tabs}<div class="home-main">${panels}</div>`;
 		return `<main id="content" class="home home-${selectedTheme}" data-blog-home>${composition}</main>`;
 	};
-	return { renderHome, docsHome, postTags, bookImageByPost };
+	return { renderHome, docsHome };
 }

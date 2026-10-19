@@ -60,20 +60,22 @@ export function readSources() {
 		}
 	})();
 	const urls = createUrls(site);
+	let dateFormatter;
+	try {
+		dateFormatter = new Intl.DateTimeFormat(site.locale || 'ko-KR', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			timeZone: 'UTC',
+		});
+	} catch {
+		/* Invalid author locale preserves the ISO fallback. */
+	}
 	const formatDate = (value) => {
 		if (value === undefined || value === null || value === '') return '';
-		const date = new Date(value ?? 0);
+		const date = new Date(value);
 		if (Number.isNaN(date.getTime())) return '';
-		try {
-			return new Intl.DateTimeFormat(site.locale || 'ko-KR', {
-				year: 'numeric',
-				month: 'short',
-				day: 'numeric',
-				timeZone: 'UTC',
-			}).format(date);
-		} catch {
-			return date.toISOString().slice(0, 10);
-		}
+		return dateFormatter ? dateFormatter.format(date) : date.toISOString().slice(0, 10);
 	};
 
 	const folders = new Map();

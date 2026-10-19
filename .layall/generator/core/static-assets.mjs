@@ -18,6 +18,7 @@ export function emitStaticAssets({ resources, write, href }) {
 	const css = emit('site', 'css', siteCss(resources.styles, href('/' + tmoneyFont)));
 	const noScriptCss = emit('no-script', 'css', resources.noScriptStyles);
 	const site = emit('site', 'js', resources.site);
+	const highlight = emit('highlight', 'mjs', resources.highlight);
 	// Emit the protected runtime unconditionally: deleting the last protected post
 	// must not change a surviving public article's shared resource identity.
 	const protectedClient = emit('protected', 'js', resources.protected);
@@ -34,6 +35,7 @@ export function emitStaticAssets({ resources, write, href }) {
 		css,
 		noScriptCss,
 		site,
+		highlight,
 		protected: protectedClient,
 		download,
 		diagram,
