@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 3cef1be0dcc9a61ad762f4b08c982702223eb84111508cef629ed2e65ac91576",
+  "sourceStamp": "// layall-generator-source-sha256: 12173301bc41395e51300e0a14e24e12f9b37f5ee512601b39986d0f7ba5f219",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -2182,7 +2182,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/giscus.mjs",
-      "sha256": "5d4fdd6042c608d55c87cf063c2bdb91456e60df2f8d7a5564ef65ecb438f58f"
+      "sha256": "b28ce3aa75bab59d59e11412807a174f3727f781d93254fb548f788a2bbda4af"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/home-data.mjs",
