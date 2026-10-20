@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "45402cbf912082358f0a48b9227315b2524d310134886065e8630e60b27c1fd8",
+  "sha256": "ec564f6ed7e7704191cdb07248a69902f805755d04342740b1e967ecec80fa01",
   "entries": [
     {
       "path": "build.mjs",
@@ -571,7 +571,7 @@
     {
       "path": "generator/build-inputs.json",
       "size": 118592,
-      "sha256": "db8e976cbf363a126bbb1f529a8bfad0408a8f17c8363faac19db6762c182858"
+      "sha256": "97ae54cbfc4210ced6d362af1048b9b02c45dea4d4b42fd35a37a52bc2f6be5d"
     },
     {
       "path": "generator/client/article-code.mjs",
@@ -920,18 +920,18 @@
     },
     {
       "path": "generator/styles/home-layouts.css",
-      "size": 3362,
-      "sha256": "673c201422e12906b55e1504d942ef3225cd1566004eb79ebddc94cabf5a488a"
+      "size": 3505,
+      "sha256": "d12d02aa6715e7455e0a35aba143b9398c3222f176a3b335fba547c5ed5f0830"
     },
     {
       "path": "generator/styles/home-responsive.css",
-      "size": 2543,
-      "sha256": "93351832cc83f3df3171c19621ecca2a2bae1dfdc5cde84e265bb173b55df6b7"
+      "size": 2584,
+      "sha256": "cf6957b3c0a2de0e3030bcb98155ded24c23086069ccb9331a7beb6ee427769a"
     },
     {
       "path": "generator/styles/home.css",
-      "size": 3254,
-      "sha256": "f31d582b569a363f8203ac0b2bb77b53bbbf9bd795cc01ca41c466ac311966df"
+      "size": 3424,
+      "sha256": "efae7c2389049cf088c19ad6a96bde6044f4142f10334a066784dd90f97dfb43"
     },
     {
       "path": "generator/styles/index.mjs",
@@ -955,8 +955,8 @@
     },
     {
       "path": "generator/styles/note-navigation.css",
-      "size": 8933,
-      "sha256": "ec16207a0a9228042d511758e7c155ec7847554f96f79f1ba5e1361ecda00e80"
+      "size": 8934,
+      "sha256": "b560ff700b34e69c3034000846ed12b94e7a9c03db99830e7cb31576937ffdba"
     },
     {
       "path": "generator/styles/palette.css",

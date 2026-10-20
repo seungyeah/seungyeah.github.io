@@ -40,6 +40,7 @@ body[data-post-page='true'] .appearance-controls {
 }
 @media (max-width: 680px) {
 	.home {
+		--home-tabs-top: 60px;
 		padding-top: 1.5rem;
 	}
 	.home-blog,
@@ -140,8 +141,7 @@ body[data-post-page='true'] .appearance-controls {
 	border-radius: 4px;
 }
 @media (max-width: 680px) {
-	.home-blog .home-profile,
-	.home-docs .home-profile {
-		top: 76px;
+	.home-docs:not([data-blog-active-tab='about-me']) .home-profile {
+		display: none;
 	}
 }

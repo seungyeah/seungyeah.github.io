@@ -28,14 +28,19 @@
 :is(.home-blog, .home-docs, .home-minimal) .profile-links {
 	justify-content: flex-start;
 }
-.home-blog .home-profile,
-.home-docs .home-profile {
-	position: sticky;
-	top: 92px;
-	align-self: start;
-	align-items: start;
-	height: max-content;
-	z-index: 1;
+@media (min-width: 681px) {
+	.home-blog .home-profile,
+	.home-docs .home-profile {
+		position: sticky;
+		top: calc(var(--home-tabs-top) + 1.5rem);
+		align-self: start;
+		align-items: start;
+		height: max-content;
+		z-index: 1;
+	}
+	.home-docs .home-profile {
+		top: calc(var(--home-tabs-top) + 4rem);
+	}
 }
 .home-minimal .blog-tabs {
 	justify-content: center;

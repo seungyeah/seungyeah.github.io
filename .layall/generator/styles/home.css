@@ -1,4 +1,5 @@
 .home {
+	--home-tabs-top: 68px;
 	padding: 3rem 0;
 	min-width: 0;
 }
@@ -47,10 +48,14 @@
 	overflow-wrap: anywhere;
 }
 .blog-tabs {
+	position: sticky;
+	z-index: 20;
+	top: var(--home-tabs-top);
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.4rem;
 	border-bottom: 1px solid var(--line);
+	background: var(--paper);
 	min-width: 0;
 	max-width: 100%;
 }
@@ -68,7 +73,7 @@
 }
 .blog-panel {
 	padding-top: 1.75rem;
-	scroll-margin-top: 6rem;
+	scroll-margin-top: calc(var(--home-tabs-top) + 4rem);
 }
 .blog-panel:focus,
 .book-contents:focus {
@@ -104,7 +109,7 @@
 	margin: 0;
 }
 .home-introduction :is(h1, h2, h3, h4, h5, h6) {
-	scroll-margin-top: 6rem;
+	scroll-margin-top: calc(var(--home-tabs-top) + 4rem);
 	margin: 1.5em 0 0.25em;
 	line-height: 1.25;
 	letter-spacing: -0.025em;
