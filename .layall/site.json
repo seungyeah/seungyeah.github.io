@@ -39,6 +39,11 @@
       "nodeId": "D_kwDOUROzx84AqMlh",
       "number": 14
     },
+    "post-77c2a5dc479252a8a04caacfb8d620a7": {
+      "authorId": "U_kgDOBwcVmQ",
+      "nodeId": "D_kwDOUROzx84AqqWF",
+      "number": 15
+    },
     "post-7f3dbd195859c67009bad241cfacd4a1": {
       "authorId": "U_kgDOBwcVmQ",
       "nodeId": "D_kwDOUROzx84AqGTo",
@@ -86,7 +91,7 @@
   },
   "githubIssuesEnabled": true,
   "githubReactionSnapshot": {
-    "capturedAt": 1792505513343,
+    "capturedAt": 1793330103134,
     "posts": {
       "post-23c354cda433bb63de6699862f0afa87": {
         "counts": {
@@ -140,6 +145,19 @@
         },
         "discussionId": "D_kwDOUROzx84AqMlh"
       },
+      "post-77c2a5dc479252a8a04caacfb8d620a7": {
+        "counts": {
+          "+1": 0,
+          "-1": 0,
+          "confused": 0,
+          "eyes": 0,
+          "heart": 0,
+          "hooray": 0,
+          "laugh": 0,
+          "rocket": 0
+        },
+        "discussionId": "D_kwDOUROzx84AqqWF"
+      },
       "post-7f3dbd195859c67009bad241cfacd4a1": {
         "counts": {
           "+1": 0,
@@ -188,7 +206,7 @@
           "heart": 0,
           "hooray": 0,
           "laugh": 0,
-          "rocket": 0
+          "rocket": 1
         },
         "discussionId": "D_kwDOUROzx84AqIaH"
       },
