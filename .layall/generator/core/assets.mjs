@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { safeSocialImage } from '../render/text.mjs';
+import { inspectMp4 } from './mp4.mjs';
 
 export function emitAttachments({ site, posts, inputHashes, write, href, absolute }) {
 	// Profile images are shared managed outputs, never attributed to a post's deletion ledger.
@@ -84,12 +85,14 @@ export function emitAttachments({ site, posts, inputHashes, write, href, absolut
 			// Only signature-checked raster files retain an executable-origin URL. Everything
 			// else is base64 JSON, including HTML/SVG/PDF/media and misleading extensions.
 			// Even a direct URL cannot execute uploaded content on the key's origin.
+			const video = asset.mimeType === 'video/mp4' && Boolean(inspectMp4(bytes));
 			const published = raster
 				? bytes
 				: Buffer.from(
 						JSON.stringify({
 							format: 'layall-download',
 							version: 1,
+							...(video ? { mimeType: 'video/mp4' } : {}),
 							name: Buffer.from(segments.at(-1)).toString('base64'),
 							data: bytes.toString('base64'),
 						})
@@ -100,7 +103,6 @@ export function emitAttachments({ site, posts, inputHashes, write, href, absolut
 			const assetUrl = raster
 				? href(`/${destination}`)
 				: href('/download.html') + '#' + encodeURIComponent(destination);
-			if (raster) coverAssets.push({ id: String(asset.id ?? ''), url: assetUrl });
 			assetClaims.push({
 				postId: post.postId,
 				path: destination,
@@ -111,9 +113,33 @@ export function emitAttachments({ site, posts, inputHashes, write, href, absolut
 					url: assetUrl,
 					publicUrl: raster ? safeSocialImage(absolute(`/${destination}`)) : '',
 					image: raster,
+					videoEnvelope: video ? href(`/${destination}`) : null,
+					posterId: asset.posterId,
+					posterFor: asset.posterFor,
+					mimeType: asset.mimeType,
 				});
-			if (raster && !imageByPost.has(post.postId)) imageByPost.set(post.postId, assetUrl);
 		}
+		// Resolve posters after all files exist, then preserve source attachment order
+		// for the cover fallback. A video's derived raster is never its own candidate.
+		for (const [id, asset] of assets) {
+			if (asset.image && !asset.posterFor) {
+				coverAssets.push({ id, url: asset.url, image: true });
+				continue;
+			}
+			const poster = assets.get(asset.posterId);
+			if (!asset.videoEnvelope || !poster?.image || poster.posterFor !== id) continue;
+			asset.posterUrl = poster.url;
+			asset.posterPublicUrl = poster.publicUrl;
+			coverAssets.push({
+				id,
+				url: poster.url,
+				image: false,
+				videoEnvelope: asset.videoEnvelope,
+				posterUrl: poster.url,
+				posterPublicUrl: poster.url,
+			});
+		}
+		if (coverAssets.length) imageByPost.set(post.postId, coverAssets[0].url);
 	}
 	return { profileAsset, assetClaims, imageByPost, assetsByPost, coverAssetsByPost };
 }

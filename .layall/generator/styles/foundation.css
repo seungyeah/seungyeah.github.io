@@ -40,7 +40,7 @@
 	max-width: 100%;
 	height: auto;
 }
-.article-body .article-image {
+.article-body :is(.article-image, .article-video) {
 	min-width: 0;
 	margin: 1.25rem 0;
 	padding: 0.5rem;
@@ -53,7 +53,7 @@
 	margin: auto;
 	border-radius: 7px;
 }
-.article-image figcaption {
+:is(.article-image, .article-video) figcaption {
 	margin-top: 0.4rem;
 	color: var(--muted);
 	font-size: 0.85em;
@@ -66,7 +66,7 @@
 	margin: 1.25rem 0;
 	align-items: start;
 }
-.article-body .image-gallery .article-image {
+.article-body .image-gallery :is(.article-image, .article-video) {
 	margin: 0;
 }
 .attachment-missing {

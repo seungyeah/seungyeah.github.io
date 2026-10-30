@@ -9,6 +9,7 @@ import { mountNoteNavigation } from './note-navigation.mjs';
 import { mountPalettes } from './palette.mjs';
 import { createSearch } from './search.mjs';
 import { createThemeController } from './theme-controller.mjs';
+import { mountPublicVideos } from './video.mjs';
 
 export function mountSite(config, discussionConfig) {
 	const events = listeners();
@@ -22,11 +23,13 @@ export function mountSite(config, discussionConfig) {
 	const nav = document.querySelector('[data-nav]');
 	const navToggle = document.querySelector('[data-nav-toggle]');
 	let noteNavigation;
+	const videos = mountPublicVideos(document);
 	const themes = createThemeController({
 		config,
 		root,
 		mount,
 		beforeReplace() {
+			videos.clear();
 			search.invalidate();
 			docs.invalidate();
 			blog.dispose();
@@ -37,6 +40,7 @@ export function mountSite(config, discussionConfig) {
 			noteNavigation?.refresh();
 		},
 		onPageMounted(query) {
+			videos.refresh();
 			docs.bind();
 			search.bind(query);
 			blog.bind();
@@ -65,6 +69,7 @@ export function mountSite(config, discussionConfig) {
 			if (disposed) return;
 			disposed = true;
 			events.dispose();
+			videos.dispose();
 			disposeDiscussion?.();
 			code.dispose();
 			palettes.dispose();

@@ -13,15 +13,24 @@ export function projectHomeData({
 		...new Set((Array.isArray(post.tags) ? post.tags : []).map(String)),
 	];
 
-	// Reuse the inline parser's code/link handling without rendering cached articles again.
+	// Images and video posters follow the same visible body order. Keep each media
+	// descriptor intact so video attachment links also participate in cover selection.
 	const bookImageByPost = new Map();
 	for (const post of posts) {
-		const candidates = coverAssetsByPost.get(post.postId);
+		const candidates = coverAssetsByPost.get(post.postId) ?? [];
 		if (!candidates.length) continue;
+		const candidateUrls = new Set(candidates.map((asset) => asset.url));
 		const eligible = new Map(
 			candidates
 				.filter((asset) => asset.id)
-				.map((asset) => [asset.id, { ...asset, image: true, publicUrl: asset.url }])
+				.map((asset) => [
+					asset.id,
+					{
+						...asset,
+						image: asset.image ?? !asset.videoEnvelope,
+						publicUrl: asset.url,
+					},
+				])
 		);
 		let first = null;
 		let fence = null;
@@ -35,8 +44,7 @@ export function projectHomeData({
 			fence = openFence(line);
 			if (fence) continue;
 			inlineMarkdown(line, eligible, false, (image) => {
-				if (!first && candidates.some((asset) => asset.url === image.url))
-					first = image.url;
+				if (!first && candidateUrls.has(image.url)) first = image.url;
 			});
 			if (first) break;
 		}

@@ -78,6 +78,24 @@
               attachment ? `<span class="attachment-missing">첨부파일: ${esc(label || "Attachment")}</span>` : esc(label)
             );
           }
+          if (attachment && (asset.videoEnvelope || asset.videoUrl)) {
+            const source2 = asset.videoUrl && /^blob:/.test(asset.videoUrl) ? ` src="${esc(asset.videoUrl)}"` : asset.videoEnvelope && /^\/(?!\/)[^\\\s"<>]*\.layall-download\.json$/.test(
+              asset.videoEnvelope
+            ) ? ` data-layall-video-envelope="${esc(asset.videoEnvelope)}"` : "";
+            if (source2) {
+              if (asset.posterPublicUrl)
+                onImage?.({ url: asset.posterPublicUrl, alt: String(label ?? "") });
+              const poster = asset.posterUrl ? ` poster="${esc(asset.posterUrl)}"` : "";
+              return keep(
+                `<figure class="article-video"><video${source2}${poster} aria-label="${esc(label || "동영상")}" controls autoplay muted loop playsinline preload="metadata"></video>${label.trim() ? `<figcaption>${esc(label)}</figcaption>` : ""}<span data-video-status role="status"></span></figure>`
+              );
+            }
+          }
+          if (attachment && asset.mimeType === "video/mp4") {
+            return keep(
+              '<span class="attachment-missing" role="status">동영상을 재생할 수 없습니다.</span>'
+            );
+          }
           if (image && (!attachment || asset.image)) {
             const publicUrl = attachment ? asset.publicUrl : safeSocialImage(target);
             if (publicUrl) onImage?.({ url: publicUrl, alt: String(label ?? "") });
@@ -115,10 +133,13 @@
       cells.push(cell.trim());
       return cells;
     };
-    const imageLine = (line) => {
-      const pattern = /!\[[^\]]*\]\([^\s)]+(?:\s+["'][^"']*["'])?\)/g;
-      const images = [...line.matchAll(pattern)];
-      return images.length && !line.replace(pattern, "").trim() ? images.length : 0;
+    const mediaLine = (line, assets) => {
+      const pattern = /(!?)\[[^\]]*\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/g;
+      const media = [...line.matchAll(pattern)];
+      return media.length && !line.replace(pattern, "").trim() && media.every((match) => {
+        const asset = assets?.get(match[2].replace(/^layall-attachment:/, ""));
+        return match[1] || match[2].startsWith("layall-attachment:") && (asset?.videoEnvelope || asset?.videoUrl);
+      }) ? media.length : 0;
     };
     const finiteMapCoordinate = (value) => {
       const text = String(value ?? "").trim();
@@ -276,12 +297,12 @@
           };
           continue;
         }
-        const imageCount = imageLine(line);
-        if (imageCount) {
+        const mediaCount = mediaLine(line, assets);
+        if (mediaCount) {
           flushAll();
-          const images = inlineMarkdown(line, assets, true, rememberImage);
+          const media = inlineMarkdown(line, assets, true, rememberImage);
           html.push(
-            imageCount > 1 ? `<div class="image-gallery" data-image-gallery="true">${images}</div>` : images
+            mediaCount > 1 ? `<div class="image-gallery" data-image-gallery="true">${media}</div>` : media
           );
           continue;
         }
@@ -297,7 +318,7 @@
           index += 1;
           while (index + 1 < lines.length) {
             const cells = tableCells(lines[index + 1]);
-            if (!cells || imageLine(lines[index + 1]) || /^#{1,6}\s/.test(lines[index + 1]) || openFence(lines[index + 1]))
+            if (!cells || mediaLine(lines[index + 1], assets) || /^#{1,6}\s/.test(lines[index + 1]) || openFence(lines[index + 1]))
               break;
             rows.push(cells);
             index += 1;
@@ -375,6 +396,107 @@
   function readConfig(selector) {
     const node = document.querySelector(selector);
     return node ? JSON.parse(node.textContent) : null;
+  }
+
+  // core/mp4.mjs
+  function inspectMp4(bytes) {
+    if (bytes.length < 32 || bytes.length > 20 * 1024 * 1024) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const fourcc = (at) => String.fromCharCode(...bytes.subarray(at, at + 4));
+    let remaining = 2e4;
+    const boxes = (start, end) => {
+      const result = [];
+      while (start < end) {
+        if (--remaining < 0 || start + 8 > end) throw new Error("Invalid MP4 box");
+        let size = view.getUint32(start);
+        let header = 8;
+        if (size === 1) {
+          if (start + 16 > end || view.getUint32(start + 8) !== 0)
+            throw new Error("Oversized MP4 box");
+          size = view.getUint32(start + 12);
+          header = 16;
+        } else if (size === 0) size = end - start;
+        if (size < header || start + size > end) throw new Error("Truncated MP4 box");
+        result.push({ type: fourcc(start + 4), start: start + header, end: start + size });
+        start += size;
+      }
+      return result;
+    };
+    const aac = (start, end) => {
+      const descriptor = (at2) => {
+        const tag = bytes[at2++];
+        let size = 0, count = 0, value;
+        do {
+          if (at2 >= end || count++ === 4) throw new Error("Invalid descriptor");
+          value = bytes[at2++];
+          size = size * 128 + (value & 127);
+        } while (value & 128);
+        if (at2 + size > end) throw new Error("Truncated descriptor");
+        return { tag, start: at2, end: at2 + size };
+      };
+      const es = descriptor(start + 4);
+      if (es.tag !== 3 || es.start + 3 > es.end) return false;
+      const flags = bytes[es.start + 2];
+      let at = es.start + 3;
+      if (flags & 128) at += 2;
+      if (flags & 64) at += 1 + bytes[at];
+      if (flags & 32) at += 2;
+      const decoder = descriptor(at);
+      if (decoder.tag !== 4 || decoder.start + 13 > decoder.end || decoder.end > es.end || bytes[decoder.start] !== 64)
+        return false;
+      const config2 = descriptor(decoder.start + 13);
+      return config2.tag === 5 && config2.end <= decoder.end && config2.end - config2.start >= 2 && [2, 5, 29].includes(bytes[config2.start] >>> 3);
+    };
+    try {
+      const top = boxes(0, bytes.length);
+      const ftyp = top[0];
+      if (ftyp.type !== "ftyp" || ftyp.end - ftyp.start < 8) return null;
+      const brands = [fourcc(ftyp.start)];
+      for (let at = ftyp.start + 8; at + 4 <= ftyp.end; at += 4) brands.push(fourcc(at));
+      if (!brands.some((brand) => /^(isom|iso[2-9]|mp4[12]|avc1)$/.test(brand))) return null;
+      const moov = top.find((box) => box.type === "moov");
+      if (!moov || !top.some((box) => box.type === "mdat" && box.end > box.start)) return null;
+      let video = 0, audio = 0, width = 0, height = 0;
+      let audioCodec = "";
+      for (const trak of boxes(moov.start, moov.end).filter((box) => box.type === "trak")) {
+        let parent = trak;
+        for (const type of ["mdia", "minf", "stbl", "stsd"]) {
+          const child = boxes(parent.start, parent.end).find((box) => box.type === type);
+          if (!child) return null;
+          parent = child;
+        }
+        if (parent.start + 8 > parent.end) return null;
+        const entries = boxes(parent.start + 8, parent.end);
+        if (entries.length !== 1 || view.getUint32(parent.start + 4) !== 1) return null;
+        const entry = entries[0];
+        if (entry.type === "avc1" || entry.type === "avc3") {
+          if (entry.start + 78 > entry.end) return null;
+          const config2 = boxes(entry.start + 78, entry.end).find(
+            (box) => box.type === "avcC"
+          );
+          if (!config2 || config2.end - config2.start < 7 || bytes[config2.start] !== 1)
+            return null;
+          width = view.getUint16(entry.start + 24);
+          height = view.getUint16(entry.start + 26);
+          if (!width || !height || Math.max(width, height) > 4096) return null;
+          video++;
+        } else if (entry.type === "mp4a" || entry.type === "Opus") {
+          if (entry.start + 28 > entry.end || view.getUint16(entry.start + 8) !== 0)
+            return null;
+          const config2 = boxes(entry.start + 28, entry.end).find(
+            (box) => box.type === (entry.type === "mp4a" ? "esds" : "dOps")
+          );
+          if (!config2) return null;
+          if (entry.type === "mp4a" ? !aac(config2.start, config2.end) : config2.end - config2.start < 11 || bytes[config2.start] !== 0 || !bytes[config2.start + 1])
+            return null;
+          audioCodec = entry.type === "mp4a" ? "aac" : "opus";
+          audio++;
+        } else return null;
+      }
+      return video === 1 && audio <= 1 ? { width, height, audio: audio === 1, audioCodec } : null;
+    } catch {
+      return null;
+    }
   }
 
   // core/protection.mjs
@@ -1091,6 +1213,12 @@
       disposeToc = void 0;
       disposeComments?.();
       disposeComments = void 0;
+      for (const video of host.querySelectorAll?.("video") ?? []) {
+        video.onerror = null;
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
       urls.splice(0).forEach((url) => URL2.revokeObjectURL(url));
       host.replaceChildren();
       window2.dispatchEvent?.(new (window2.Event || Event)("layall:article-content"));
@@ -1153,12 +1281,24 @@
       for (const a of Array.isArray(source.attachments) ? source.attachments : []) {
         const bytes = payload.assets[`content/posts/${source.postId}/${a.path}`];
         if (typeof bytes !== "string") continue;
-        const mime = /^image\/(png|jpeg|gif|webp|avif)$/.test(a.mimeType) ? a.mimeType : "application/octet-stream";
-        const url = URL2.createObjectURL(
-          new Blob([core.decode(bytes, 64 * 1024 * 1024)], { type: mime })
-        );
+        const decoded = core.decode(bytes, 64 * 1024 * 1024);
+        const video = a.mimeType === "video/mp4" && Boolean(inspectMp4(decoded));
+        const mime = video ? "video/mp4" : /^image\/(png|jpeg|gif|webp|avif)$/.test(a.mimeType) ? a.mimeType : "application/octet-stream";
+        const url = URL2.createObjectURL(new Blob([decoded], { type: mime }));
         urls.push(url);
-        assets.set(String(a.id), { url, image: mime.startsWith("image/") });
+        assets.set(String(a.id), {
+          url,
+          image: mime.startsWith("image/"),
+          videoUrl: video ? url : null,
+          posterId: a.posterId,
+          posterFor: a.posterFor,
+          mimeType: a.mimeType
+        });
+      }
+      for (const [id, asset] of assets) {
+        const poster = assets.get(asset.posterId);
+        if (asset.videoUrl && poster?.image && poster.posterFor === id)
+          asset.posterUrl = poster.url;
       }
       const relock = text("button", "다시 잠금");
       relock.type = "button";
@@ -1207,6 +1347,13 @@
         host.append(template.content);
       }
       host.append(content);
+      for (const video of content.querySelectorAll?.("video") ?? []) {
+        video.muted = true;
+        video.onerror = () => {
+          const status2 = video.parentElement?.querySelector("[data-video-status]");
+          if (status2) status2.textContent = "이 브라우저에서 동영상을 재생할 수 없습니다.";
+        };
+      }
       disposeToc = mountNoteToc(host, platform).dispose;
       for (const [field, label] of [
         ["tags", "태그"],

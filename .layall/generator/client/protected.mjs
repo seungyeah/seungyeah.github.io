@@ -1,3 +1,4 @@
+import { inspectMp4 } from '../core/mp4.mjs';
 import { folderCrypto } from '../core/protection.mjs';
 import { noteToc } from '../render/note-toc.mjs';
 import { mountProtectedDiscussion } from './discussions.mjs';
@@ -34,6 +35,12 @@ export function mountProtected(
 		disposeToc = undefined;
 		disposeComments?.();
 		disposeComments = undefined;
+		for (const video of host.querySelectorAll?.('video') ?? []) {
+			video.onerror = null;
+			video.pause();
+			video.removeAttribute('src');
+			video.load();
+		}
 		urls.splice(0).forEach((url) => URL.revokeObjectURL(url));
 		host.replaceChildren();
 		window.dispatchEvent?.(new (window.Event || Event)('layall:article-content'));
@@ -99,14 +106,28 @@ export function mountProtected(
 		for (const a of Array.isArray(source.attachments) ? source.attachments : []) {
 			const bytes = payload.assets[`content/posts/${source.postId}/${a.path}`];
 			if (typeof bytes !== 'string') continue;
-			const mime = /^image\/(png|jpeg|gif|webp|avif)$/.test(a.mimeType)
-				? a.mimeType
-				: 'application/octet-stream';
-			const url = URL.createObjectURL(
-				new Blob([core.decode(bytes, 64 * 1024 * 1024)], { type: mime })
-			);
+			const decoded = core.decode(bytes, 64 * 1024 * 1024);
+			const video = a.mimeType === 'video/mp4' && Boolean(inspectMp4(decoded));
+			const mime = video
+				? 'video/mp4'
+				: /^image\/(png|jpeg|gif|webp|avif)$/.test(a.mimeType)
+					? a.mimeType
+					: 'application/octet-stream';
+			const url = URL.createObjectURL(new Blob([decoded], { type: mime }));
 			urls.push(url);
-			assets.set(String(a.id), { url, image: mime.startsWith('image/') });
+			assets.set(String(a.id), {
+				url,
+				image: mime.startsWith('image/'),
+				videoUrl: video ? url : null,
+				posterId: a.posterId,
+				posterFor: a.posterFor,
+				mimeType: a.mimeType,
+			});
+		}
+		for (const [id, asset] of assets) {
+			const poster = assets.get(asset.posterId);
+			if (asset.videoUrl && poster?.image && poster.posterFor === id)
+				asset.posterUrl = poster.url;
 		}
 		const relock = text('button', '다시 잠금');
 		relock.type = 'button';
@@ -158,6 +179,13 @@ export function mountProtected(
 			host.append(template.content);
 		}
 		host.append(content);
+		for (const video of content.querySelectorAll?.('video') ?? []) {
+			video.muted = true;
+			video.onerror = () => {
+				const status = video.parentElement?.querySelector('[data-video-status]');
+				if (status) status.textContent = '이 브라우저에서 동영상을 재생할 수 없습니다.';
+			};
+		}
 		disposeToc = mountNoteToc(host, platform).dispose;
 		for (const [field, label] of [
 			['tags', '태그'],

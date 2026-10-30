@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "ec564f6ed7e7704191cdb07248a69902f805755d04342740b1e967ecec80fa01",
+  "sha256": "3cfa277f589fa78f1bdafd49e48bc12631cd49b7a797627779feeb87c762c450",
   "entries": [
     {
       "path": "build.mjs",
@@ -25,8 +25,8 @@
     },
     {
       "path": "generator/browser/protected.js",
-      "size": 52843,
-      "sha256": "388e7a04797381909555be92e45c486a243c761c07a03ea1423afe43f9b82144"
+      "size": 60124,
+      "sha256": "b5c51bfb705949573738f3e3a6855657ba3b8e1417b119bc66dc3d1cc976063a"
     },
     {
       "path": "generator/browser/renderer/02e08da95efce96e20d70c1a7ec8dfe15ab8a719dcadea12acf81965927ce01a.mjs",
@@ -565,13 +565,13 @@
     },
     {
       "path": "generator/browser/site.js",
-      "size": 101558,
-      "sha256": "36a60efc2121a51130241d9e40b2df92556cceb8743af8d476c138cf0103c57a"
+      "size": 111215,
+      "sha256": "dd36af2f8c0b49ffee74e06ef41a4a76289e68a8575fc5f23b85ed62f18a8058"
     },
     {
       "path": "generator/build-inputs.json",
-      "size": 118592,
-      "sha256": "97ae54cbfc4210ced6d362af1048b9b02c45dea4d4b42fd35a37a52bc2f6be5d"
+      "size": 118920,
+      "sha256": "d6425f01bea4a5f9a46dc0c4e63a23d1be398657b52d214663f5d8a152238fbb"
     },
     {
       "path": "generator/client/article-code.mjs",
@@ -680,8 +680,8 @@
     },
     {
       "path": "generator/client/protected.mjs",
-      "size": 7755,
-      "sha256": "8e8480715aa1f8d6653148cd2135021e0cb86b6c68d9c6060473fe10ef65d282"
+      "size": 8714,
+      "sha256": "f1b4e18ff8a634dbf96250947bde8717d465e1064cb2ec4a0e6cb02a9ba2c944"
     },
     {
       "path": "generator/client/pwa.mjs",
@@ -705,8 +705,8 @@
     },
     {
       "path": "generator/client/site.mjs",
-      "size": 2534,
-      "sha256": "2628bfc50104c583732326b3b9d33c369466b9f4b94ccf3a92701f842c4d75b2"
+      "size": 2689,
+      "sha256": "0edb07d355311b7f48920a893e45ee766982b726fff05aa5d245ec8c9ed47955"
     },
     {
       "path": "generator/client/theme-controller.mjs",
@@ -714,9 +714,14 @@
       "sha256": "3ae0510355744a69bf532ea87943ba71b734c03431ceafda4088265ab1058e63"
     },
     {
+      "path": "generator/client/video.mjs",
+      "size": 4720,
+      "sha256": "0567e0e5a696bba85e742151fe589a2c403d9c4ba3de9cfdf0dad7d356bdaed9"
+    },
+    {
       "path": "generator/core/assets.mjs",
-      "size": 4887,
-      "sha256": "fae5af389e0e9dab99ceba68a82fdfc358e41993d7cc267708f63a20c233ed6d"
+      "size": 5831,
+      "sha256": "a89b84b4453f43311ee0779a1f497dc69e33a836e8ff90d730cfffd5070d23e1"
     },
     {
       "path": "generator/core/cache-identity.mjs",
@@ -732,6 +737,11 @@
       "path": "generator/core/cache.mjs",
       "size": 1889,
       "sha256": "8f9f130ec3ca9ca21238a701e6d47c5ba37734d05ce2df621414d84e288308c2"
+    },
+    {
+      "path": "generator/core/mp4.mjs",
+      "size": 4653,
+      "sha256": "dcb28ac40ea36b5127f716a22519c7a1c1498a5618fa17fdc8dea62b7f6ccded"
     },
     {
       "path": "generator/core/output.mjs",
@@ -810,8 +820,8 @@
     },
     {
       "path": "generator/render/home-data.mjs",
-      "size": 3649,
-      "sha256": "d5ecb89b5723ec6a78ec51646e345a1e2f32dda0b461d7516cbdbeaf47908fd5"
+      "size": 3846,
+      "sha256": "807812147bdc369fe437b9e609a69c9d7e80fdbb5c2253d0cc660f0a9d533f0c"
     },
     {
       "path": "generator/render/home.mjs",
@@ -825,8 +835,8 @@
     },
     {
       "path": "generator/render/markdown.mjs",
-      "size": 13127,
-      "sha256": "898a256c2981fed24bd49b26622d19d9bd70350e91d19ab69bf6a20fbf5c0465"
+      "size": 14694,
+      "sha256": "e9e4aa80b8e090c2d0aec5a468cc521b4695474ab4422e8b64b13f98eecb4dfa"
     },
     {
       "path": "generator/render/note-toc.mjs",
@@ -850,8 +860,8 @@
     },
     {
       "path": "generator/render/shell.mjs",
-      "size": 8202,
-      "sha256": "a8a39931b6c306f3cc1c02b12630321ae931d1892e0d39782156581be7011b5d"
+      "size": 8271,
+      "sha256": "4021df30546b6027dbe8d69a08f7c0f56ad22cf2b4a54e941857f20c48a76da3"
     },
     {
       "path": "generator/render/site-styles.mjs",
@@ -880,8 +890,8 @@
     },
     {
       "path": "generator/styles/article.css",
-      "size": 5028,
-      "sha256": "6876144985ff6d22c95606f022d8afcbe892b1c3c1148fa4a7e925567c4439a8"
+      "size": 5276,
+      "sha256": "6e2d057758322aaf5c697cb79fea9d621e6a1e393f5a243246a192ab6ec832aa"
     },
     {
       "path": "generator/styles/books.css",
@@ -895,8 +905,8 @@
     },
     {
       "path": "generator/styles/foundation.css",
-      "size": 3262,
-      "sha256": "dba05c5ddac20a4955d499c36b0d4da0c0412174e3ade21e69d533aa6d8a505f"
+      "size": 3325,
+      "sha256": "d074d3791964346ffc5c4a4d907ea759add659138cdda186d9c4e2a3c76a3282"
     },
     {
       "path": "generator/styles/giscus.css",

@@ -2481,6 +2481,227 @@
     };
   }
 
+  // core/mp4.mjs
+  function inspectMp4(bytes) {
+    if (bytes.length < 32 || bytes.length > 20 * 1024 * 1024) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const fourcc = (at) => String.fromCharCode(...bytes.subarray(at, at + 4));
+    let remaining = 2e4;
+    const boxes = (start, end) => {
+      const result = [];
+      while (start < end) {
+        if (--remaining < 0 || start + 8 > end) throw new Error("Invalid MP4 box");
+        let size = view.getUint32(start);
+        let header = 8;
+        if (size === 1) {
+          if (start + 16 > end || view.getUint32(start + 8) !== 0)
+            throw new Error("Oversized MP4 box");
+          size = view.getUint32(start + 12);
+          header = 16;
+        } else if (size === 0) size = end - start;
+        if (size < header || start + size > end) throw new Error("Truncated MP4 box");
+        result.push({ type: fourcc(start + 4), start: start + header, end: start + size });
+        start += size;
+      }
+      return result;
+    };
+    const aac = (start, end) => {
+      const descriptor = (at2) => {
+        const tag = bytes[at2++];
+        let size = 0, count = 0, value;
+        do {
+          if (at2 >= end || count++ === 4) throw new Error("Invalid descriptor");
+          value = bytes[at2++];
+          size = size * 128 + (value & 127);
+        } while (value & 128);
+        if (at2 + size > end) throw new Error("Truncated descriptor");
+        return { tag, start: at2, end: at2 + size };
+      };
+      const es = descriptor(start + 4);
+      if (es.tag !== 3 || es.start + 3 > es.end) return false;
+      const flags = bytes[es.start + 2];
+      let at = es.start + 3;
+      if (flags & 128) at += 2;
+      if (flags & 64) at += 1 + bytes[at];
+      if (flags & 32) at += 2;
+      const decoder = descriptor(at);
+      if (decoder.tag !== 4 || decoder.start + 13 > decoder.end || decoder.end > es.end || bytes[decoder.start] !== 64)
+        return false;
+      const config2 = descriptor(decoder.start + 13);
+      return config2.tag === 5 && config2.end <= decoder.end && config2.end - config2.start >= 2 && [2, 5, 29].includes(bytes[config2.start] >>> 3);
+    };
+    try {
+      const top = boxes(0, bytes.length);
+      const ftyp = top[0];
+      if (ftyp.type !== "ftyp" || ftyp.end - ftyp.start < 8) return null;
+      const brands = [fourcc(ftyp.start)];
+      for (let at = ftyp.start + 8; at + 4 <= ftyp.end; at += 4) brands.push(fourcc(at));
+      if (!brands.some((brand) => /^(isom|iso[2-9]|mp4[12]|avc1)$/.test(brand))) return null;
+      const moov = top.find((box) => box.type === "moov");
+      if (!moov || !top.some((box) => box.type === "mdat" && box.end > box.start)) return null;
+      let video = 0, audio = 0, width = 0, height = 0;
+      let audioCodec = "";
+      for (const trak of boxes(moov.start, moov.end).filter((box) => box.type === "trak")) {
+        let parent = trak;
+        for (const type of ["mdia", "minf", "stbl", "stsd"]) {
+          const child = boxes(parent.start, parent.end).find((box) => box.type === type);
+          if (!child) return null;
+          parent = child;
+        }
+        if (parent.start + 8 > parent.end) return null;
+        const entries = boxes(parent.start + 8, parent.end);
+        if (entries.length !== 1 || view.getUint32(parent.start + 4) !== 1) return null;
+        const entry = entries[0];
+        if (entry.type === "avc1" || entry.type === "avc3") {
+          if (entry.start + 78 > entry.end) return null;
+          const config2 = boxes(entry.start + 78, entry.end).find(
+            (box) => box.type === "avcC"
+          );
+          if (!config2 || config2.end - config2.start < 7 || bytes[config2.start] !== 1)
+            return null;
+          width = view.getUint16(entry.start + 24);
+          height = view.getUint16(entry.start + 26);
+          if (!width || !height || Math.max(width, height) > 4096) return null;
+          video++;
+        } else if (entry.type === "mp4a" || entry.type === "Opus") {
+          if (entry.start + 28 > entry.end || view.getUint16(entry.start + 8) !== 0)
+            return null;
+          const config2 = boxes(entry.start + 28, entry.end).find(
+            (box) => box.type === (entry.type === "mp4a" ? "esds" : "dOps")
+          );
+          if (!config2) return null;
+          if (entry.type === "mp4a" ? !aac(config2.start, config2.end) : config2.end - config2.start < 11 || bytes[config2.start] !== 0 || !bytes[config2.start + 1])
+            return null;
+          audioCodec = entry.type === "mp4a" ? "aac" : "opus";
+          audio++;
+        } else return null;
+      }
+      return video === 1 && audio <= 1 ? { width, height, audio: audio === 1, audioCodec } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // client/video.mjs
+  var MAX_BYTES = 20 * 1024 * 1024;
+  var MAX_ENVELOPE = Math.ceil(MAX_BYTES / 3) * 4 + 16384;
+  async function readVideoEnvelope(path, signal, platform = globalThis) {
+    const url = new platform.URL(path, platform.location.href);
+    if (url.origin !== platform.location.origin || url.search || url.hash || url.username || url.password || !/^\/(?:[a-zA-Z0-9._~-]+\/)*assets\/posts\/[a-zA-Z0-9_-]+\/downloads\/[a-f0-9]{64}\.layall-download\.json$/.test(
+      url.pathname
+    ) || url.pathname.split("/").some((part) => part === "." || part === ".."))
+      throw new Error("Invalid video URL");
+    const response = await platform.fetch(url.href, {
+      signal,
+      credentials: "omit",
+      redirect: "error"
+    });
+    if (!response.ok || !response.body || Number(response.headers.get("content-length")) > MAX_ENVELOPE)
+      throw new Error("Video unavailable");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let total = 0, text = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.length;
+        if (total > MAX_ENVELOPE) throw new Error("Video too large");
+        text += decoder.decode(value, { stream: true });
+      }
+      text += decoder.decode();
+    } finally {
+      await reader.cancel().catch(() => {
+      });
+      reader.releaseLock();
+    }
+    const envelope = JSON.parse(text);
+    if (envelope.format !== "layall-download" || envelope.version !== 1 || envelope.mimeType !== "video/mp4" || typeof envelope.data !== "string" || envelope.data.length > Math.ceil(MAX_BYTES / 3) * 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(envelope.data))
+      throw new Error("Invalid video envelope");
+    const binary = platform.atob(envelope.data);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    if (!inspectMp4(bytes)) throw new Error("Invalid MP4");
+    return new platform.Blob([bytes], { type: "video/mp4" });
+  }
+  function mountPublicVideos(root, platform = globalThis) {
+    const events = listeners();
+    const active = /* @__PURE__ */ new Map();
+    let disposed = false, suspended = false, generation = 0;
+    const clear = () => {
+      generation++;
+      for (const [video, entry] of active) {
+        entry.abort.abort();
+        clearTimeout(entry.timer);
+        video.onerror = null;
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        if (entry.url) platform.URL.revokeObjectURL(entry.url);
+      }
+      active.clear();
+    };
+    const refresh = () => {
+      clear();
+      if (disposed || suspended || !root) return;
+      const current = generation;
+      void (async () => {
+        for (const video of root.querySelectorAll("video[data-layall-video-envelope]")) {
+          if (disposed || suspended || current !== generation) return;
+          const entry = { abort: new AbortController(), url: null, timer: null };
+          active.set(video, entry);
+          entry.timer = setTimeout(() => entry.abort.abort(), 3e4);
+          const status = video.parentElement?.querySelector("[data-video-status]");
+          if (status) status.textContent = "동영상 불러오는 중…";
+          try {
+            const blob = await readVideoEnvelope(
+              video.dataset.layallVideoEnvelope,
+              entry.abort.signal,
+              platform
+            );
+            if (current !== generation || disposed) return;
+            if (entry.abort.signal.aborted) throw new Error("Video timeout");
+            entry.url = platform.URL.createObjectURL(blob);
+            video.muted = true;
+            video.onerror = () => {
+              if (status)
+                status.textContent = "이 브라우저에서 동영상을 재생할 수 없습니다.";
+            };
+            video.src = entry.url;
+            if (status) status.textContent = "";
+            void video.play()?.catch(() => {
+            });
+          } catch {
+            if (current === generation && !disposed && status)
+              status.textContent = "동영상을 불러오지 못했습니다. 페이지를 새로고침해 주세요.";
+          } finally {
+            clearTimeout(entry.timer);
+          }
+        }
+      })();
+    };
+    events.on(platform.window, "pagehide", () => {
+      suspended = true;
+      clear();
+    });
+    events.on(platform.window, "pageshow", (event) => {
+      if (event.persisted) {
+        suspended = false;
+        refresh();
+      }
+    });
+    events.on(platform.window, "layall:article-content", refresh);
+    refresh();
+    return {
+      clear,
+      refresh,
+      dispose() {
+        disposed = true;
+        events.dispose();
+        clear();
+      }
+    };
+  }
+
   // client/site.mjs
   function mountSite(config2, discussionConfig) {
     const events = listeners();
@@ -2494,11 +2715,13 @@
     const nav = document.querySelector("[data-nav]");
     const navToggle = document.querySelector("[data-nav-toggle]");
     let noteNavigation;
+    const videos = mountPublicVideos(document);
     const themes = createThemeController({
       config: config2,
       root,
       mount,
       beforeReplace() {
+        videos.clear();
         search.invalidate();
         docs.invalidate();
         blog.dispose();
@@ -2509,6 +2732,7 @@
         noteNavigation?.refresh();
       },
       onPageMounted(query) {
+        videos.refresh();
         docs.bind();
         search.bind(query);
         blog.bind();
@@ -2537,6 +2761,7 @@
         if (disposed) return;
         disposed = true;
         events.dispose();
+        videos.dispose();
         disposeDiscussion?.();
         code.dispose();
         palettes2.dispose();

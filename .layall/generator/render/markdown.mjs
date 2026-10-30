@@ -35,6 +35,32 @@ export function createMarkdown({ href = (value) => value } = {}) {
 							: esc(label)
 					);
 				}
+				if (attachment && (asset.videoEnvelope || asset.videoUrl)) {
+					// Only validated, app-owned attachment descriptors can emit video markup.
+					// Markdown HTML and arbitrary remote URLs never enter this path.
+					const source =
+						asset.videoUrl && /^blob:/.test(asset.videoUrl)
+							? ` src="${esc(asset.videoUrl)}"`
+							: asset.videoEnvelope &&
+								  /^\/(?!\/)[^\\\s"<>]*\.layall-download\.json$/.test(
+										asset.videoEnvelope
+								  )
+								? ` data-layall-video-envelope="${esc(asset.videoEnvelope)}"`
+								: '';
+					if (source) {
+						if (asset.posterPublicUrl)
+							onImage?.({ url: asset.posterPublicUrl, alt: String(label ?? '') });
+						const poster = asset.posterUrl ? ` poster="${esc(asset.posterUrl)}"` : '';
+						return keep(
+							`<figure class="article-video"><video${source}${poster} aria-label="${esc(label || '동영상')}" controls autoplay muted loop playsinline preload="metadata"></video>${label.trim() ? `<figcaption>${esc(label)}</figcaption>` : ''}<span data-video-status role="status"></span></figure>`
+						);
+					}
+				}
+				if (attachment && asset.mimeType === 'video/mp4') {
+					return keep(
+						'<span class="attachment-missing" role="status">동영상을 재생할 수 없습니다.</span>'
+					);
+				}
 				if (image && (!attachment || asset.image)) {
 					const publicUrl = attachment ? asset.publicUrl : safeSocialImage(target);
 					if (publicUrl) onImage?.({ url: publicUrl, alt: String(label ?? '') });
@@ -82,10 +108,21 @@ export function createMarkdown({ href = (value) => value } = {}) {
 		cells.push(cell.trim());
 		return cells;
 	};
-	const imageLine = (line) => {
-		const pattern = /!\[[^\]]*\]\([^\s)]+(?:\s+["'][^"']*["'])?\)/g;
-		const images = [...line.matchAll(pattern)];
-		return images.length && !line.replace(pattern, '').trim() ? images.length : 0;
+	const mediaLine = (line, assets) => {
+		const pattern = /(!?)\[[^\]]*\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/g;
+		const media = [...line.matchAll(pattern)];
+		return media.length &&
+			!line.replace(pattern, '').trim() &&
+			media.every((match) => {
+				const asset = assets?.get(match[2].replace(/^layall-attachment:/, ''));
+				return (
+					match[1] ||
+					(match[2].startsWith('layall-attachment:') &&
+						(asset?.videoEnvelope || asset?.videoUrl))
+				);
+			})
+			? media.length
+			: 0;
 	};
 
 	const finiteMapCoordinate = (value) => {
@@ -254,14 +291,14 @@ export function createMarkdown({ href = (value) => value } = {}) {
 				};
 				continue;
 			}
-			const imageCount = imageLine(line);
-			if (imageCount) {
+			const mediaCount = mediaLine(line, assets);
+			if (mediaCount) {
 				flushAll();
-				const images = inlineMarkdown(line, assets, true, rememberImage);
+				const media = inlineMarkdown(line, assets, true, rememberImage);
 				html.push(
-					imageCount > 1
-						? `<div class="image-gallery" data-image-gallery="true">${images}</div>`
-						: images
+					mediaCount > 1
+						? `<div class="image-gallery" data-image-gallery="true">${media}</div>`
+						: media
 				);
 				continue;
 			}
@@ -284,7 +321,7 @@ export function createMarkdown({ href = (value) => value } = {}) {
 					const cells = tableCells(lines[index + 1]);
 					if (
 						!cells ||
-						imageLine(lines[index + 1]) ||
+						mediaLine(lines[index + 1], assets) ||
 						/^#{1,6}\s/.test(lines[index + 1]) ||
 						openFence(lines[index + 1])
 					)
