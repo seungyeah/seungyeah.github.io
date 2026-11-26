@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: f700b024b706af20041805d60bfb1abf8ade58bdc375aba568916028995d33d4",
+  "sourceStamp": "// layall-generator-source-sha256: 6e8f98b41975272073e2fbc9cdec0094eb58d4d1bbca4dddc265d656c0192f13",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -2258,7 +2258,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/article.css",
-      "sha256": "27ca09d34c1317eb95ac20c6cf46cec15a7b96b0b372dab75129a3fad8ce754b"
+      "sha256": "6370faeb4046019988df118514851de5bf890099fb51a227e8ebbdb8cb6da2dd"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/books.css",
@@ -2270,7 +2270,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/foundation.css",
-      "sha256": "d074d3791964346ffc5c4a4d907ea759add659138cdda186d9c4e2a3c76a3282"
+      "sha256": "639db995cacad209d1e476eefc24d3c852a226cf5929e56c7dbdf70485d36851"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/giscus.css",

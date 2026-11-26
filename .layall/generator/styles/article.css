@@ -314,6 +314,10 @@ main {
 	border-radius: 0;
 	font-size: 0.875em;
 }
+/* Posts have no table frame to fill, so the table keeps its content width. */
+.article .article-body .article-table table {
+	min-width: 0;
+}
 .article .article-body .article-table :is(th, td) {
 	padding: 0.57em;
 	border-right: 0;

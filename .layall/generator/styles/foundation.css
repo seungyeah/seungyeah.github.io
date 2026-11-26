@@ -72,7 +72,13 @@
 .attachment-missing {
 	color: var(--muted);
 }
+/* Table columns follow their longest cell. One column is at most the screen width
+   below the app's xs (441px), half the screen up to lg (1024px) and a third from lg;
+   wider tables scroll sideways. The wrapper is the query container, so a capped
+   column also never exceeds the visible scroll width. Same rule as the app preview. */
 .article-table {
+	--article-table-column-max: 100vw;
+	container-type: inline-size;
 	max-width: 100%;
 	overflow-x: auto;
 	margin: 1.5rem 0;
@@ -85,12 +91,15 @@
 	outline-offset: 3px;
 }
 .article-table table {
-	width: 100%;
+	width: max-content;
+	min-width: 100%;
 	border-collapse: collapse;
 }
 .article-table th,
 .article-table td {
-	min-width: 8rem;
+	min-width: 4rem;
+	max-width: var(--article-table-column-max);
+	max-width: min(var(--article-table-column-max), calc(100cqw - 2px));
 	padding: 0.65rem 0.8rem;
 	border-right: 1px solid var(--line);
 	border-bottom: 1px solid var(--line);
@@ -115,6 +124,16 @@
 }
 .article-table .align-right {
 	text-align: right;
+}
+@media (width >= 441px) {
+	.article-table {
+		--article-table-column-max: 50vw;
+	}
+}
+@media (width >= 1024px) {
+	.article-table {
+		--article-table-column-max: 33.333vw;
+	}
 }
 :root {
 	/* @tokens:root */
