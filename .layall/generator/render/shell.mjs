@@ -1,4 +1,4 @@
-import { esc, js, safeSocialImage } from './text.mjs';
+import { adsenseClientOf, esc, js, safeSocialImage } from './text.mjs';
 import { palettes, themeOrder } from './theme-data.mjs';
 export function createShell({
 	site,
@@ -14,8 +14,23 @@ export function createShell({
 	topLinks,
 	discussionBehavior,
 }) {
+	const adsenseClient = adsenseClientOf(site);
+	// Every page names the account so AdSense can verify the site.
+	const adsenseAccount = adsenseClient
+		? `<meta name="google-adsense-account" content="${adsenseClient}">`
+		: '';
+	// Auto ads. Google places the units, and its own consent message (set up in the
+	// AdSense console) loads through this same script where the law requires one.
+	const adsenseScript = adsenseClient
+		? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}" crossorigin="anonymous"></script>`
+		: '';
+	const adsenseNotice = adsenseClient
+		? '<p class="site-ad-notice">이 블로그는 Google AdSense 광고를 표시합니다. Google과 협력사는 광고를 위해 쿠키를 사용할 수 있습니다. <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google의 데이터 사용 안내</a></p>'
+		: '';
 	const shell = (title, body, options = {}) => {
 		const description = options.description ?? siteDescription;
+		// Search, 404 and protected posts have no content of their own: no ads there.
+		const ads = options.noindex ? '' : adsenseScript;
 		const socialImage = safeSocialImage(options.image);
 		const socialImageAlt =
 			socialImage && String(options.imageAlt ?? '').trim() ? String(options.imageAlt) : '';
@@ -108,7 +123,7 @@ export function createShell({
 		const postToc = options.postToc
 			? `<div class="header-actions"><button class="post-toc-toggle" type="button" data-post-toc-toggle aria-expanded="false" aria-controls="post-table-of-contents">TOC</button><button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button></div><aside class="post-toc-panel" id="post-table-of-contents" data-post-toc-panel data-open="false" aria-hidden="true" tabindex="-1"><div class="post-toc-head"><strong>On This Page</strong><button class="post-toc-close" type="button" data-post-toc-close aria-label="목차 닫기">×</button></div><nav aria-label="현재 글 목차">${options.postToc}</nav></aside>`
 			: '<button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-navigation">Menu</button>';
-		return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="media-src blob:">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}${canonical}${robots}${verification}${feeds}${structuredData}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><link rel="stylesheet" href="${esc(href('/' + staticAssets.css))}"><noscript><link rel="stylesheet" href="${esc(href('/' + staticAssets.noScriptCss))}"></noscript></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<div class="appearance-controls">${palettePicker}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></div></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer">${footerIdentity}</footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Post</a><a href="${href('/search/')}">Search</a></nav>${templates}<script type="application/json" data-site-config>${js(clientConfig)}</script>${discussionBehavior(options)}<script defer src="${esc(href('/' + staticAssets.site))}"></script></body></html>`;
+		return `<!doctype html><html lang="${esc(site.locale || 'ko-KR')}" data-layall-theme="${esc(theme)}" data-theme="${esc(theme)}" data-author-theme="${esc(theme)}" data-color-mode="${esc(site.colorMode || 'system')}"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="media-src blob:">${pwaHead}<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}">${socialMetadata}${canonical}${robots}${verification}${adsenseAccount}${feeds}${structuredData}${ads}<title>${esc(title)}${title === siteTitle ? '' : ` · ${esc(siteTitle)}`}</title><link rel="stylesheet" href="${esc(href('/' + staticAssets.css))}"><noscript><link rel="stylesheet" href="${esc(href('/' + staticAssets.noScriptCss))}"></noscript></head><body data-page-kind="${esc(options.kind || 'page')}"${options.postToc ? ' data-post-page="true"' : ''}><a class="skip-link" href="#content">본문으로 건너뛰기</a><header class="site-header"><div class="header-inner"><a class="brand" href="${href('/')}">${esc(siteTitle)}</a>${postToc}<nav class="site-nav" id="site-navigation" data-nav>${nav}<div class="appearance-controls">${palettePicker}<span class="color-controls" aria-label="화면 테마"><button type="button" data-color="light" aria-label="라이트 모드">☀</button><button type="button" data-color="dark" aria-label="다크 모드">☾</button><button type="button" data-color="system" aria-label="시스템 모드">◐</button></span></div></nav></div></header><div data-theme-view>${activeBody}</div><noscript><nav class="docs-nav" aria-label="문서 안내"><a href="${href('/#posts')}">전체 문서</a></nav></noscript><div data-theme-pool hidden>${pool}</div><footer class="site-footer">${footerIdentity}${adsenseNotice}</footer><nav class="floating-nav" aria-label="빠른 탐색"><a href="${href('/')}">Home</a><a href="${href('/#posts')}">Post</a><a href="${href('/search/')}">Search</a></nav>${templates}<script type="application/json" data-site-config>${js(clientConfig)}</script>${discussionBehavior(options)}<script defer src="${esc(href('/' + staticAssets.site))}"></script></body></html>`;
 	};
 
 	return shell;

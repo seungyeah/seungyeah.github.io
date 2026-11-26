@@ -16,6 +16,17 @@ main {
 	color: var(--muted);
 	font-size: calc(0.9rem * var(--font-scale));
 }
+.site-ad-notice {
+	flex-basis: 100%;
+	margin: 0.6rem 0 0;
+	font-size: 0.75rem;
+	line-height: 1.6;
+}
+.site-ad-notice a {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
 .eyebrow {
 	letter-spacing: 0.14em;
 	font-size: calc(0.72rem * var(--font-scale));
@@ -222,6 +233,12 @@ main {
 .article .article-body > p {
 	margin-bottom: 0.25rem;
 }
+/* A blank line beside a heading, list or other block is already spaced by that block's own
+   margin. Only a blank line between two paragraphs adds height. */
+.article .article-body > :not(p, br) + br,
+.article .article-body > br:has(+ :not(p, br)) {
+	display: none;
+}
 .article .article-body strong {
 	font-weight: 600;
 }
@@ -235,13 +252,13 @@ main {
 	text-decoration: underline;
 }
 .article .article-body > :is(h1, h2, h3, h4, h5, h6) {
-	margin-block: 1.5rem 0.75rem;
+	margin-block: 1.25rem 0.5rem;
 	font-weight: 700;
 	line-height: 1.3;
 	letter-spacing: -0.02em;
 }
 .article .article-body > h1 {
-	margin-block: 1.75rem 1rem;
+	margin-block: 1.5rem 0.625rem;
 	font-size: calc(1.875rem * var(--font-scale));
 }
 .article .article-body > h2 {
@@ -256,18 +273,22 @@ main {
 	font-weight: 600;
 }
 .article .article-body > :is(ul, ol) {
-	margin-block: 0.75rem;
-	padding-inline-start: 1.625em;
+	margin-block: 0.5rem;
+	padding-inline-start: 1.25em;
+}
+/* A two-digit number needs a little more room than a bullet. */
+.article .article-body > ol {
+	padding-inline-start: 1.5em;
 }
 .article .article-body > :is(ul, ol) > li {
-	margin-block: 0.5em;
-	padding-inline-start: 0.375em;
+	margin-block: 0.375em;
+	padding-inline-start: 0.25em;
 }
 .article .article-body > :is(ul, ol) > li::marker {
 	color: var(--muted);
 }
 .article .article-body > blockquote {
-	margin-block: 1rem;
+	margin-block: 0.75rem;
 	padding: 0.5rem 1rem 0.5rem 1.5rem;
 	border-left: 0.25rem solid color-mix(in srgb, var(--accent) 50%, transparent);
 	border-radius: 0 6px 6px 0;
@@ -283,12 +304,12 @@ main {
 	font-weight: 500;
 }
 .article .article-body > pre {
-	margin-block: 1rem;
+	margin-block: 0.75rem;
 	padding: 1.25rem;
 	line-height: 1.6;
 }
 .article .article-body > :is(.article-image, .article-video, .image-gallery, .map-place-card) {
-	margin-block: 1.25rem;
+	margin-block: 1rem;
 }
 .article .article-body :is(.article-image, .article-video) {
 	padding: 0;
@@ -306,10 +327,10 @@ main {
 	box-shadow: none;
 }
 .article .article-body > hr {
-	margin-block: 2rem;
+	margin-block: 1.5rem;
 }
 .article .article-body > .article-table {
-	margin-block: 1.25rem;
+	margin-block: 1rem;
 	border: 0;
 	border-radius: 0;
 	font-size: 0.875em;

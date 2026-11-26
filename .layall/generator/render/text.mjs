@@ -90,3 +90,12 @@ export {
 	slugify,
 	tagSegment,
 };
+
+/**
+ * The site's Google AdSense publisher ID (`ca-pub-` and 16 digits), or '' when unset or
+ * malformed. It is a public identifier printed in page source, never a credential.
+ */
+export function adsenseClientOf(site) {
+	const id = site?.adsenseClientId;
+	return typeof id === 'string' && /^ca-pub-\d{16}$/.test(id) ? id : '';
+}

@@ -1,4 +1,4 @@
-import { esc, excerpt } from './text.mjs';
+import { adsenseClientOf, esc, excerpt } from './text.mjs';
 
 export function emitFeeds({
 	site,
@@ -59,5 +59,11 @@ export function emitFeeds({
 	// Crawlers read only the origin's /robots.txt, never /project/robots.txt.
 	if (publicBase && !basePath) {
 		write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${absolute('/sitemap.xml')}\n`);
+		// Ad buyers read only the origin's /ads.txt, like robots.txt. A project site under a
+		// sub-path cannot publish one, so AdSense reports the seller as unverified there.
+		const adsenseClient = adsenseClientOf(site);
+		if (adsenseClient) {
+			write('ads.txt', `google.com, ${adsenseClient.slice(3)}, DIRECT, f08c47fec0942fa0\n`);
+		}
 	}
 }
