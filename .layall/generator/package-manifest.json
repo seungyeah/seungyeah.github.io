@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "3cfa277f589fa78f1bdafd49e48bc12631cd49b7a797627779feeb87c762c450",
+  "sha256": "29eb1429218648e7bcfe412f4250043f1e3966ac40ef9a11cd22428cb480c3d8",
   "entries": [
     {
       "path": "build.mjs",
@@ -25,8 +25,8 @@
     },
     {
       "path": "generator/browser/protected.js",
-      "size": 60124,
-      "sha256": "b5c51bfb705949573738f3e3a6855657ba3b8e1417b119bc66dc3d1cc976063a"
+      "size": 61052,
+      "sha256": "aa7a22356629d0e1fb58cef17e1519ed95a59b3cf1c159d0dad7f7036a1389ce"
     },
     {
       "path": "generator/browser/renderer/02e08da95efce96e20d70c1a7ec8dfe15ab8a719dcadea12acf81965927ce01a.mjs",
@@ -570,8 +570,8 @@
     },
     {
       "path": "generator/build-inputs.json",
-      "size": 118920,
-      "sha256": "d6425f01bea4a5f9a46dc0c4e63a23d1be398657b52d214663f5d8a152238fbb"
+      "size": 119098,
+      "sha256": "43a6ac860c04dd3af07386969986bffae334f1fd9ca672dcaaa794c06b45d13c"
     },
     {
       "path": "generator/client/article-code.mjs",
@@ -680,8 +680,8 @@
     },
     {
       "path": "generator/client/protected.mjs",
-      "size": 8714,
-      "sha256": "f1b4e18ff8a634dbf96250947bde8717d465e1064cb2ec4a0e6cb02a9ba2c944"
+      "size": 8993,
+      "sha256": "4fa4a57443ca7a1e05ca41c1e3c61af2457586a14f2741be67cd9cccd48598ab"
     },
     {
       "path": "generator/client/pwa.mjs",
@@ -720,8 +720,8 @@
     },
     {
       "path": "generator/core/assets.mjs",
-      "size": 5831,
-      "sha256": "a89b84b4453f43311ee0779a1f497dc69e33a836e8ff90d730cfffd5070d23e1"
+      "size": 5966,
+      "sha256": "f338085231d1084556042ece3802a5cbe3df2de300f3cde870d3663b08482c88"
     },
     {
       "path": "generator/core/cache-identity.mjs",
@@ -800,8 +800,8 @@
     },
     {
       "path": "generator/render/article.mjs",
-      "size": 5021,
-      "sha256": "f8509db22c231080266328b60e0e68615ca5b9d4338b8749fabc0343107cbb1b"
+      "size": 5115,
+      "sha256": "e5427a833fc3ac91d1933703f434ebe392601407023851ff33a6c479467e655e"
     },
     {
       "path": "generator/render/discussions.mjs",
@@ -859,6 +859,11 @@
       "sha256": "e356c9753373c88d79417f0f2e845cf9ce6e7d475a1190828d952eaea4035970"
     },
     {
+      "path": "generator/render/sentence-comments.mjs",
+      "size": 847,
+      "sha256": "bbd3ec676bffebe6afe70ed8a062b72dbf88303ed89cc8820e40edf93a063674"
+    },
+    {
       "path": "generator/render/shell.mjs",
       "size": 8271,
       "sha256": "4021df30546b6027dbe8d69a08f7c0f56ad22cf2b4a54e941857f20c48a76da3"
@@ -890,8 +895,8 @@
     },
     {
       "path": "generator/styles/article.css",
-      "size": 5276,
-      "sha256": "6e2d057758322aaf5c697cb79fea9d621e6a1e393f5a243246a192ab6ec832aa"
+      "size": 5831,
+      "sha256": "89b09aae18535fff69cc1d69c5925a34878275e2465e641cc0b921a9c4d22942"
     },
     {
       "path": "generator/styles/books.css",

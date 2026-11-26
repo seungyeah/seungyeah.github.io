@@ -1,3 +1,4 @@
+import { sentenceComments } from '../render/sentence-comments.mjs';
 import { inspectMp4 } from '../core/mp4.mjs';
 import { folderCrypto } from '../core/protection.mjs';
 import { noteToc } from '../render/note-toc.mjs';
@@ -179,6 +180,12 @@ export function mountProtected(
 			host.append(template.content);
 		}
 		host.append(content);
+		const commentMarkup = sentenceComments(source.comments);
+		if (commentMarkup) {
+			const annotations = document.createElement('div');
+			annotations.innerHTML = commentMarkup;
+			host.append(annotations);
+		}
 		for (const video of content.querySelectorAll?.('video') ?? []) {
 			video.muted = true;
 			video.onerror = () => {

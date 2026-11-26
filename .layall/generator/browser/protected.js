@@ -398,6 +398,15 @@
     return node ? JSON.parse(node.textContent) : null;
   }
 
+  // render/sentence-comments.mjs
+  function sentenceComments(comments) {
+    const items = (Array.isArray(comments) ? comments : []).filter((comment) => comment && typeof comment === "object" && !comment.deletedAt).filter((comment) => typeof comment.body === "string" && comment.body.trim()).filter(
+      (comment) => typeof comment.selectedText === "string" && comment.selectedText.trim()
+    );
+    if (!items.length) return "";
+    return `<section class="sentence-comments" aria-label="문장 코멘트"><h2>문장 코멘트</h2><ol>${items.map((comment) => `<li><blockquote>${esc(comment.selectedText)}</blockquote><p>${esc(comment.body)}</p></li>`).join("")}</ol></section>`;
+  }
+
   // core/mp4.mjs
   function inspectMp4(bytes) {
     if (bytes.length < 32 || bytes.length > 20 * 1024 * 1024) return null;
@@ -1347,6 +1356,12 @@
         host.append(template.content);
       }
       host.append(content);
+      const commentMarkup = sentenceComments(source.comments);
+      if (commentMarkup) {
+        const annotations = document2.createElement("div");
+        annotations.innerHTML = commentMarkup;
+        host.append(annotations);
+      }
       for (const video of content.querySelectorAll?.("video") ?? []) {
         video.muted = true;
         video.onerror = () => {

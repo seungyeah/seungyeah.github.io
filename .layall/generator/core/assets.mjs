@@ -38,6 +38,7 @@ export function emitAttachments({ site, posts, inputHashes, write, href, absolut
 	const coverAssetsByPost = new Map();
 	for (const post of posts) {
 		const assets = new Map();
+		const orderedAssets = [];
 		assetsByPost.set(post.postId, assets);
 		const coverAssets = [];
 		coverAssetsByPost.set(post.postId, coverAssets);
@@ -108,26 +109,28 @@ export function emitAttachments({ site, posts, inputHashes, write, href, absolut
 				path: destination,
 				sha256: createHash('sha256').update(published).digest('hex'),
 			});
-			if (asset.id)
-				assets.set(String(asset.id), {
-					url: assetUrl,
-					publicUrl: raster ? safeSocialImage(absolute(`/${destination}`)) : '',
-					image: raster,
-					videoEnvelope: video ? href(`/${destination}`) : null,
-					posterId: asset.posterId,
-					posterFor: asset.posterFor,
-					mimeType: asset.mimeType,
-				});
+			const descriptor = {
+				url: assetUrl,
+				publicUrl: raster ? safeSocialImage(absolute(`/${destination}`)) : '',
+				image: raster,
+				videoEnvelope: video ? href(`/${destination}`) : null,
+				posterId: asset.posterId,
+				posterFor: asset.posterFor,
+				mimeType: asset.mimeType,
+			};
+			const id = asset.id ? String(asset.id) : null;
+			if (id) assets.set(id, descriptor);
+			orderedAssets.push([id, descriptor]);
 		}
 		// Resolve posters after all files exist, then preserve source attachment order
 		// for the cover fallback. A video's derived raster is never its own candidate.
-		for (const [id, asset] of assets) {
+		for (const [id, asset] of orderedAssets) {
 			if (asset.image && !asset.posterFor) {
 				coverAssets.push({ id, url: asset.url, image: true });
 				continue;
 			}
 			const poster = assets.get(asset.posterId);
-			if (!asset.videoEnvelope || !poster?.image || poster.posterFor !== id) continue;
+			if (!id || !asset.videoEnvelope || !poster?.image || poster.posterFor !== id) continue;
 			asset.posterUrl = poster.url;
 			asset.posterPublicUrl = poster.publicUrl;
 			coverAssets.push({

@@ -259,3 +259,34 @@ main {
 	color: var(--muted);
 	font-size: 0.85em;
 }
+
+.sentence-comments {
+	margin-block: 2rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--line);
+}
+.sentence-comments h2 {
+	font-size: 1.1em;
+	margin: 0 0 1rem;
+}
+.sentence-comments ol {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+.sentence-comments li + li {
+	margin-top: 1.25rem;
+}
+.sentence-comments blockquote {
+	margin: 0 0 0.5rem;
+	padding-left: 0.75rem;
+	border-left: 2px solid var(--line);
+	color: var(--muted);
+}
+.sentence-comments :is(p, blockquote) {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.sentence-comments p {
+	margin: 0;
+}

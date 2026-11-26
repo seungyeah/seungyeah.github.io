@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 854dac1c2232b7aeb9a196c957070c5ced2d5853cab0a86ef5f988d91ec50dcf",
+  "sourceStamp": "// layall-generator-source-sha256: 9bff5ad8648841b46dc039bea8c497e1469fc91389f4e9ba19628fbcff4dfe2c",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -1994,11 +1994,11 @@
     },
     {
       "path": "package.json",
-      "sha256": "4ec2cdb7d3347759ec68f819823cebc8e869081ce6ec169d1b9891b091696838"
+      "sha256": "2e9bc9435552c1847dd9844f499318b94901116466c09c4742790f74f1566e20"
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "5020ba0e5751ca19a663cb7b4e2cb1b86868330fe9a2f5bf9eaa0fc6639b1a13"
+      "sha256": "8c90b76efb93f79f46aa4322a3cd1bb66ee0b24e2252cff5477996e750f3e95b"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/article-code.mjs",
@@ -2086,7 +2086,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/protected.mjs",
-      "sha256": "f1b4e18ff8a634dbf96250947bde8717d465e1064cb2ec4a0e6cb02a9ba2c944"
+      "sha256": "4fa4a57443ca7a1e05ca41c1e3c61af2457586a14f2741be67cd9cccd48598ab"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/pwa.mjs",
@@ -2118,7 +2118,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/core/assets.mjs",
-      "sha256": "a89b84b4453f43311ee0779a1f497dc69e33a836e8ff90d730cfffd5070d23e1"
+      "sha256": "f338085231d1084556042ece3802a5cbe3df2de300f3cde870d3663b08482c88"
     },
     {
       "path": "src-tauri/src/github_blog/generator/core/cache-identity.mjs",
@@ -2182,7 +2182,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/article.mjs",
-      "sha256": "f8509db22c231080266328b60e0e68615ca5b9d4338b8749fabc0343107cbb1b"
+      "sha256": "e5427a833fc3ac91d1933703f434ebe392601407023851ff33a6c479467e655e"
     },
     {
       "path": "src-tauri/src/github_blog/generator/render/discussions.mjs",
@@ -2229,6 +2229,10 @@
       "sha256": "e356c9753373c88d79417f0f2e845cf9ce6e7d475a1190828d952eaea4035970"
     },
     {
+      "path": "src-tauri/src/github_blog/generator/render/sentence-comments.mjs",
+      "sha256": "bbd3ec676bffebe6afe70ed8a062b72dbf88303ed89cc8820e40edf93a063674"
+    },
+    {
       "path": "src-tauri/src/github_blog/generator/render/shell.mjs",
       "sha256": "4021df30546b6027dbe8d69a08f7c0f56ad22cf2b4a54e941857f20c48a76da3"
     },
@@ -2254,7 +2258,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/article.css",
-      "sha256": "6e2d057758322aaf5c697cb79fea9d621e6a1e393f5a243246a192ab6ec832aa"
+      "sha256": "89b09aae18535fff69cc1d69c5925a34878275e2465e641cc0b921a9c4d22942"
     },
     {
       "path": "src-tauri/src/github_blog/generator/styles/books.css",
