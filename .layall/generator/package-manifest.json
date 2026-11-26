@@ -1,7 +1,7 @@
 {
   "format": "layall-generator-package",
   "version": 1,
-  "sha256": "29eb1429218648e7bcfe412f4250043f1e3966ac40ef9a11cd22428cb480c3d8",
+  "sha256": "a46d072682afd75e1272606389e866f507885f70e0974e54d2b3f1eeedb6fdb2",
   "entries": [
     {
       "path": "build.mjs",
@@ -571,7 +571,7 @@
     {
       "path": "generator/build-inputs.json",
       "size": 119098,
-      "sha256": "43a6ac860c04dd3af07386969986bffae334f1fd9ca672dcaaa794c06b45d13c"
+      "sha256": "27f759349530cf53cdb5f858b1d6323ed8474b8b4d1d8ffbbec52d0773546efb"
     },
     {
       "path": "generator/client/article-code.mjs",
@@ -895,8 +895,8 @@
     },
     {
       "path": "generator/styles/article.css",
-      "size": 5831,
-      "sha256": "89b09aae18535fff69cc1d69c5925a34878275e2465e641cc0b921a9c4d22942"
+      "size": 7804,
+      "sha256": "27ca09d34c1317eb95ac20c6cf46cec15a7b96b0b372dab75129a3fad8ce754b"
     },
     {
       "path": "generator/styles/books.css",
@@ -905,8 +905,8 @@
     },
     {
       "path": "generator/styles/code.css",
-      "size": 5816,
-      "sha256": "dfb21065e5e7cabba31ed045a170797a010ad17bd04ea106691b735901aa97fa"
+      "size": 5640,
+      "sha256": "01be88ee0d63d016d8e6d8c301ce8c990ec2511045e7af2addc028f303bb7560"
     },
     {
       "path": "generator/styles/foundation.css",

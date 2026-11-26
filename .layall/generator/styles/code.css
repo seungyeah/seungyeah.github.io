@@ -58,9 +58,11 @@ html[data-color-mode='dark'] .article {
 	position: relative;
 	min-width: 0;
 	max-width: 100%;
-	margin: 1.25rem 0;
+	margin: 1rem 0;
 	overflow: hidden;
+	border: 1px solid var(--line);
 	border-radius: var(--code-radius);
+	box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
 }
 .article-code-tools {
 	display: flex;
@@ -100,7 +102,7 @@ html[data-color-mode='dark'] .article {
 }
 .article-code pre {
 	margin: 0;
-	padding: 0.75rem;
+	padding: 1rem 1.25rem;
 	border: 0;
 	border-radius: 0;
 	background: transparent;
@@ -246,11 +248,4 @@ html[data-color-mode='dark'] .article-mermaid-viewer {
 }
 .article-code .hljs-deletion {
 	text-decoration: line-through;
-}
-html[data-theme='layall'] .article-table,
-html[data-theme='layall'] .article-table :is(table, thead, tbody, tfoot, tr, td, colgroup, col) {
-	background: transparent;
-}
-html[data-theme='layall'] .article-table th {
-	background: var(--code-surface);
 }
