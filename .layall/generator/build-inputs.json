@@ -2,7 +2,7 @@
   "format": "layall-generator-build-inputs",
   "version": 1,
   "bundlerVersion": "0.25.12",
-  "sourceStamp": "// layall-generator-source-sha256: 2add46b94c661bff79a5e1e282ca0c00ede8e4b5f24a9dcbcd860d86ea4572a8",
+  "sourceStamp": "// layall-generator-source-sha256: ea6eb229a7d60ba00f986d72076b248d6f15afc4947eaff8f5489950a27ecef0",
   "inputs": [
     {
       "path": "node_modules/.pnpm/highlight.js@11.12.0/node_modules/highlight.js/lib/common.js",
@@ -1994,11 +1994,11 @@
     },
     {
       "path": "package.json",
-      "sha256": "2e9bc9435552c1847dd9844f499318b94901116466c09c4742790f74f1566e20"
+      "sha256": "a423041b31d0984b16d0d3579e1b4cc4f44cda35251ccc7c5a04cfdf1c26bf03"
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "8c90b76efb93f79f46aa4322a3cd1bb66ee0b24e2252cff5477996e750f3e95b"
+      "sha256": "aa6eae5dbc6f6d3456fc1ce8ac7cf6674271dc30b39fb74d69d09735a3f25ab0"
     },
     {
       "path": "src-tauri/src/github_blog/generator/client/article-code.mjs",
@@ -2118,7 +2118,7 @@
     },
     {
       "path": "src-tauri/src/github_blog/generator/core/assets.mjs",
-      "sha256": "f338085231d1084556042ece3802a5cbe3df2de300f3cde870d3663b08482c88"
+      "sha256": "611e122cbe58a6944a7c8e5018e01435c3f14d1e9a5ba625ee175e9cb3c54b22"
     },
     {
       "path": "src-tauri/src/github_blog/generator/core/cache-identity.mjs",

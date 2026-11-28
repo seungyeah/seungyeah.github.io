@@ -4,6 +4,18 @@ import path from 'node:path';
 import { safeSocialImage } from '../render/text.mjs';
 import { inspectMp4 } from './mp4.mjs';
 
+/**
+ * A container that cannot be parsed is published as a download, like a video with
+ * an unsupported codec. One unusual file must not stop the build of the whole site.
+ */
+function playableMp4(bytes) {
+	try {
+		return Boolean(inspectMp4(bytes));
+	} catch {
+		return false;
+	}
+}
+
 export function emitAttachments({ site, posts, inputHashes, write, href, absolute }) {
 	// Profile images are shared managed outputs, never attributed to a post's deletion ledger.
 	let profileAsset = null;
@@ -86,7 +98,7 @@ export function emitAttachments({ site, posts, inputHashes, write, href, absolut
 			// Only signature-checked raster files retain an executable-origin URL. Everything
 			// else is base64 JSON, including HTML/SVG/PDF/media and misleading extensions.
 			// Even a direct URL cannot execute uploaded content on the key's origin.
-			const video = asset.mimeType === 'video/mp4' && Boolean(inspectMp4(bytes));
+			const video = asset.mimeType === 'video/mp4' && playableMp4(bytes);
 			const published = raster
 				? bytes
 				: Buffer.from(
